@@ -122,7 +122,8 @@ public class TestHiveClientConfig
                 .setTemporaryTableCompressionCodec(SNAPPY)
                 .setPushdownFilterEnabled(false)
                 .setZstdJniDecompressionEnabled(false)
-                .setRangeFiltersOnSubscriptsEnabled(false));
+                .setRangeFiltersOnSubscriptsEnabled(false)
+                .setClientFallbackSimpleAuthAllowed(false));
     }
 
     @Test
@@ -210,6 +211,7 @@ public class TestHiveClientConfig
                 .put("hive.pushdown-filter-enabled", "true")
                 .put("hive.range-filters-on-subscripts-enabled", "true")
                 .put("hive.zstd-jni-decompression-enabled", "true")
+                .put("hive.ipc.client.fallback-to-simple-auth-allowed", "true")
                 .build();
 
         HiveClientConfig expected = new HiveClientConfig()
@@ -294,7 +296,8 @@ public class TestHiveClientConfig
                 .setTemporaryTableCompressionCodec(NONE)
                 .setPushdownFilterEnabled(true)
                 .setZstdJniDecompressionEnabled(true)
-                .setRangeFiltersOnSubscriptsEnabled(true);
+                .setRangeFiltersOnSubscriptsEnabled(true)
+                .setClientFallbackSimpleAuthAllowed(true);
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }
