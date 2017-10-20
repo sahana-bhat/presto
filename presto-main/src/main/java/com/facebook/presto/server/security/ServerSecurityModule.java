@@ -15,12 +15,14 @@ package com.facebook.presto.server.security;
 
 import com.facebook.airlift.configuration.AbstractConfigurationAwareModule;
 import com.facebook.airlift.http.server.TheServlet;
+import com.facebook.presto.operator.ForDelegationTokenValidation;
 import com.facebook.presto.server.security.SecurityConfig.AuthenticationType;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Binder;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
+import io.airlift.units.Duration;
 
 import javax.servlet.Filter;
 
@@ -28,11 +30,15 @@ import java.util.List;
 import java.util.Set;
 
 import static com.facebook.airlift.configuration.ConfigBinder.configBinder;
+import static com.facebook.airlift.http.client.HttpClientBinder.httpClientBinder;
+import static com.facebook.airlift.jaxrs.JaxrsBinder.jaxrsBinder;
+import static com.facebook.airlift.json.JsonCodecBinder.jsonCodecBinder;
 import static com.facebook.presto.server.security.SecurityConfig.AuthenticationType.CERTIFICATE;
 import static com.facebook.presto.server.security.SecurityConfig.AuthenticationType.JWT;
 import static com.facebook.presto.server.security.SecurityConfig.AuthenticationType.KERBEROS;
 import static com.facebook.presto.server.security.SecurityConfig.AuthenticationType.PASSWORD;
 import static com.google.inject.multibindings.Multibinder.newSetBinder;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class ServerSecurityModule
         extends AbstractConfigurationAwareModule
@@ -54,6 +60,17 @@ public class ServerSecurityModule
             }
             else if (authType == KERBEROS) {
                 configBinder(binder).bindConfig(KerberosConfig.class);
+                jaxrsBinder(binder).bind(DelegationTokenAuthenticator.class);
+                jsonCodecBinder(binder).bindJsonCodec(DelegationTokenAuthenticator.HomeDirectory.class);
+                jsonCodecBinder(binder).bindJsonCodec(DelegationTokenAuthenticator.NNException.class);
+                httpClientBinder(binder).bindHttpClient("dtvalidation", ForDelegationTokenValidation.class)
+                        .withTracing()
+                        .withConfigDefaults(config -> {
+                            config.setIdleTimeout(new Duration(30, SECONDS));
+                            config.setRequestTimeout(new Duration(10, SECONDS));
+                            config.setMaxConnectionsPerServer(250);
+                        });
+                configBinder(binder).bindConfig(DTVerificationNNConfig.class);
                 authBinder.addBinding().to(KerberosAuthenticator.class).in(Scopes.SINGLETON);
             }
             else if (authType == PASSWORD) {

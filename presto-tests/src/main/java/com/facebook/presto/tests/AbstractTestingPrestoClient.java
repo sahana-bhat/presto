@@ -147,6 +147,7 @@ public abstract class AbstractTestingPrestoClient<T>
                 session.getClientInfo().orElse(null),
                 session.getCatalog().orElse(null),
                 session.getSchema().orElse(null),
+                null,
                 session.getTimeZoneKey().getId(),
                 session.getLocale(),
                 resourceEstimates.build(),
