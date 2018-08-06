@@ -18,6 +18,7 @@ import com.facebook.presto.block.BlockEncodingManager;
 import com.facebook.presto.cost.StatsAndCosts;
 import com.facebook.presto.event.SplitMonitor;
 import com.facebook.presto.eventlistener.EventListenerManager;
+import com.facebook.presto.eventlistener.EventListenerStats;
 import com.facebook.presto.execution.buffer.OutputBuffers;
 import com.facebook.presto.execution.scheduler.LegacyNetworkTopology;
 import com.facebook.presto.execution.scheduler.NodeScheduler;
@@ -169,7 +170,7 @@ public final class TaskTestUtils
     public static SplitMonitor createTestSplitMonitor()
     {
         return new SplitMonitor(
-                new EventListenerManager(),
+                new EventListenerManager(new EventListenerStats()),
                 new ObjectMapperProvider().get());
     }
 }
