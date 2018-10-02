@@ -106,7 +106,7 @@ public class DwrfBatchPageSourceFactory
         return Optional.of(createOrcPageSource(
                 DWRF,
                 hdfsEnvironment,
-                session.getUser(),
+                session,
                 configuration,
                 path,
                 start,

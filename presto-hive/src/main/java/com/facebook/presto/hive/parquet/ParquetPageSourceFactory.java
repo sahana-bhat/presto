@@ -16,6 +16,7 @@ package com.facebook.presto.hive.parquet;
 import com.facebook.presto.hive.FileFormatDataSourceStats;
 import com.facebook.presto.hive.FileOpener;
 import com.facebook.presto.hive.HdfsEnvironment;
+import com.facebook.presto.hive.HdfsEnvironment.HdfsContext;
 import com.facebook.presto.hive.HiveBatchPageSourceFactory;
 import com.facebook.presto.hive.HiveColumnHandle;
 import com.facebook.presto.hive.metastore.Storage;
@@ -152,7 +153,7 @@ public class ParquetPageSourceFactory
         if (isParquetColumnDecryptionEnabled(session)) {
             return Optional.of(createCryptoParquetPageSource(
                     hdfsEnvironment,
-                    session.getUser(),
+                    session,
                     configuration,
                     path,
                     start,
@@ -173,7 +174,7 @@ public class ParquetPageSourceFactory
         else {
             return Optional.of(createParquetPageSource(
                     hdfsEnvironment,
-                    session.getUser(),
+                    session,
                     configuration,
                     path,
                     start,
@@ -195,7 +196,7 @@ public class ParquetPageSourceFactory
 
     public static ParquetPageSource createParquetPageSource(
             HdfsEnvironment hdfsEnvironment,
-            String user,
+            ConnectorSession session,
             Configuration configuration,
             Path path,
             long start,
@@ -217,7 +218,8 @@ public class ParquetPageSourceFactory
 
         ParquetDataSource dataSource = null;
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(user, path, configuration);
+            HdfsContext hdfsContext = new HdfsContext(session);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path, configuration);
             FSDataInputStream inputStream = fileOpener.open(fileSystem, path, extraFileInfo);
             ParquetMetadata parquetMetadata = MetadataReader.readFooter(inputStream, path, fileSize);
             FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
@@ -303,7 +305,7 @@ public class ParquetPageSourceFactory
      */
     public static ParquetPageSource createCryptoParquetPageSource(
             HdfsEnvironment hdfsEnvironment,
-            String user,
+            ConnectorSession session,
             Configuration configuration,
             Path path,
             long start,
@@ -325,11 +327,12 @@ public class ParquetPageSourceFactory
 
         ParquetDataSource dataSource = null;
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(user, path, configuration);
+            HdfsContext hdfsContext = new HdfsContext(session);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path, configuration);
             FSDataInputStream inputStream = fileOpener.open(fileSystem, path, extraFileInfo);
             FileDecryptionProperties fileDecryptionProperties = fileEncDecryptorRetriever.getFileDecryptionProperties(configuration);
             InternalFileDecryptor fileDecryptor = new InternalFileDecryptor(fileDecryptionProperties);
-            ParquetMetadata parquetMetadata = hdfsEnvironment.doAs(user,
+            ParquetMetadata parquetMetadata = hdfsEnvironment.doAs(hdfsContext,
                     () -> {
                         return ParquetMetaDataUtils.getParquetMetadata(fileDecryptionProperties,
                             fileDecryptor, configuration, path, fileSize, inputStream);

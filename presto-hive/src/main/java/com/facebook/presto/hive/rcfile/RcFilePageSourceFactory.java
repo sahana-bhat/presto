@@ -16,6 +16,7 @@ package com.facebook.presto.hive.rcfile;
 import com.facebook.presto.hive.FileFormatDataSourceStats;
 import com.facebook.presto.hive.FileOpener;
 import com.facebook.presto.hive.HdfsEnvironment;
+import com.facebook.presto.hive.HdfsEnvironment.HdfsContext;
 import com.facebook.presto.hive.HiveBatchPageSourceFactory;
 import com.facebook.presto.hive.HiveColumnHandle;
 import com.facebook.presto.hive.metastore.Storage;
@@ -126,7 +127,8 @@ public class RcFilePageSourceFactory
 
         FSDataInputStream inputStream;
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(session.getUser(), path, configuration);
+            HdfsContext hdfsContext = new HdfsContext(session);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path, configuration);
             inputStream = fileOpener.open(fileSystem, path, extraFileInfo);
         }
         catch (Exception e) {

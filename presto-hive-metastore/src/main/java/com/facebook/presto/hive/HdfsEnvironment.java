@@ -22,13 +22,16 @@ import com.facebook.presto.spi.security.ConnectorIdentity;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.ipc.CallerContext;
 
 import javax.inject.Inject;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 public class HdfsEnvironment
@@ -68,7 +71,13 @@ public class HdfsEnvironment
     public FileSystem getFileSystem(HdfsContext context, Path path)
             throws IOException
     {
-        return getFileSystem(context.getIdentity().getUser(), path, getConfiguration(context, path));
+        return wrapWithHdfsContextIfNeeded(getFileSystem(context.getIdentity().getUser(), path, getConfiguration(context, path)), context);
+    }
+
+    public FileSystem getFileSystem(HdfsContext context, Path path, Configuration configuration)
+            throws IOException
+    {
+        return wrapWithHdfsContextIfNeeded(getFileSystem(context.getIdentity().getUser(), path, configuration), context);
     }
 
     public FileSystem getFileSystem(String user, Path path, Configuration configuration)
@@ -81,10 +90,25 @@ public class HdfsEnvironment
         });
     }
 
+    public <R, E extends Exception> R doAs(HdfsContext context, GenericExceptionAction<R, E> action)
+            throws E
+    {
+        try (HdfsCallerContextSetter ignored = new HdfsCallerContextSetter(context)) {
+            return hdfsAuthentication.doAs(context.getIdentity().getUser(), action);
+        }
+    }
+
     public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
             throws E
     {
         return hdfsAuthentication.doAs(user, action);
+    }
+
+    public void doAs(HdfsContext context, Runnable action)
+    {
+        try (HdfsCallerContextSetter ignored = new HdfsCallerContextSetter(context)) {
+            hdfsAuthentication.doAs(context.getIdentity().getUser(), action);
+        }
     }
 
     public void doAs(String user, Runnable action)
@@ -111,6 +135,18 @@ public class HdfsEnvironment
             this.tableName = Optional.empty();
             this.clientInfo = Optional.empty();
             this.hdfsObserverReadEnabled = false;
+        }
+
+        public HdfsContext(ConnectorSession session)
+        {
+            requireNonNull(session, "session is null");
+            this.identity = requireNonNull(session.getIdentity(), "session.getIdentity() is null");
+            this.source = requireNonNull(session.getSource(), "session.getSource()");
+            this.queryId = Optional.of(session.getQueryId());
+            this.schemaName = Optional.empty();
+            this.tableName = Optional.empty();
+            this.clientInfo = session.getClientInfo();
+            this.hdfsObserverReadEnabled = session.getProperty(HdfsEnvironment.HDFS_OBSERVER_READ_ENABLED, Boolean.class);
         }
 
         public HdfsContext(ConnectorSession session, String schemaName)
@@ -189,5 +225,53 @@ public class HdfsEnvironment
                     .add("hdfsObserverReadEnabled", hdfsObserverReadEnabled)
                     .toString();
         }
+    }
+
+    /**
+     * Sets the HDFS caller context in thread local variable and resets the thread local value to original value when closed
+     */
+    public static class HdfsCallerContextSetter
+            implements AutoCloseable
+    {
+        private CallerContext originalContext;
+
+        public HdfsCallerContextSetter(HdfsContext hdfsContext)
+        {
+            originalContext = CallerContext.getCurrent();
+            String contextStr = format("presto:qid=%s,u=%s,src=%s",
+                    hdfsContext.getQueryId().isPresent() ? hdfsContext.getQueryId().get() : "",
+                    hdfsContext.getIdentity() != null ? hdfsContext.getIdentity().getUser() : "",
+                    hdfsContext.getSource().isPresent() ? hdfsContext.getSource().get() : "");
+            CallerContext.setCurrent(new CallerContext.Builder(contextStr).build());
+        }
+
+        @Override
+        public void close()
+        {
+            CallerContext.setCurrent(originalContext);
+        }
+    }
+
+    /**
+     * If the given file system instance is an HDFS filesystem instance wrap it in a wrapper that sets the HDFS caller context before
+     * making any HDFS RPC calls.
+     * @param fileSystem
+     * @param hdfsContext
+     * @return
+     */
+    private static FileSystem wrapWithHdfsContextIfNeeded(FileSystem fileSystem, HdfsContext hdfsContext)
+    {
+        try {
+            final String scheme = fileSystem.getUri().getScheme().toLowerCase(Locale.ENGLISH);
+            if ("hdfs".equals(scheme) || "viewfs".equals(scheme)) {
+                return new FileSystemWithHdfsContext(fileSystem, hdfsContext);
+            }
+        }
+        catch (UnsupportedOperationException ex) {
+            // if the getUri is not supported, then this isn't a HDFS or ViewFS, proceed without the context setting wrapper
+            return fileSystem;
+        }
+
+        return fileSystem;
     }
 }

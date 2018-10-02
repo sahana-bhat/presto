@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.hive;
 
+import com.facebook.presto.hive.HdfsEnvironment.HdfsContext;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.RecordCursor;
@@ -62,13 +63,14 @@ public class GenericHiveRecordCursorProvider
     {
         // make sure the FileSystem is created with the proper Configuration object
         try {
-            this.hdfsEnvironment.getFileSystem(session.getUser(), path, configuration);
+            this.hdfsEnvironment.getFileSystem(new HdfsContext(session), path, configuration);
         }
         catch (IOException e) {
             throw new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed getting FileSystem: " + path, e);
         }
 
-        RecordReader<?, ?> recordReader = hdfsEnvironment.doAs(session.getUser(),
+        HdfsContext hdfsContext = new HdfsContext(session);
+        RecordReader<?, ?> recordReader = hdfsEnvironment.doAs(hdfsContext,
                 () -> HiveUtil.createRecordReader(configuration, path, start, length, schema, columns));
 
         return Optional.of(new GenericHiveRecordCursor<>(

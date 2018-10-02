@@ -751,14 +751,14 @@ public class SemiTransactionalHiveMetastore
         Map<List<String>, Action<PartitionAndMore>> partitionActionsOfTable = partitionActions.computeIfAbsent(schemaTableName, k -> new HashMap<>());
         Action<PartitionAndMore> oldPartitionAction = partitionActionsOfTable.get(partitionValues);
         if (oldPartitionAction == null) {
-            Partition partition = hdfsEnvironment.doAs(session.getIdentity().getUser(), () -> delegate.getPartition(databaseName, tableName, partitionValues)
+            HdfsContext context = new HdfsContext(session, databaseName, tableName);
+            Partition partition = hdfsEnvironment.doAs(context, () -> delegate.getPartition(databaseName, tableName, partitionValues)
                     .orElseThrow(() -> new PartitionNotFoundException(schemaTableName, partitionValues)));
             String partitionName = getPartitionName(session.getIdentity(), databaseName, tableName, partitionValues);
-            PartitionStatistics currentStatistics = hdfsEnvironment.doAs(session.getIdentity().getUser(), () -> delegate.getPartitionStatistics(databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName));
+            PartitionStatistics currentStatistics = hdfsEnvironment.doAs(context, () -> delegate.getPartitionStatistics(databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName));
             if (currentStatistics == null) {
                 throw new PrestoException(HIVE_METASTORE_ERROR, "currentStatistics is null");
             }
-            HdfsContext context = new HdfsContext(session, databaseName, tableName);
             partitionActionsOfTable.put(
                     partitionValues,
                     new Action<>(

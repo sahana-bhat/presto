@@ -116,6 +116,7 @@ public class HiveWriterFactory
     private final HivePageSinkMetadataProvider pageSinkMetadataProvider;
     private final TypeManager typeManager;
     private final HdfsEnvironment hdfsEnvironment;
+    private final HdfsContext hdfsContext;
     private final JobConf conf;
 
     private final Table table;
@@ -185,6 +186,8 @@ public class HiveWriterFactory
             checkArgument(insertExistingPartitionsBehavior != InsertExistingPartitionsBehavior.APPEND, "insertExistingPartitionsBehavior cannot be APPEND");
         }
 
+        this.hdfsContext = new HdfsContext(session, schemaName, tableName);
+
         // divide input columns into partition and data columns
         requireNonNull(inputColumns, "inputColumns is null");
         ImmutableList.Builder<String> partitionColumnNames = ImmutableList.builder();
@@ -234,7 +237,7 @@ public class HiveWriterFactory
                 .collect(toImmutableMap(PropertyMetadata::getName,
                         entry -> session.getProperty(entry.getName(), entry.getJavaType()).toString()));
 
-        this.conf = configureCompression(hdfsEnvironment.getConfiguration(new HdfsContext(session, schemaName, tableName), writePath), compressionCodec);
+        this.conf = configureCompression(hdfsEnvironment.getConfiguration(hdfsContext, writePath), compressionCodec);
 
         if (!sortedBy.isEmpty()) {
             List<Type> types = this.dataColumns.stream()
@@ -277,7 +280,7 @@ public class HiveWriterFactory
 
         // make sure the FileSystem is created with the correct Configuration object
         try {
-            hdfsEnvironment.getFileSystem(session.getUser(), writePath, conf);
+            hdfsEnvironment.getFileSystem(hdfsContext, writePath, conf);
         }
         catch (IOException e) {
             throw new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed getting FileSystem: " + writePath, e);
@@ -508,7 +511,7 @@ public class HiveWriterFactory
         Consumer<HiveWriter> onCommit = hiveWriter -> {
             Optional<Long> size;
             try {
-                size = Optional.of(hdfsEnvironment.getFileSystem(session.getUser(), path, conf).getFileStatus(path).getLen());
+                size = Optional.of(hdfsEnvironment.getFileSystem(hdfsContext, path, conf).getFileStatus(path).getLen());
             }
             catch (IOException | RuntimeException e) {
                 // Do not fail the query if file system is not available

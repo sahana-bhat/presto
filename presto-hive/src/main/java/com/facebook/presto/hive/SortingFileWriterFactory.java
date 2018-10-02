@@ -83,7 +83,7 @@ public class SortingFileWriterFactory
 
         FileSystem fileSystem;
         try {
-            fileSystem = hdfsEnvironment.getFileSystem(session.getUser(), path, conf);
+            fileSystem = hdfsEnvironment.getFileSystem(new HdfsEnvironment.HdfsContext(session), path, conf);
         }
         catch (IOException e) {
             throw new PrestoException(HIVE_WRITER_OPEN_ERROR, e);

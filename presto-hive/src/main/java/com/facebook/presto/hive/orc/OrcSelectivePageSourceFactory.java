@@ -286,7 +286,8 @@ public class OrcSelectivePageSourceFactory
 
         OrcDataSource orcDataSource;
         try {
-            FileSystem fileSystem = hdfsEnvironment.getFileSystem(session.getUser(), path, configuration);
+            HdfsEnvironment.HdfsContext hdfsContext = new HdfsEnvironment.HdfsContext(session);
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path, configuration);
             FSDataInputStream inputStream = fileOpener.open(fileSystem, path, extraFileInfo);
             orcDataSource = new HdfsOrcDataSource(
                     new OrcDataSourceId(path.toString()),
