@@ -32,7 +32,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static com.facebook.presto.geospatial.KdbTree.buildKdbTree;
 import static com.facebook.presto.geospatial.serde.EsriGeometrySerde.deserializeEnvelope;
-import static com.facebook.presto.plugin.geospatial.GeometryType.GEOMETRY_TYPE_NAME;
+import static com.facebook.presto.geospatial.serde.GeometryType.GEOMETRY_TYPE_NAME;
 import static com.facebook.presto.plugin.geospatial.SpatialPartitioningAggregateFunction.NAME;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static com.facebook.presto.spi.type.StandardTypes.INTEGER;

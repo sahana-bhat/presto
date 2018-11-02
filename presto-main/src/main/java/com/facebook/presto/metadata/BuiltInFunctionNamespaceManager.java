@@ -14,6 +14,7 @@
 package com.facebook.presto.metadata;
 
 import com.facebook.presto.block.BlockSerdeUtil;
+import com.facebook.presto.geospatial.GeometryCastOperators;
 import com.facebook.presto.operator.aggregation.ApproximateCountDistinctAggregation;
 import com.facebook.presto.operator.aggregation.ApproximateDoublePercentileAggregations;
 import com.facebook.presto.operator.aggregation.ApproximateDoublePercentileArrayAggregations;
@@ -661,7 +662,8 @@ public class BuiltInFunctionNamespaceManager
                 .aggregate(BuildSetDigestAggregation.class)
                 .scalars(SetDigestFunctions.class)
                 .scalars(SetDigestOperators.class)
-                .scalars(WilsonInterval.class);
+                .scalars(WilsonInterval.class)
+                .scalars(GeometryCastOperators.class);
 
         switch (featuresConfig.getRegexLibrary()) {
             case JONI:

@@ -41,10 +41,10 @@ import java.util.Optional;
 
 import static com.facebook.presto.geospatial.KdbTree.buildKdbTree;
 import static com.facebook.presto.geospatial.serde.EsriGeometrySerde.serialize;
+import static com.facebook.presto.geospatial.serde.GeometryType.GEOMETRY;
 import static com.facebook.presto.operator.aggregation.AggregationTestUtils.createGroupByIdBlock;
 import static com.facebook.presto.operator.aggregation.AggregationTestUtils.getFinalBlock;
 import static com.facebook.presto.operator.aggregation.AggregationTestUtils.getGroupValue;
-import static com.facebook.presto.plugin.geospatial.GeometryType.GEOMETRY;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static com.facebook.presto.spi.type.IntegerType.INTEGER;
 import static com.facebook.presto.sql.analyzer.TypeSignatureProvider.fromTypes;

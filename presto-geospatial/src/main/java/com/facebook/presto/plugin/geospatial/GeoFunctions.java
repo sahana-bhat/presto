@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.plugin.geospatial;
 
+import ch.hsr.geohash.GeoHash;
 import com.esri.core.geometry.Envelope;
 import com.esri.core.geometry.GeometryCursor;
 import com.esri.core.geometry.ListeningGeometryCursor;
@@ -42,6 +43,7 @@ import com.facebook.presto.spi.function.ScalarFunction;
 import com.facebook.presto.spi.function.SqlNullable;
 import com.facebook.presto.spi.function.SqlType;
 import com.facebook.presto.spi.type.IntegerType;
+import com.facebook.presto.spi.type.StandardTypes;
 import com.google.common.base.Joiner;
 import com.google.common.base.VerifyException;
 import com.google.common.collect.ImmutableList;
@@ -49,6 +51,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.slice.BasicSliceInput;
 import io.airlift.slice.Slice;
+import io.airlift.slice.Slices;
 import org.locationtech.jts.geom.CoordinateSequence;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
@@ -94,10 +97,10 @@ import static com.facebook.presto.geospatial.GeometryUtils.jtsGeometryFromWkt;
 import static com.facebook.presto.geospatial.GeometryUtils.wktFromJtsGeometry;
 import static com.facebook.presto.geospatial.serde.EsriGeometrySerde.deserializeEnvelope;
 import static com.facebook.presto.geospatial.serde.EsriGeometrySerde.deserializeType;
+import static com.facebook.presto.geospatial.serde.GeometryType.GEOMETRY;
+import static com.facebook.presto.geospatial.serde.GeometryType.GEOMETRY_TYPE_NAME;
 import static com.facebook.presto.geospatial.serde.JtsGeometrySerde.deserialize;
 import static com.facebook.presto.geospatial.serde.JtsGeometrySerde.serialize;
-import static com.facebook.presto.plugin.geospatial.GeometryType.GEOMETRY;
-import static com.facebook.presto.plugin.geospatial.GeometryType.GEOMETRY_TYPE_NAME;
 import static com.facebook.presto.plugin.geospatial.SphericalGeographyType.SPHERICAL_GEOGRAPHY_TYPE_NAME;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static com.facebook.presto.spi.type.StandardTypes.BIGINT;
@@ -1307,6 +1310,19 @@ public final class GeoFunctions
         }
     }
 
+    public static OGCGeometry geometryFromText(Slice input)
+    {
+        OGCGeometry geometry;
+        try {
+            geometry = OGCGeometry.fromText(input.toStringUtf8());
+        }
+        catch (IllegalArgumentException e) {
+            throw new PrestoException(INVALID_FUNCTION_ARGUMENT, "Invalid WKT: " + input.toStringUtf8(), e);
+        }
+        geometry.setSpatialReference(null);
+        return geometry;
+    }
+
     private static OGCGeometry geomFromBinary(Slice input)
     {
         requireNonNull(input, "input is null");
@@ -1653,5 +1669,44 @@ public final class GeoFunctions
             }
             return geometriesDeque.pop();
         }
+    }
+
+    @SqlNullable
+    @Description("Returns geo hash of a point")
+    @ScalarFunction("st_geohash")
+    @SqlType(StandardTypes.VARCHAR)
+    public static Slice geoHash(@SqlType(StandardTypes.DOUBLE) double lng, @SqlType(StandardTypes.DOUBLE) double lat, @SqlType(StandardTypes.INTEGER) long precision)
+    {
+        return Slices.utf8Slice(GeoHash.withCharacterPrecision(lat, lng, (int) precision).toBase32());
+    }
+
+    @SqlNullable
+    @Description("Returns geo hash of a point")
+    @ScalarFunction("st_geohash")
+    @SqlType(StandardTypes.VARCHAR)
+    public static Slice geoHashDefault(@SqlType(StandardTypes.DOUBLE) double lng, @SqlType(StandardTypes.DOUBLE) double lat)
+    {
+        return geoHash(lng, lat, 12);
+    }
+
+    @SqlNullable
+    @Description("Returns geo hash of a point")
+    @ScalarFunction("st_geohash")
+    @SqlType(StandardTypes.VARCHAR)
+    public static Slice geoHashFromPoint(@SqlType(GEOMETRY_TYPE_NAME) Slice input, @SqlType(StandardTypes.BIGINT) long precision)
+    {
+        OGCGeometry geometry = EsriGeometrySerde.deserialize(input);
+        validateType("st_geoHash", geometry, EnumSet.of(POINT));
+        Point point = (Point) geometry.getEsriGeometry();
+        return geoHash(point.getX(), point.getY(), precision);
+    }
+
+    @SqlNullable
+    @Description("Returns geo hash of a point")
+    @ScalarFunction("st_geohash")
+    @SqlType(StandardTypes.VARCHAR)
+    public static Slice geoHash(@SqlType(GEOMETRY_TYPE_NAME) Slice input)
+    {
+        return geoHashFromPoint(input, 12);
     }
 }
