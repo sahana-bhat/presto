@@ -299,6 +299,14 @@
             <type>zip</type>
             <scope>provided</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.uber.presto</groupId>
+            <artifactId>presto-security-uber</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>

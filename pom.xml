@@ -148,6 +148,7 @@
         <module>presto-expressions</module>
         <module>presto-benchmark-runner</module>
         <module>presto-event-listener</module>
+        <module>presto-security-uber</module>
     </modules>
 
     <dependencyManagement>
@@ -414,6 +415,12 @@
             <dependency>
                 <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-memory-context</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.uber.presto</groupId>
+                <artifactId>presto-security-uber</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

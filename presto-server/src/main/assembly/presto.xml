@@ -176,5 +176,9 @@
             <directory>${project.build.directory}/dependency/presto-rta-${project.version}</directory>
             <outputDirectory>plugin/rta</outputDirectory>
         </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/dependency/presto-security-uber-${project.version}</directory>
+            <outputDirectory>plugin/uber-security</outputDirectory>
+        </fileSet>
     </fileSets>
 </assembly>
