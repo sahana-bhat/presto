@@ -478,7 +478,7 @@ public class TaskExecutor
 
                     String threadId = split.getTaskHandle().getTaskId() + "-" + split.getSplitId();
                     try (SetThreadName splitName = new SetThreadName(threadId)) {
-                        RunningSplitInfo splitInfo = new RunningSplitInfo(ticker.read(), threadId, Thread.currentThread());
+                        RunningSplitInfo splitInfo = new RunningSplitInfo(ticker.read(), threadId, Thread.currentThread(), split.getInfo());
                         runningSplitInfos.add(splitInfo);
                         split.getTaskHandle().getSessionLogger().log(() -> "running split " + split);
                         runningSplits.add(split);
@@ -816,6 +816,12 @@ public class TaskExecutor
                 for (StackTraceElement traceElement : splitInfo.getThread().getStackTrace()) {
                     stackTrace.append("\tat ").append(traceElement).append("\n");
                 }
+                if (!splitInfo.isPrinted()) {
+                    splitInfo.setPrinted();
+                    Exception exception = new Exception("Long running split");
+                    exception.setStackTrace(splitInfo.getThread().getStackTrace());
+                    log.warn(exception, "Split thread %s has been running longer than %s. Split details: %s", splitInfo.getThreadId(), duration, splitInfo.getDetails());
+                }
             }
         }
 
@@ -841,13 +847,15 @@ public class TaskExecutor
         private final long startTime;
         private final String threadId;
         private final Thread thread;
+        private final String details;
         private boolean printed;
 
-        public RunningSplitInfo(long startTime, String threadId, Thread thread)
+        public RunningSplitInfo(long startTime, String threadId, Thread thread, String details)
         {
             this.startTime = startTime;
             this.threadId = threadId;
             this.thread = thread;
+            this.details = details;
             this.printed = false;
         }
 
@@ -864,6 +872,11 @@ public class TaskExecutor
         public Thread getThread()
         {
             return thread;
+        }
+
+        public String getDetails()
+        {
+            return details;
         }
 
         public boolean isPrinted()
