@@ -17,6 +17,10 @@ import com.facebook.presto.spi.ErrorCode;
 import com.facebook.presto.spi.ErrorCodeSupplier;
 import com.facebook.presto.spi.ErrorType;
 
+import java.util.Optional;
+
+import static com.facebook.presto.hive.HiveErrorCode.Constants.DEFAULT_ERROR_MESSAGE;
+import static com.facebook.presto.hive.HiveErrorCode.Constants.UACCESS_ERROR_MESSAGE;
 import static com.facebook.presto.hive.MetastoreErrorCode.ERROR_CODE_MASK;
 import static com.facebook.presto.spi.ErrorType.EXTERNAL;
 import static com.facebook.presto.spi.ErrorType.INTERNAL_ERROR;
@@ -53,7 +57,7 @@ public enum HiveErrorCode
     HIVE_WRITER_OPEN_ERROR(25, EXTERNAL),
     HIVE_WRITER_CLOSE_ERROR(26, EXTERNAL),
     HIVE_WRITER_DATA_ERROR(27, EXTERNAL),
-    HIVE_INVALID_BUCKET_FILES(28, EXTERNAL),
+    HIVE_INVALID_BUCKET_FILES(28, EXTERNAL, DEFAULT_ERROR_MESSAGE),
     HIVE_EXCEEDED_PARTITION_LIMIT(29, USER_ERROR),
     HIVE_WRITE_VALIDATION_FAILED(30, INTERNAL_ERROR),
     // HIVE_PARTITION_DROPPED_DURING_QUERY(31, EXTERNAL) moved to MetastoreErrorCode
@@ -67,18 +71,42 @@ public enum HiveErrorCode
     // HIVE_UNKNOWN_COLUMN_STATISTIC_TYPE(39, INTERNAL_ERROR) moved to MetastoreErrorCode
     HIVE_TABLE_BUCKETING_IS_IGNORED(40, USER_ERROR),
     HIVE_TRANSACTION_NOT_FOUND(41, INTERNAL_ERROR),
+    HIVE_PERMISSION_ERROR(42, EXTERNAL, UACCESS_ERROR_MESSAGE),
     /**/;
 
     private final ErrorCode errorCode;
+    private final Optional<String> guidance;
 
     HiveErrorCode(int code, ErrorType type)
     {
         errorCode = new ErrorCode(code + ERROR_CODE_MASK, name(), type);
+        guidance = Optional.empty();
+    }
+
+    HiveErrorCode(int code, ErrorType type, String guidance)
+    {
+        errorCode = new ErrorCode(code + ERROR_CODE_MASK, name(), type);
+        this.guidance = Optional.of(guidance);
     }
 
     @Override
     public ErrorCode toErrorCode()
     {
         return errorCode;
+    }
+
+    @Override
+    public Optional<String> getGuidance()
+    {
+        return guidance;
+    }
+
+    class Constants
+    {
+        static final String DEFAULT_ERROR_MESSAGE = "Please find table owner through https://databook.uberinternal.com/ and report the issue.";
+        static final String UACCESS_ERROR_MESSAGE = "Please follow the FAQ http://t.uber.com/uaccess_getting_started to get access to this dataset. "
+                + "If unresolved, please ask in https://uchat.uberinternal.com/uber/channels/data-security-community.";
+
+        private Constants() {}
     }
 }
