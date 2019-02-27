@@ -22,6 +22,7 @@ import com.facebook.presto.spi.ConnectorPageSource;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
+import com.facebook.presto.spi.NestedColumn;
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.RecordPageSource;
 import com.facebook.presto.spi.SchemaTableName;
@@ -532,8 +533,19 @@ public class HivePageSourceProvider
                 }
 
                 if (column.getColumnType() == REGULAR) {
-                    checkArgument(regularColumnIndices.add(column.getHiveColumnIndex()), "duplicate hiveColumnIndex in columns list");
-                    columnMappings.add(regular(column, regularIndex, coercionFrom));
+                    if (column.getNestedColumn().isPresent()) {
+                        Optional<HiveType> coercionFromType = getHiveType(coercionFrom, column.getNestedColumn().get());
+                        HiveType coercionToType = column.getHiveType();
+                        if (coercionFromType.isPresent() && coercionFromType.get().equals(coercionToType)) {
+                            // In nested columns, if the resolved type is same as requested type don't add the coercion mapping
+                            coercionFromType = Optional.empty();
+                        }
+                        columnMappings.add(regular(column, regularIndex, coercionFromType));
+                    }
+                    else {
+                        checkArgument(regularColumnIndices.add(column.getHiveColumnIndex()), "duplicate hiveColumnIndex in columns list");
+                        columnMappings.add(regular(column, regularIndex, coercionFrom));
+                    }
                     regularIndex++;
                 }
                 else if (column.getColumnType() == AGGREGATED) {
@@ -561,6 +573,11 @@ public class HivePageSourceProvider
             return columnMappings.build();
         }
 
+        private static Optional<HiveType> getHiveType(Optional<HiveType> baseType, NestedColumn nestedColumn)
+        {
+            return baseType.flatMap(type -> type.findChildType(nestedColumn));
+        }
+
         public static List<ColumnMapping> extractRegularAndInterimColumnMappings(List<ColumnMapping> columnMappings)
         {
             return columnMappings.stream()
@@ -584,7 +601,8 @@ public class HivePageSourceProvider
                                 columnHandle.getColumnType(),
                                 Optional.empty(),
                                 columnHandle.getRequiredSubfields(),
-                                columnHandle.getPartialAggregation());
+                                columnHandle.getPartialAggregation(),
+                                columnHandle.getNestedColumn());
                     })
                     .collect(toList());
         }

@@ -22,6 +22,7 @@ import com.facebook.presto.spi.relation.ConstantExpression;
 import com.facebook.presto.spi.relation.RowExpression;
 import com.facebook.presto.spi.relation.SpecialFormExpression;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
+import com.facebook.presto.spi.type.RowType;
 import com.facebook.presto.sql.planner.LiteralInterpreter;
 import com.facebook.presto.sql.relational.FunctionResolution;
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
@@ -32,6 +33,7 @@ import com.facebook.presto.sql.tree.Cast;
 import com.facebook.presto.sql.tree.CoalesceExpression;
 import com.facebook.presto.sql.tree.ComparisonExpression;
 import com.facebook.presto.sql.tree.DecimalLiteral;
+import com.facebook.presto.sql.tree.DereferenceExpression;
 import com.facebook.presto.sql.tree.DoubleLiteral;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.sql.tree.GenericLiteral;
@@ -45,8 +47,10 @@ import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NotExpression;
 import com.facebook.presto.sql.tree.NullLiteral;
+import com.facebook.presto.sql.tree.SearchedCaseExpression;
 import com.facebook.presto.sql.tree.SimpleCaseExpression;
 import com.facebook.presto.sql.tree.StringLiteral;
+import com.facebook.presto.sql.tree.SubscriptExpression;
 import com.facebook.presto.sql.tree.SymbolReference;
 import com.facebook.presto.sql.tree.TryExpression;
 import com.facebook.presto.sql.tree.WhenClause;
@@ -69,6 +73,8 @@ import static com.facebook.presto.spi.function.OperatorType.MULTIPLY;
 import static com.facebook.presto.spi.function.OperatorType.NOT_EQUAL;
 import static com.facebook.presto.spi.function.OperatorType.SUBTRACT;
 import static com.facebook.presto.spi.relation.SpecialFormExpression.Form.COALESCE;
+import static com.facebook.presto.spi.relation.SpecialFormExpression.Form.DEREFERENCE;
+import static com.facebook.presto.spi.relation.SpecialFormExpression.Form.IF;
 import static com.facebook.presto.spi.relation.SpecialFormExpression.Form.IN;
 import static com.facebook.presto.spi.relation.SpecialFormExpression.Form.IS_NULL;
 import static com.facebook.presto.spi.relation.SpecialFormExpression.Form.SWITCH;
@@ -77,6 +83,7 @@ import static com.facebook.presto.sql.planner.RowExpressionInterpreter.rowExpres
 import static com.facebook.presto.sql.tree.LogicalBinaryExpression.Operator.AND;
 import static com.facebook.presto.sql.tree.LogicalBinaryExpression.Operator.OR;
 import static com.google.common.base.Preconditions.checkState;
+import static java.lang.Math.toIntExact;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -320,6 +327,82 @@ final class RowExpressionVerifier
     protected Boolean visitBooleanLiteral(BooleanLiteral expected, RowExpression actual)
     {
         return compareLiteral(expected, actual);
+    }
+
+    @Override
+    protected Boolean visitDereferenceExpression(DereferenceExpression expected, RowExpression actual)
+    {
+        if (!(actual instanceof SpecialFormExpression) || !(((SpecialFormExpression) actual).getForm().equals(DEREFERENCE))) {
+            return false;
+        }
+        SpecialFormExpression actualDereference = (SpecialFormExpression) actual;
+        if (actualDereference.getArguments().size() == 2 &&
+                actualDereference.getArguments().get(0).getType() instanceof RowType &&
+                actualDereference.getArguments().get(1) instanceof ConstantExpression) {
+            RowType rowType = (RowType) actualDereference.getArguments().get(0).getType();
+            Object value = LiteralInterpreter.evaluate(TEST_SESSION.toConnectorSession(), (ConstantExpression) actualDereference.getArguments().get(1));
+            checkState(value instanceof Long);
+            long index = (Long) value;
+            checkState(index >= 0 && index < rowType.getFields().size());
+            RowType.Field field = rowType.getFields().get(toIntExact(index));
+            checkState(field.getName().isPresent());
+            return expected.getField().getValue().equals(field.getName().get()) && process(expected.getBase(), actualDereference.getArguments().get(0));
+        }
+        return false;
+    }
+
+    @Override
+    protected Boolean visitSubscriptExpression(SubscriptExpression expected, RowExpression actual)
+    {
+        if (!(actual instanceof CallExpression) || !(((CallExpression) actual).getDisplayName().equals("SUBSCRIPT"))) {
+            return false;
+        }
+        CallExpression actualSubscript = (CallExpression) actual;
+        return process(expected.getBase(), actualSubscript.getArguments().get(0)) && process(expected.getIndex(), actualSubscript.getArguments().get(1));
+    }
+
+    @Override
+    protected Boolean visitSearchedCaseExpression(SearchedCaseExpression expected, RowExpression actual)
+    {
+        /*
+            Translates an expression like:
+
+                case when cond1 then value1
+                     when cond2 then value2
+                     when cond3 then value3
+                     else value4
+                end
+
+            To:
+
+                IF(cond1,
+                    value1,
+                    IF(cond2,
+                        value2,
+                            If(cond3,
+                                value3,
+                                value4)))
+
+        */
+        for (WhenClause clause : expected.getWhenClauses()) {
+            if (!(actual instanceof SpecialFormExpression) || !(((SpecialFormExpression) actual).getForm().equals(IF))) {
+                return false;
+            }
+            SpecialFormExpression actualIf = (SpecialFormExpression) actual;
+            List<RowExpression> actualClauseArgs = actualIf.getArguments();
+            if (!process(clause.getOperand(), actualClauseArgs.get(0)) || !process(clause.getResult(), actualClauseArgs.get(1))) {
+                return false;
+            }
+
+            actual = actualClauseArgs.get(2);
+        }
+
+        if (expected.getDefaultValue().isPresent()) {
+            return process(expected.getDefaultValue().get(), actual);
+        }
+
+        // make sure the actual value refers to null
+        return actual instanceof ConstantExpression && ((ConstantExpression) actual).isNull();
     }
 
     private static String getValueFromLiteral(Node expression)

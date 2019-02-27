@@ -54,6 +54,7 @@ import com.facebook.presto.spi.ConnectorViewDefinition;
 import com.facebook.presto.spi.Constraint;
 import com.facebook.presto.spi.DiscretePredicates;
 import com.facebook.presto.spi.InMemoryRecordSet;
+import com.facebook.presto.spi.NestedColumn;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.SchemaTableName;
@@ -98,6 +99,7 @@ import com.facebook.presto.spi.type.TypeManager;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Functions;
 import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Suppliers;
 import com.google.common.base.Verify;
@@ -200,6 +202,7 @@ import static com.facebook.presto.hive.HiveUtil.columnExtraInfo;
 import static com.facebook.presto.hive.HiveUtil.decodeViewData;
 import static com.facebook.presto.hive.HiveUtil.encodeViewData;
 import static com.facebook.presto.hive.HiveUtil.getPartitionKeyColumnHandles;
+import static com.facebook.presto.hive.HiveUtil.getRegularColumnHandles;
 import static com.facebook.presto.hive.HiveUtil.hiveColumnHandles;
 import static com.facebook.presto.hive.HiveUtil.schemaTableName;
 import static com.facebook.presto.hive.HiveUtil.translateHiveUnsupportedTypeForTemporaryTable;
@@ -783,6 +786,41 @@ public class HiveMetadata
     public ColumnMetadata getColumnMetadata(ConnectorSession session, ConnectorTableHandle tableHandle, ColumnHandle columnHandle)
     {
         return ((HiveColumnHandle) columnHandle).getColumnMetadata(typeManager);
+    }
+
+    @Override
+    public Map<NestedColumn, ColumnHandle> getNestedColumnHandles(ConnectorSession session, ConnectorTableHandle tableHandle, Collection<NestedColumn> nestedColumns)
+    {
+        // Without the parquet column look up by name, nested column pushdown doesn't work as the search needs to be based on the name not on index.
+        // In future this can be improved, but for now this is not an issue in our production clusters as the look up by name is by default enabled
+        if (!HiveSessionProperties.isUseParquetColumnNames(session)) {
+            return ImmutableMap.of();
+        }
+
+        SchemaTableName tableName = schemaTableName(tableHandle);
+        Optional<Table> table = metastore.getTable(session.getIdentity(), tableName.getSchemaName(), tableName.getTableName());
+
+        if (!table.isPresent()) {
+            throw new TableNotFoundException(tableName);
+        }
+
+        // Only pushdown nested column for parquet table for now
+        if (!extractHiveStorageFormat(table.get()).equals(HiveStorageFormat.PARQUET)) {
+            return ImmutableMap.of();
+        }
+
+        List<HiveColumnHandle> regularColumnHandles = getRegularColumnHandles(table.get());
+        Map<String, HiveColumnHandle> regularHiveColumnHandles = regularColumnHandles.stream().collect(Collectors.toMap(HiveColumnHandle::getName, identity()));
+        ImmutableMap.Builder<NestedColumn, ColumnHandle> columnHandles = ImmutableMap.builder();
+        for (NestedColumn nestedColumn : nestedColumns) {
+            HiveColumnHandle hiveColumnHandle = regularHiveColumnHandles.get(nestedColumn.getBase());
+            Optional<HiveType> childType = hiveColumnHandle.getHiveType().findChildType(nestedColumn);
+            Preconditions.checkArgument(childType.isPresent(), "%s doesn't exist in parent type %s", nestedColumn, hiveColumnHandle.getHiveType());
+            if (hiveColumnHandle != null) {
+                columnHandles.put(nestedColumn, new HiveColumnHandle(nestedColumn.getName(), childType.get(), childType.get().getTypeSignature(), hiveColumnHandle.getHiveColumnIndex(), hiveColumnHandle.getColumnType(), hiveColumnHandle.getComment(), ImmutableList.of(), Optional.empty(), Optional.of(nestedColumn)));
+            }
+        }
+        return columnHandles.build();
     }
 
     @Override
@@ -2785,7 +2823,8 @@ public class HiveMetadata
                     column.getType().getTypeSignature(),
                     ordinal,
                     columnType,
-                    Optional.ofNullable(column.getComment())));
+                    Optional.ofNullable(column.getComment()),
+                    Optional.empty()));
             ordinal++;
         }
 

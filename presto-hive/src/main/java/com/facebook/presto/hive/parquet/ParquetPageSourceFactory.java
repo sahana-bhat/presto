@@ -23,6 +23,7 @@ import com.facebook.presto.hive.metastore.Storage;
 import com.facebook.presto.memory.context.AggregatedMemoryContext;
 import com.facebook.presto.parquet.ParquetCorruptionException;
 import com.facebook.presto.parquet.ParquetDataSource;
+import com.facebook.presto.parquet.ParquetTypeUtils;
 import com.facebook.presto.parquet.RichColumnDescriptor;
 import com.facebook.presto.parquet.predicate.Predicate;
 import com.facebook.presto.parquet.reader.CryptoParquetReader;
@@ -32,7 +33,6 @@ import com.facebook.presto.spi.ConnectorPageSource;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
-import com.facebook.presto.spi.Subfield;
 import com.facebook.presto.spi.function.StandardFunctionResolution;
 import com.facebook.presto.spi.predicate.Domain;
 import com.facebook.presto.spi.predicate.TupleDomain;
@@ -90,8 +90,8 @@ import static com.facebook.presto.hive.parquet.HdfsParquetDataSource.buildHdfsPa
 import static com.facebook.presto.memory.context.AggregatedMemoryContext.newSimpleAggregatedMemoryContext;
 import static com.facebook.presto.parquet.ParquetTypeUtils.getColumnIO;
 import static com.facebook.presto.parquet.ParquetTypeUtils.getDescriptors;
+import static com.facebook.presto.parquet.ParquetTypeUtils.getNestedColumnType;
 import static com.facebook.presto.parquet.ParquetTypeUtils.getParquetTypeByName;
-import static com.facebook.presto.parquet.ParquetTypeUtils.getSubfieldType;
 import static com.facebook.presto.parquet.predicate.PredicateUtils.buildPredicate;
 import static com.facebook.presto.parquet.predicate.PredicateUtils.predicateMatches;
 import static com.facebook.presto.spi.type.StandardTypes.ARRAY;
@@ -245,7 +245,7 @@ public class ParquetPageSourceFactory
             MessageType fileSchema = fileMetaData.getSchema();
             dataSource = buildHdfsParquetDataSource(inputStream, path, stats);
 
-            Optional<MessageType> message = columns.stream()
+            Optional<MessageType> optionalRequestedSchema = columns.stream()
                     .filter(column -> column.getColumnType() == REGULAR)
                     .map(column -> getColumnType(typeManager.getType(column.getTypeSignature()), fileSchema, useParquetColumnNames, column, tableName, path))
                     .filter(Optional::isPresent)
@@ -253,7 +253,7 @@ public class ParquetPageSourceFactory
                     .map(type -> new MessageType(fileSchema.getName(), type))
                     .reduce(MessageType::union);
 
-            MessageType requestedSchema = message.orElse(new MessageType(fileSchema.getName(), ImmutableList.of()));
+            MessageType requestedSchema = optionalRequestedSchema.orElse(new MessageType(fileSchema.getName(), ImmutableList.of()));
 
             ImmutableList.Builder<BlockMetaData> footerBlocks = ImmutableList.builder();
             for (BlockMetaData block : parquetMetadata.getBlocks()) {
@@ -458,7 +458,7 @@ public class ParquetPageSourceFactory
                 continue;
             }
 
-            RichColumnDescriptor descriptor = descriptorsByPath.get(ImmutableList.of(columnHandle.getName()));
+            RichColumnDescriptor descriptor = descriptorsByPath.get(ParquetTypeUtils.lowerCasePath(columnHandle.getNameList()));
             if (descriptor != null) {
                 predicate.put(descriptor, entry.getValue());
             }
@@ -589,18 +589,8 @@ public class ParquetPageSourceFactory
 
     public static Optional<org.apache.parquet.schema.Type> getColumnType(Type prestoType, MessageType messageType, boolean useParquetColumnNames, HiveColumnHandle column, SchemaTableName tableName, Path path)
     {
-        if (useParquetColumnNames && !column.getRequiredSubfields().isEmpty()) {
-            MessageType result = null;
-            for (Subfield subfield : column.getRequiredSubfields()) {
-                MessageType type = getSubfieldType(messageType, subfield);
-                if (result == null) {
-                    result = type;
-                }
-                else {
-                    result = result.union(type);
-                }
-            }
-            return Optional.of(result);
+        if (useParquetColumnNames && column.getNestedColumn().isPresent()) {
+            return getNestedColumnType(messageType, column.getNestedColumn().get());
         }
         return getParquetType(prestoType, messageType, useParquetColumnNames, column, tableName, path);
     }

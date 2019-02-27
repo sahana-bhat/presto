@@ -17,6 +17,7 @@ import com.facebook.presto.parquet.DictionaryPage;
 import com.facebook.presto.parquet.ParquetCorruptionException;
 import com.facebook.presto.parquet.ParquetDataSource;
 import com.facebook.presto.parquet.ParquetEncoding;
+import com.facebook.presto.parquet.ParquetTypeUtils;
 import com.facebook.presto.parquet.RichColumnDescriptor;
 import com.facebook.presto.spi.predicate.TupleDomain;
 import com.facebook.presto.spi.type.Type;
@@ -78,7 +79,7 @@ public final class PredicateUtils
     {
         ImmutableList.Builder<RichColumnDescriptor> columnReferences = ImmutableList.builder();
         for (String[] paths : requestedSchema.getPaths()) {
-            RichColumnDescriptor descriptor = descriptorsByPath.get(Arrays.asList(paths));
+            RichColumnDescriptor descriptor = descriptorsByPath.get(ParquetTypeUtils.lowerCasePath(Arrays.asList(paths)));
             if (descriptor != null) {
                 columnReferences.add(descriptor);
             }
@@ -103,7 +104,7 @@ public final class PredicateUtils
         for (ColumnChunkMetaData columnMetaData : blockMetadata.getColumns()) {
             Statistics<?> columnStatistics = columnMetaData.getStatistics();
             if (columnStatistics != null) {
-                RichColumnDescriptor descriptor = descriptorsByPath.get(Arrays.asList(columnMetaData.getPath().toArray()));
+                RichColumnDescriptor descriptor = descriptorsByPath.get(ParquetTypeUtils.lowerCasePath(Arrays.asList(columnMetaData.getPath().toArray())));
                 if (descriptor != null) {
                     statistics.put(descriptor, columnStatistics);
                 }
@@ -115,7 +116,7 @@ public final class PredicateUtils
     private static boolean dictionaryPredicatesMatch(Predicate parquetPredicate, BlockMetaData blockMetadata, ParquetDataSource dataSource, Map<List<String>, RichColumnDescriptor> descriptorsByPath, TupleDomain<ColumnDescriptor> parquetTupleDomain)
     {
         for (ColumnChunkMetaData columnMetaData : blockMetadata.getColumns()) {
-            RichColumnDescriptor descriptor = descriptorsByPath.get(Arrays.asList(columnMetaData.getPath().toArray()));
+            RichColumnDescriptor descriptor = descriptorsByPath.get(ParquetTypeUtils.lowerCasePath(Arrays.asList(columnMetaData.getPath().toArray())));
             if (descriptor != null) {
                 if (isOnlyDictionaryEncodingPages(columnMetaData) && isColumnPredicate(descriptor, parquetTupleDomain)) {
                     byte[] buffer = new byte[toIntExact(columnMetaData.getTotalSize())];

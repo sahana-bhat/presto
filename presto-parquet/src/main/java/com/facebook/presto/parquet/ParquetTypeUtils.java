@@ -13,10 +13,12 @@
  */
 package com.facebook.presto.parquet;
 
+import com.facebook.presto.spi.NestedColumn;
 import com.facebook.presto.spi.Subfield;
 import com.facebook.presto.spi.Subfield.PathElement;
 import com.facebook.presto.spi.type.DecimalType;
 import com.facebook.presto.spi.type.Type;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.io.ColumnIO;
@@ -36,9 +38,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.facebook.presto.spi.Subfield.NestedField;
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
@@ -109,9 +113,16 @@ public final class ParquetTypeUtils
         for (String[] paths : fileSchema.getPaths()) {
             List<String> columnPath = Arrays.asList(paths);
             getDescriptor(columns, columnPath)
-                    .ifPresent(richColumnDescriptor -> descriptorsByPath.put(columnPath, richColumnDescriptor));
+                    .ifPresent(richColumnDescriptor -> descriptorsByPath.put(lowerCasePath(columnPath), richColumnDescriptor));
         }
         return descriptorsByPath;
+    }
+
+    public static List<String> lowerCasePath(List<String> path)
+    {
+        return path.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
     }
 
     public static Optional<RichColumnDescriptor> getDescriptor(List<PrimitiveColumnIO> columns, List<String> path)
@@ -303,5 +314,38 @@ public final class ParquetTypeUtils
             type = new MessageType(groupType.getName(), ImmutableList.of(type));
         }
         return new MessageType(rootName, ImmutableList.of(type));
+    }
+
+    public static Optional<org.apache.parquet.schema.Type> getNestedColumnType(GroupType baseType, NestedColumn nestedColumn)
+    {
+        Preconditions.checkArgument(nestedColumn.getNames().size() >= 1, "fields size is less than 1");
+
+        ImmutableList.Builder<org.apache.parquet.schema.Type> typeBuilder = ImmutableList.builder();
+        org.apache.parquet.schema.Type parentType = baseType;
+
+        for (String field : nestedColumn.getNames()) {
+            org.apache.parquet.schema.Type childType = getParquetTypeByName(field, parentType.asGroupType());
+            if (childType == null) {
+                return Optional.empty();
+            }
+            typeBuilder.add(childType);
+            parentType = childType;
+        }
+        List<org.apache.parquet.schema.Type> typeChain = typeBuilder.build();
+
+        if (typeChain.isEmpty()) {
+            return Optional.empty();
+        }
+        else if (typeChain.size() == 1) {
+            return Optional.of(getOnlyElement(typeChain));
+        }
+        else {
+            org.apache.parquet.schema.Type messageType = typeChain.get(typeChain.size() - 1);
+            for (int i = typeChain.size() - 2; i >= 0; --i) {
+                GroupType groupType = typeChain.get(i).asGroupType();
+                messageType = new MessageType(groupType.getName(), ImmutableList.of(messageType));
+            }
+            return Optional.of(messageType);
+        }
     }
 }

@@ -127,7 +127,8 @@ public class TestFeaturesConfig
                 .setTupleDomainLimitForInPredicate(Integer.MAX_VALUE)
                 .setPartitionFilteringEnforced(false)
                 .setPartitionFilteringTables("")
-                .setAutoSampleTableReplace(false));
+                .setAutoSampleTableReplace(false)
+                .setNestedColumnPushdown(true));
     }
 
     @Test
@@ -214,6 +215,7 @@ public class TestFeaturesConfig
                 .put("optimizer.partition-filtering-enforced", "true")
                 .put("optimizer.partition-filtering-tables", "dwh.a:hdrone.b")
                 .put("auto-sample-table-replace", "true")
+                .put("optimizer.nested-column-pushdown", "false")
                 .build();
 
         FeaturesConfig expected = new FeaturesConfig()
@@ -296,8 +298,8 @@ public class TestFeaturesConfig
                 .setTupleDomainLimitForInPredicate(10)
                 .setPartitionFilteringEnforced(true)
                 .setPartitionFilteringTables("dwh.a:hdrone.b")
-                .setAutoSampleTableReplace(true);
-
+                .setAutoSampleTableReplace(true)
+                .setNestedColumnPushdown(false);
         assertFullMapping(properties, expected);
     }
 

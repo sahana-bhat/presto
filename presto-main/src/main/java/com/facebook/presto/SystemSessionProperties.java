@@ -141,6 +141,7 @@ public final class SystemSessionProperties
     public static final String PARTITION_FILTER = "enforce_partition_filter";
     public static final String PARTITION_FILTER_TABLES = "partition_filter_tables";
     public static final String AUTO_SAMPLE_TABLE_REPLACE = "auto_sample_table_replace";
+    public static final String NESTED_COLUMN_PUSHDOWN = "nested_column_pushdown";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -699,6 +700,11 @@ public final class SystemSessionProperties
                         AUTO_SAMPLE_TABLE_REPLACE,
                         "Experimental: Replace original tables by sampled tables",
                         featuresConfig.isAutoSampleTableReplace(),
+                        false),
+                booleanProperty(
+                        NESTED_COLUMN_PUSHDOWN,
+                        "enable nested column pushdown",
+                        featuresConfig.isNestedColumnPushdown(),
                         false));
     }
 
@@ -1192,5 +1198,10 @@ public final class SystemSessionProperties
     public static boolean isAutoSampleTableReplace(Session session)
     {
         return session.getSystemProperty(AUTO_SAMPLE_TABLE_REPLACE, Boolean.class);
+    }
+
+    public static boolean isNestedColumnPushdown(Session session)
+    {
+        return session.getSystemProperty(NESTED_COLUMN_PUSHDOWN, Boolean.class);
     }
 }

@@ -152,6 +152,8 @@ public class FeaturesConfig
 
     private boolean autoSampleTableReplace;
 
+    private boolean nestedColumnPushdown = true;
+
     public enum JoinReorderingStrategy
     {
         NONE,
@@ -1144,6 +1146,18 @@ public class FeaturesConfig
     public FeaturesConfig setPartitionFilteringEnforced(boolean partitionFilteringEnforced)
     {
         this.partitionFilteringEnforced = partitionFilteringEnforced;
+        return this;
+    }
+
+    public boolean isNestedColumnPushdown()
+    {
+        return nestedColumnPushdown;
+    }
+
+    @Config("optimizer.nested-column-pushdown")
+    public FeaturesConfig setNestedColumnPushdown(boolean nestedColumnPushdown)
+    {
+        this.nestedColumnPushdown = nestedColumnPushdown;
         return this;
     }
 
