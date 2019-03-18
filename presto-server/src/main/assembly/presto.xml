@@ -177,6 +177,10 @@
             <outputDirectory>plugin/rta</outputDirectory>
         </fileSet>
         <fileSet>
+            <directory>${project.build.directory}/dependency/presto-udf-${project.version}</directory>
+            <outputDirectory>plugin/udf</outputDirectory>
+        </fileSet>
+        <fileSet>
             <directory>${project.build.directory}/dependency/presto-security-uber-${project.version}</directory>
             <outputDirectory>plugin/uber-security</outputDirectory>
         </fileSet>
