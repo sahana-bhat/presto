@@ -135,6 +135,7 @@ public final class SystemSessionProperties
     public static final String OPTIMIZE_FULL_OUTER_JOIN_WITH_COALESCE = "optimize_full_outer_join_with_coalesce";
     public static final String INDEX_LOADER_TIMEOUT = "index_loader_timeout";
     public static final String OPTIMIZED_REPARTITIONING_ENABLED = "optimized_repartitioning";
+    public static final String QUERY_SUBMIT_USER = "query_submit_user";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -664,6 +665,11 @@ public final class SystemSessionProperties
                         OPTIMIZED_REPARTITIONING_ENABLED,
                         "Experimental: Use optimized repartitioning",
                         featuresConfig.isOptimizedRepartitioningEnabled(),
+                        false),
+                stringProperty(
+                        QUERY_SUBMIT_USER,
+                        "User who submits this query",
+                        null,
                         false));
     }
 
