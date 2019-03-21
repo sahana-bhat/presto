@@ -34,16 +34,18 @@ public class StaticHiveCluster
     private final List<HostAndPort> addresses;
     private final HiveMetastoreClientFactory clientFactory;
     private final String metastoreUsername;
+    private final boolean isMultipleMetastore;
 
     @Inject
     public StaticHiveCluster(StaticMetastoreConfig config, HiveMetastoreClientFactory clientFactory)
     {
-        this(config.getMetastoreUris(), config.getMetastoreUsername(), clientFactory);
+        this(config.getMetastoreUris(), config.isMultipleMetastoreEnabled(), config.getMetastoreUsername(), clientFactory);
     }
 
-    public StaticHiveCluster(List<URI> metastoreUris, String metastoreUsername, HiveMetastoreClientFactory clientFactory)
+    public StaticHiveCluster(List<URI> metastoreUris, boolean isMultipleMetastore, String metastoreUsername, HiveMetastoreClientFactory clientFactory)
     {
         requireNonNull(metastoreUris, "metastoreUris is null");
+        this.isMultipleMetastore = isMultipleMetastore;
         checkArgument(!metastoreUris.isEmpty(), "metastoreUris must specify at least one URI");
         this.addresses = metastoreUris.stream()
                 .map(StaticHiveCluster::checkMetastoreUri)
@@ -53,25 +55,29 @@ public class StaticHiveCluster
         this.clientFactory = requireNonNull(clientFactory, "clientFactory is null");
     }
 
-    /**
-     * Create a metastore client connected to the Hive metastore.
-     * <p>
-     * As per Hive HA metastore behavior, return the first metastore in the list
-     * list of available metastores (i.e. the default metastore) if a connection
-     * can be made, else try another of the metastores at random, until either a
-     * connection succeeds or there are no more fallback metastores.
-     */
     @Override
-    public HiveMetastoreClient createMetastoreClient()
+    public List<HostAndPort> getAddresses()
+    {
+        return addresses;
+    }
+
+    @Override
+    public HiveMetastoreClient createMetastoreClient(String token)
             throws TException
     {
         List<HostAndPort> metastores = new ArrayList<>(addresses);
-        Collections.shuffle(metastores);
+        if (isMultipleMetastore) {
+            Collections.shuffle(metastores);
+        }
+        else {
+            Collections.shuffle(metastores.subList(1, metastores.size()));
+        }
 
         TException lastException = null;
         for (HostAndPort metastore : metastores) {
             try {
-                HiveMetastoreClient client = clientFactory.create(metastore);
+                HiveMetastoreClient client = clientFactory.create(metastore, token);
+
                 if (!isNullOrEmpty(metastoreUsername)) {
                     client.setUGI(metastoreUsername);
                 }

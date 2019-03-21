@@ -26,6 +26,7 @@ import com.facebook.presto.spi.TableNotFoundException;
 import com.facebook.presto.spi.predicate.Domain;
 import com.facebook.presto.spi.predicate.NullableValue;
 import com.facebook.presto.spi.predicate.TupleDomain;
+import com.facebook.presto.spi.security.ConnectorIdentity;
 import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.CharType;
@@ -129,7 +130,7 @@ public class HivePartitionManager
         TupleDomain<ColumnHandle> effectivePredicate = constraint.getSummary();
 
         SchemaTableName tableName = hiveTableHandle.getSchemaTableName();
-        Table table = getTable(metastore, tableName, isOfflineDataDebugModeEnabled(session));
+        Table table = getTable(session.getIdentity(), metastore, tableName, isOfflineDataDebugModeEnabled(session));
 
         List<HiveColumnHandle> partitionColumns = getPartitionKeyColumnHandles(table);
 
@@ -137,7 +138,7 @@ public class HivePartitionManager
                 .map(column -> typeManager.getType(column.getTypeSignature()))
                 .collect(toList());
 
-        return partitionColumns.isEmpty() ? ImmutableList.of(new HivePartition(tableName)) : () -> getFilteredPartitionNames(metastore, tableName, partitionColumns, effectivePredicate).stream()
+        return partitionColumns.isEmpty() ? ImmutableList.of(new HivePartition(tableName)) : () -> getFilteredPartitionNames(session.getIdentity(), metastore, tableName, partitionColumns, effectivePredicate).stream()
                 // Apply extra filters which could not be done by getFilteredPartitionNames
                 .map(partitionName -> parseValuesAndFilterPartition(tableName, partitionName, partitionColumns, partitionTypes, constraint))
                 .filter(Optional::isPresent)
@@ -151,7 +152,7 @@ public class HivePartitionManager
         TupleDomain<ColumnHandle> effectivePredicate = constraint.getSummary();
 
         SchemaTableName tableName = hiveTableHandle.getSchemaTableName();
-        Table table = getTable(metastore, tableName, isOfflineDataDebugModeEnabled(session));
+        Table table = getTable(session.getIdentity(), metastore, tableName, isOfflineDataDebugModeEnabled(session));
 
         List<HiveColumnHandle> partitionColumns = getPartitionKeyColumnHandles(table);
 
@@ -250,7 +251,7 @@ public class HivePartitionManager
         HiveTableHandle hiveTableHandle = (HiveTableHandle) tableHandle;
         SchemaTableName tableName = hiveTableHandle.getSchemaTableName();
 
-        Table table = getTable(metastore, tableName, isOfflineDataDebugModeEnabled(session));
+        Table table = getTable(session.getIdentity(), metastore, tableName, isOfflineDataDebugModeEnabled(session));
 
         List<HiveColumnHandle> partitionColumns = getPartitionKeyColumnHandles(table);
         List<Type> partitionColumnTypes = partitionColumns.stream()
@@ -301,9 +302,9 @@ public class HivePartitionManager
         return Optional.of(partition);
     }
 
-    private Table getTable(SemiTransactionalHiveMetastore metastore, SchemaTableName tableName, boolean offlineDataDebugModeEnabled)
+    private Table getTable(ConnectorIdentity identity, SemiTransactionalHiveMetastore metastore, SchemaTableName tableName, boolean offlineDataDebugModeEnabled)
     {
-        Optional<Table> target = metastore.getTable(tableName.getSchemaName(), tableName.getTableName());
+        Optional<Table> target = metastore.getTable(identity, tableName.getSchemaName(), tableName.getTableName());
         if (!target.isPresent()) {
             throw new TableNotFoundException(tableName);
         }
@@ -316,7 +317,7 @@ public class HivePartitionManager
         return table;
     }
 
-    private List<String> getFilteredPartitionNames(SemiTransactionalHiveMetastore metastore, SchemaTableName tableName, List<HiveColumnHandle> partitionKeys, TupleDomain<ColumnHandle> effectivePredicate)
+    private List<String> getFilteredPartitionNames(ConnectorIdentity identity, SemiTransactionalHiveMetastore metastore, SchemaTableName tableName, List<HiveColumnHandle> partitionKeys, TupleDomain<ColumnHandle> effectivePredicate)
     {
         if (effectivePredicate.isNone()) {
             return ImmutableList.of();
@@ -381,7 +382,7 @@ public class HivePartitionManager
         }
 
         // fetch the partition names
-        return metastore.getPartitionNamesByParts(tableName.getSchemaName(), tableName.getTableName(), filter)
+        return metastore.getPartitionNamesByParts(identity, tableName.getSchemaName(), tableName.getTableName(), filter)
                 .orElseThrow(() -> new TableNotFoundException(tableName));
     }
 

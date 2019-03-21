@@ -50,7 +50,7 @@ public class TestStaticHiveCluster
              throws TException
     {
         HiveCluster cluster = createHiveCluster(CONFIG_WITH_FALLBACK, asList(null, null, FALLBACK_CLIENT));
-        assertEquals(cluster.createMetastoreClient(), FALLBACK_CLIENT);
+        assertEquals(cluster.createMetastoreClient(null), FALLBACK_CLIENT);
     }
 
     @Test
@@ -72,7 +72,7 @@ public class TestStaticHiveCluster
             throws TException
     {
         HiveCluster cluster = createHiveCluster(CONFIG_WITH_FALLBACK_WITH_USER, asList(null, FALLBACK_CLIENT, null));
-        assertEquals(cluster.createMetastoreClient(), FALLBACK_CLIENT);
+        assertEquals(cluster.createMetastoreClient(null), FALLBACK_CLIENT);
     }
 
     @Test
@@ -85,7 +85,7 @@ public class TestStaticHiveCluster
     private static void assertCreateClientFails(HiveCluster cluster, String message)
     {
         try {
-            cluster.createMetastoreClient();
+            cluster.createMetastoreClient(null);
             fail("expected exception");
         }
         catch (TException e) {

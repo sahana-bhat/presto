@@ -14,6 +14,7 @@
 package com.facebook.presto.hive;
 
 import com.facebook.airlift.configuration.Config;
+import com.facebook.airlift.configuration.ConfigDescription;
 import com.google.common.net.HostAndPort;
 import io.airlift.units.Duration;
 import io.airlift.units.MinDuration;
@@ -40,6 +41,8 @@ public class MetastoreClientConfig
     private String recordingPath;
     private boolean replay;
     private Duration recordingDuration = new Duration(0, MINUTES);
+    private String metastoreDefaultImpersonationUser = "";
+    private boolean metastoreImpersonationEnabled;
 
     public HostAndPort getMetastoreSocksProxy()
     {
@@ -179,6 +182,32 @@ public class MetastoreClientConfig
     public MetastoreClientConfig setRecordingDuration(Duration recordingDuration)
     {
         this.recordingDuration = recordingDuration;
+        return this;
+    }
+
+    public boolean isMetastoreImpersonationEnabled()
+    {
+        return metastoreImpersonationEnabled;
+    }
+
+    @Config("hive.metastore.impersonation.enabled")
+    @ConfigDescription("Should Presto user be impersonated when communicating with Hive Metastore")
+    public MetastoreClientConfig setMetastoreImpersonationEnabled(boolean metastoreImpersonationEnabled)
+    {
+        this.metastoreImpersonationEnabled = metastoreImpersonationEnabled;
+        return this;
+    }
+
+    public String getMetastoreDefaultImpersonationUser()
+    {
+        return metastoreDefaultImpersonationUser;
+    }
+
+    @Config("hive.metastore.impersonation.user")
+    @ConfigDescription("Default impersonation user when communicating with Hive Metastore")
+    public MetastoreClientConfig setMetastoreDefaultImpersonationUser(String metastoreDefaultImpersonationUser)
+    {
+        this.metastoreDefaultImpersonationUser = metastoreDefaultImpersonationUser;
         return this;
     }
 }
