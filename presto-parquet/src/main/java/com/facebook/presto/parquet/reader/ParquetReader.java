@@ -70,23 +70,23 @@ public class ParquetReader
 
     private final List<BlockMetaData> blocks;
     private final List<PrimitiveColumnIO> columns;
-    private final ParquetDataSource dataSource;
     private final AggregatedMemoryContext systemMemoryContext;
 
     private int currentBlock;
-    private BlockMetaData currentBlockMetadata;
     private long currentPosition;
     private long currentGroupRowCount;
     private long nextRowInGroup;
     private int batchSize;
     private int nextBatchSize = INITIAL_BATCH_SIZE;
-    private final PrimitiveColumnReader[] columnReaders;
     private long[] maxBytesPerCell;
     private long maxCombinedBytesPerRow;
     private final long maxReadBlockBytes;
     private int maxBatchSize = MAX_VECTOR_LENGTH;
-
     private AggregatedMemoryContext currentRowGroupMemoryContext;
+
+    protected final ParquetDataSource dataSource;
+    protected BlockMetaData currentBlockMetadata;
+    protected final PrimitiveColumnReader[] columnReaders;
 
     public ParquetReader(MessageColumnIO
             messageColumnIO,
@@ -209,7 +209,7 @@ public class ParquetReader
         return new ColumnChunk(rowBlock, columnChunk.getDefinitionLevels(), columnChunk.getRepetitionLevels());
     }
 
-    private ColumnChunk readPrimitive(PrimitiveField field)
+    protected ColumnChunk readPrimitive(PrimitiveField field)
             throws IOException
     {
         ColumnDescriptor columnDescriptor = field.getDescriptor();
@@ -222,9 +222,8 @@ public class ParquetReader
             int totalSize = toIntExact(metadata.getTotalSize());
             byte[] buffer = allocateBlock(totalSize);
             dataSource.readFully(startingPosition, buffer);
-            ColumnChunkDescriptor descriptor = new ColumnChunkDescriptor(columnDescriptor, metadata, totalSize);
-            ParquetColumnChunk columnChunk = new ParquetColumnChunk(descriptor, buffer, 0);
-            columnReader.setPageReader(columnChunk.readAllPages());
+            PageReader pageReader = createPageReader(buffer, totalSize, metadata, columnDescriptor);
+            columnReader.setPageReader(pageReader);
         }
         ColumnChunk columnChunk;
 
@@ -252,7 +251,15 @@ public class ParquetReader
         return columnChunk;
     }
 
-    private byte[] allocateBlock(int length)
+    protected PageReader createPageReader(byte[] buffer, int bufferSize, ColumnChunkMetaData metadata, ColumnDescriptor columnDescriptor)
+            throws IOException
+    {
+        ColumnChunkDescriptor descriptor = new ColumnChunkDescriptor(columnDescriptor, metadata, bufferSize);
+        ParquetColumnChunk columnChunk = new ParquetColumnChunk(descriptor, buffer, 0);
+        return columnChunk.readAllPages();
+    }
+
+    protected byte[] allocateBlock(int length)
     {
         byte[] buffer = new byte[length];
         LocalMemoryContext blockMemoryContext = currentRowGroupMemoryContext.newLocalMemoryContext(ParquetReader.class.getSimpleName());
@@ -260,7 +267,7 @@ public class ParquetReader
         return buffer;
     }
 
-    private ColumnChunkMetaData getColumnChunkMetaData(ColumnDescriptor columnDescriptor)
+    protected ColumnChunkMetaData getColumnChunkMetaData(ColumnDescriptor columnDescriptor)
             throws IOException
     {
         for (ColumnChunkMetaData metadata : currentBlockMetadata.getColumns()) {

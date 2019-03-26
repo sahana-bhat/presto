@@ -56,6 +56,18 @@
 
         <dependency>
             <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-common</artifactId>
+            <version>${dep.parquet.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
             <artifactId>parquet-hadoop</artifactId>
             <version>${dep.parquet.version}</version>
             <exclusions>
@@ -388,6 +400,25 @@
             <artifactId>jmh-generator-annprocess</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.uber.crypto-metadata-retriever</groupId>
+            <artifactId>crypto-metadata-retriever</artifactId>
+            <version>${dep.crypto.metadata.retriever.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-format</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -458,6 +489,20 @@
                                 <include>**/TestHiveDistributedAggregationsWithExchangeMaterialization.java</include>
                                 <include>**/TestHiveDistributedQueriesWithExchangeMaterialization.java</include>
                             </includes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.basepom.maven</groupId>
+                        <artifactId>duplicate-finder-maven-plugin</artifactId>
+                        <configuration>
+                            <ignoredResourcePatterns>
+                                <ignoredResourcePattern>parquet.thrift</ignoredResourcePattern>
+                                <ignoredResourcePattern>about.html</ignoredResourcePattern>
+                            </ignoredResourcePatterns>
+                            <ignoredClassPatterns>
+                                <ignoredClassPattern>shaded.parquet.it.unimi.dsi.fastutil.*</ignoredClassPattern>
+                                <ignoredClassPattern>module-info</ignoredClassPattern>
+                            </ignoredClassPatterns>
                         </configuration>
                     </plugin>
                 </plugins>

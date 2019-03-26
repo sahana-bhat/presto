@@ -157,6 +157,8 @@ public class HiveClientConfig
     private boolean rangeFiltersOnSubscriptsEnabled;
     private boolean zstdJniDecompressionEnabled;
 
+    private boolean isParquetColumnDecryptionEnabled = true;
+
     public int getMaxInitialSplits()
     {
         return maxInitialSplits;
@@ -1279,5 +1281,18 @@ public class HiveClientConfig
     public boolean isHdfsObserverReadEnabled()
     {
         return this.hdfsObserverReadEnabled;
+    }
+
+    @Config("hive.enable-parquet-column-decryption")
+    @ConfigDescription("enable parquet column decryption")
+    public HiveClientConfig setParquetColumnDecryptionEnabled(boolean isParquetColumnDecryptionEnabled)
+    {
+        this.isParquetColumnDecryptionEnabled = isParquetColumnDecryptionEnabled;
+        return this;
+    }
+
+    public boolean isParquetColumnDecryptionEnabled()
+    {
+        return this.isParquetColumnDecryptionEnabled;
     }
 }

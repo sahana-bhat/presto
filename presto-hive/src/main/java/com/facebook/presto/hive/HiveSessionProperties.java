@@ -92,6 +92,7 @@ public final class HiveSessionProperties
     public static final String VIRTUAL_BUCKET_COUNT = "virtual_bucket_count";
     public static final String MAX_BUCKETS_FOR_GROUPED_EXECUTION = "max_buckets_for_grouped_execution";
     public static final String OFFLINE_DATA_DEBUG_MODE_ENABLED = "offline_data_debug_mode_enabled";
+    private static final String ENABLE_PARQUET_COLUMN_DECRYPTION = "enable_parquet_column_decryption";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -409,6 +410,11 @@ public final class HiveSessionProperties
                         HdfsEnvironment.HDFS_OBSERVER_READ_ENABLED,
                         "Experimental: enable Observer reads for HDFS",
                         hiveClientConfig.isHdfsObserverReadEnabled(),
+                        false),
+                booleanProperty(
+                        ENABLE_PARQUET_COLUMN_DECRYPTION,
+                        "Is parquet column decryption enabled",
+                        hiveClientConfig.isParquetColumnDecryptionEnabled(),
                         false));
     }
 
@@ -691,6 +697,11 @@ public final class HiveSessionProperties
     public static boolean isOfflineDataDebugModeEnabled(ConnectorSession session)
     {
         return session.getProperty(OFFLINE_DATA_DEBUG_MODE_ENABLED, Boolean.class);
+    }
+
+    public static boolean isParquetColumnDecryptionEnabled(ConnectorSession session)
+    {
+        return session.getProperty(ENABLE_PARQUET_COLUMN_DECRYPTION, Boolean.class);
     }
 
     public static PropertyMetadata<DataSize> dataSizeSessionProperty(String name, String description, DataSize defaultValue, boolean hidden)
