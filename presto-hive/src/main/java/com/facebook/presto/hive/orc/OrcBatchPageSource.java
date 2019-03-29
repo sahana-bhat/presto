@@ -177,7 +177,7 @@ public class OrcBatchPageSource
         closed = true;
 
         try {
-            stats.addMaxCombinedBytesPerRow(recordReader.getMaxCombinedBytesPerRow());
+            stats.getOrcReaderStats().addMaxCombinedBytesPerRow(recordReader.getMaxCombinedBytesPerRow());
             recordReader.close();
         }
         catch (IOException e) {

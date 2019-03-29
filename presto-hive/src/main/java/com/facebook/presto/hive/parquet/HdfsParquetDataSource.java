@@ -56,7 +56,7 @@ public class HdfsParquetDataSource
         try {
             long start = System.nanoTime();
             inputStream.readFully(position, buffer, bufferOffset, bufferLength);
-            stats.readDataBytesPerSecond(bufferLength, System.nanoTime() - start);
+            stats.getParquetReaderStats().readDataBytesPerSecond(bufferLength, System.nanoTime() - start);
         }
         catch (PrestoException e) {
             // just in case there is a Presto wrapper or hook
