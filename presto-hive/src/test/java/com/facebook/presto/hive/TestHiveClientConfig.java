@@ -123,7 +123,8 @@ public class TestHiveClientConfig
                 .setPushdownFilterEnabled(false)
                 .setZstdJniDecompressionEnabled(false)
                 .setRangeFiltersOnSubscriptsEnabled(false)
-                .setClientFallbackSimpleAuthAllowed(false));
+                .setClientFallbackSimpleAuthAllowed(false)
+                .setHdfsObserverReadEnabled(false));
     }
 
     @Test
@@ -212,6 +213,7 @@ public class TestHiveClientConfig
                 .put("hive.range-filters-on-subscripts-enabled", "true")
                 .put("hive.zstd-jni-decompression-enabled", "true")
                 .put("hive.ipc.client.fallback-to-simple-auth-allowed", "true")
+                .put("hive.hdfs-observer-read-enabled", "true")
                 .build();
 
         HiveClientConfig expected = new HiveClientConfig()
@@ -297,7 +299,8 @@ public class TestHiveClientConfig
                 .setPushdownFilterEnabled(true)
                 .setZstdJniDecompressionEnabled(true)
                 .setRangeFiltersOnSubscriptsEnabled(true)
-                .setClientFallbackSimpleAuthAllowed(true);
+                .setClientFallbackSimpleAuthAllowed(true)
+                .setHdfsObserverReadEnabled(true);
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }

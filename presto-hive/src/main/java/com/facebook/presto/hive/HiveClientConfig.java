@@ -151,6 +151,8 @@ public class HiveClientConfig
     private HiveStorageFormat temporaryTableStorageFormat = ORC;
     private HiveCompressionCodec temporaryTableCompressionCodec = HiveCompressionCodec.SNAPPY;
 
+    private boolean hdfsObserverReadEnabled;
+
     private boolean pushdownFilterEnabled;
     private boolean rangeFiltersOnSubscriptsEnabled;
     private boolean zstdJniDecompressionEnabled;
@@ -1264,5 +1266,18 @@ public class HiveClientConfig
     public boolean isClientFallbackSimpleAuthAllowed()
     {
         return this.fallbackSimpleAuthAllowed;
+    }
+
+    @Config("hive.hdfs-observer-read-enabled")
+    @ConfigDescription("Whether to read from Hdfs ObserverNameNode")
+    public HiveClientConfig setHdfsObserverReadEnabled(boolean hdfsObserverReadEnabled)
+    {
+        this.hdfsObserverReadEnabled = hdfsObserverReadEnabled;
+        return this;
+    }
+
+    public boolean isHdfsObserverReadEnabled()
+    {
+        return this.hdfsObserverReadEnabled;
     }
 }

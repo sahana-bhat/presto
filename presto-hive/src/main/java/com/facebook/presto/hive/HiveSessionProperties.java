@@ -404,7 +404,12 @@ public final class HiveSessionProperties
                         ORC_ZSTD_JNI_DECOMPRESSION_ENABLED,
                         "use JNI based zstd decompression for reading ORC files",
                         hiveClientConfig.isZstdJniDecompressionEnabled(),
-                        true));
+                        true),
+                booleanProperty(
+                        HdfsEnvironment.HDFS_OBSERVER_READ_ENABLED,
+                        "Experimental: enable Observer reads for HDFS",
+                        hiveClientConfig.isHdfsObserverReadEnabled(),
+                        false));
     }
 
     public List<PropertyMetadata<?>> getSessionProperties()

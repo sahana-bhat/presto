@@ -16,6 +16,7 @@ package com.facebook.presto.hive;
 import com.facebook.presto.hive.HdfsEnvironment.HdfsContext;
 import com.google.common.collect.ImmutableSet;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdfs.client.HdfsClientConfigKeys;
 
 import javax.inject.Inject;
 
@@ -59,11 +60,14 @@ public class HiveHdfsConfiguration
     {
         if (dynamicProviders.isEmpty()) {
             // use the same configuration for everything
-            return hadoopConfiguration.get();
+            Configuration configuration = hadoopConfiguration.get();
+            configuration.setBoolean(HdfsClientConfigKeys.DFS_CLIENT_OBSERVER_READS_ENABLED, context.isHdfsObserverReadEnabled());
+            return configuration;
         }
 
         Configuration config = new Configuration(false);
         copy(hadoopConfiguration.get(), config);
+        config.setBoolean(HdfsClientConfigKeys.DFS_CLIENT_OBSERVER_READS_ENABLED, context.isHdfsObserverReadEnabled());
         for (DynamicConfigurationProvider provider : dynamicProviders) {
             provider.updateConfiguration(config, context, uri);
         }

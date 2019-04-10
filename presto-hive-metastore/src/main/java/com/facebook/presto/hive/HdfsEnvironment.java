@@ -38,6 +38,8 @@ public class HdfsEnvironment
         HadoopFileSystemCache.initialize();
     }
 
+    public static final String HDFS_OBSERVER_READ_ENABLED = "hdfs_observer_read_enabled";
+
     private final HdfsConfiguration hdfsConfiguration;
     private final HdfsAuthentication hdfsAuthentication;
     private final boolean verifyChecksum;
@@ -93,6 +95,7 @@ public class HdfsEnvironment
         private final Optional<String> schemaName;
         private final Optional<String> tableName;
         private final Optional<String> clientInfo;
+        private final boolean hdfsObserverReadEnabled;
 
         public HdfsContext(ConnectorIdentity identity)
         {
@@ -102,6 +105,7 @@ public class HdfsEnvironment
             this.schemaName = Optional.empty();
             this.tableName = Optional.empty();
             this.clientInfo = Optional.empty();
+            this.hdfsObserverReadEnabled = false;
         }
 
         public HdfsContext(ConnectorSession session, String schemaName)
@@ -114,6 +118,7 @@ public class HdfsEnvironment
             this.schemaName = Optional.of(schemaName);
             this.tableName = Optional.empty();
             this.clientInfo = session.getClientInfo();
+            this.hdfsObserverReadEnabled = session.getProperty(HdfsEnvironment.HDFS_OBSERVER_READ_ENABLED, Boolean.class);
         }
 
         public HdfsContext(ConnectorSession session, String schemaName, String tableName)
@@ -127,6 +132,7 @@ public class HdfsEnvironment
             this.schemaName = Optional.of(schemaName);
             this.tableName = Optional.of(tableName);
             this.clientInfo = session.getClientInfo();
+            this.hdfsObserverReadEnabled = session.getProperty(HdfsEnvironment.HDFS_OBSERVER_READ_ENABLED, Boolean.class);
         }
 
         public ConnectorIdentity getIdentity()
@@ -159,6 +165,11 @@ public class HdfsEnvironment
             return clientInfo;
         }
 
+        public boolean isHdfsObserverReadEnabled()
+        {
+            return hdfsObserverReadEnabled;
+        }
+
         @Override
         public String toString()
         {
@@ -170,6 +181,7 @@ public class HdfsEnvironment
                     .add("schemaName", schemaName.orElse(null))
                     .add("tableName", tableName.orElse(null))
                     .add("clientInfo", clientInfo.orElse(null))
+                    .add("hdfsObserverReadEnabled", hdfsObserverReadEnabled)
                     .toString();
         }
     }
