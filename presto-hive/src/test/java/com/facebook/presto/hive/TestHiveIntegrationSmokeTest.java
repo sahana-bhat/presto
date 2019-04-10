@@ -14,6 +14,7 @@
 package com.facebook.presto.hive;
 
 import com.facebook.presto.Session;
+import com.facebook.presto.SystemSessionProperties;
 import com.facebook.presto.cost.StatsAndCosts;
 import com.facebook.presto.hive.HiveSessionProperties.InsertExistingPartitionsBehavior;
 import com.facebook.presto.metadata.InsertTableHandle;
@@ -183,6 +184,75 @@ public class TestHiveIntegrationSmokeTest
     private List<?> getPartitions(HiveTableLayoutHandle tableLayoutHandle)
     {
         return tableLayoutHandle.getPartitions().get();
+    }
+
+    @Test
+    public void testPartitionFilter()
+    {
+        Session commonSession = Session.builder(getSession()).setSystemProperty(SystemSessionProperties.PARTITION_FILTER_TABLES, HiveQueryRunner.TPCH_SCHEMA + ".Partitioned_table:" + HiveQueryRunner.TPCH_SCHEMA + ".partitioned_table_multi_partition_key").build();
+        Session partitionFilterSession = Session.builder(commonSession).setSystemProperty(SystemSessionProperties.PARTITION_FILTER, "true").build();
+        Session noPartitionFilterSession = Session.builder(commonSession).setSystemProperty(SystemSessionProperties.PARTITION_FILTER, "false").build();
+
+        Session wildcardSession = Session.builder(getSession()).setSystemProperty(SystemSessionProperties.PARTITION_FILTER_TABLES, HiveQueryRunner.TPCH_SCHEMA + ".*").setSystemProperty(SystemSessionProperties.PARTITION_FILTER, "true").build();
+
+        @Language("SQL") String createPartitionTable = "" +
+                "CREATE TABLE partitioned_table " +
+                "WITH (" +
+                "partitioned_by = ARRAY[ 'ORDER_STATUS' ]" +
+                ") " +
+                "AS " +
+                "SELECT orderkey AS order_key, shippriority AS ship_priority, orderstatus AS order_status " +
+                "FROM tpch.tiny.orders";
+
+        @Language("SQL") String createPartitionedTableMultiPartitionKey = "" +
+                "CREATE TABLE partitioned_table_multi_partition_key " +
+                "WITH (" +
+                "partitioned_by = ARRAY[ 'SHIP_PRIORITY', 'ORDER_STATUS', 'PROCESSED_DATE' ]" +
+                ") " +
+                "AS " +
+                "SELECT orderkey AS order_key, shippriority AS ship_priority, orderstatus AS order_status, CURRENT_DATE AS processed_date " +
+                "FROM tpch.tiny.orders";
+
+        assertUpdate(commonSession, createPartitionTable, "SELECT count(*) from orders");
+        assertUpdate(commonSession, createPartitionedTableMultiPartitionKey, "SELECT count(*) from orders");
+
+        // When partition filter is not enforced, query will succeed.
+        // Not able to use assertQuery here. assertQuery runs query in H2QueryRunner as well, which we are not able to create table there.
+        computeActual(noPartitionFilterSession, "select * from partitioned_table");
+        for (Session session : ImmutableList.of(partitionFilterSession, wildcardSession)) {
+            assertQueryFails(session, "select * from partitioned_table",
+                             "Your query is missing partition column filters. "
+                             + "Please add filters on partition columns \\('order_status'\\) "
+                             + "for table 'tpch.partitioned_table' in the WHERE clause of your query. "
+                             + "For example: WHERE DATE\\(datestr\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
+            assertQueryFails(session, "select * from partitioned_table_multi_partition_key",
+                             "Your query is missing partition column filters. "
+                            + "Please add filters on partition columns \\('order_status', 'processed_date', 'ship_priority'\\) "
+                            + "for table 'tpch.partitioned_table_multi_partition_key' in the WHERE clause of your query. "
+                            + "For example: WHERE DATE\\(processed_date\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
+        }
+
+        // Query in session with empty strict mode tables will succeeded
+        Session noPartitionFilterTablesSession = Session.builder(partitionFilterSession).setSystemProperty(SystemSessionProperties.PARTITION_FILTER_TABLES, "a.b:b.c:c.d:e.w").build();
+        computeActual(noPartitionFilterTablesSession, "select * from partitioned_table");
+
+        // Explain and Explain analyze will succeed.
+        computeActual(partitionFilterSession, "EXPLAIN ANALYZE select * from partitioned_table");
+        computeActual(partitionFilterSession, "EXPLAIN select * from partitioned_table");
+
+        // Query specified partition filter will succeed.
+        computeActual(partitionFilterSession, "with foo as (select order_status as bar from partitioned_table) select * from foo where bar = 'P'");
+
+        computeActual(partitionFilterSession, "with foo as (select order_status as bar from partitioned_table) select * from foo where lower(bar) = 'p'");
+
+        // Table is not in the black list, query will succeed without partition filter.
+        computeActual(Session.builder(getSession()).setSystemProperty(SystemSessionProperties.PARTITION_FILTER, "true").build(), "select * from partitioned_table_multi_partition_key");
+
+        // When order_date column in partitioned_table become order_date_1 in tableScan:originalConstraint, this query still works
+        computeActual(partitionFilterSession, "select * from partitioned_table_multi_partition_key multiple join partitioned_table single on multiple.order_status = single.order_status where multiple.order_status = '2017=06-01' and single.order_status = '2017-06-01' and multiple.ship_priority = 2");
+
+        assertUpdate("DROP TABLE partitioned_table");
+        assertUpdate("DROP TABLE partitioned_table_multi_partition_key");
     }
 
     @Test

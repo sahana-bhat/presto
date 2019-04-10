@@ -124,7 +124,9 @@ public class TestFeaturesConfig
                 .setOptimizedRepartitioningEnabled(false)
                 .setListNonBuiltInFunctions(false)
                 .setForceSingleNodePlan(false)
-                .setTupleDomainLimitForInPredicate(Integer.MAX_VALUE));
+                .setTupleDomainLimitForInPredicate(Integer.MAX_VALUE)
+                .setPartitionFilteringEnforced(false)
+                .setPartitionFilteringTables(""));
     }
 
     @Test
@@ -208,6 +210,8 @@ public class TestFeaturesConfig
                 .put("list-non-built-in-functions", "true")
                 .put("optimizer.force-single-node-plan", "true")
                 .put("optimizer.tuple-domain-limit-in-predicate", "10")
+                .put("optimizer.partition-filtering-enforced", "true")
+                .put("optimizer.partition-filtering-tables", "dwh.a:hdrone.b")
                 .build();
 
         FeaturesConfig expected = new FeaturesConfig()
@@ -287,7 +291,10 @@ public class TestFeaturesConfig
                 .setOptimizedRepartitioningEnabled(true)
                 .setListNonBuiltInFunctions(true)
                 .setForceSingleNodePlan(true)
-                .setTupleDomainLimitForInPredicate(10);
+                .setTupleDomainLimitForInPredicate(10)
+                .setPartitionFilteringEnforced(true)
+                .setPartitionFilteringTables("dwh.a:hdrone.b");
+
         assertFullMapping(properties, expected);
     }
 

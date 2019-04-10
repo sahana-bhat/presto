@@ -147,6 +147,9 @@ public class FeaturesConfig
 
     private boolean listNonBuiltInFunctions;
 
+    private boolean partitionFilteringEnforced;
+    private String partitionFilteringTables = "";
+
     public enum JoinReorderingStrategy
     {
         NONE,
@@ -1127,6 +1130,30 @@ public class FeaturesConfig
     public FeaturesConfig setListNonBuiltInFunctions(boolean listNonBuiltInFunctions)
     {
         this.listNonBuiltInFunctions = listNonBuiltInFunctions;
+        return this;
+    }
+
+    public boolean isPartitionFilteringEnforced()
+    {
+        return partitionFilteringEnforced;
+    }
+
+    @Config("optimizer.partition-filtering-enforced")
+    public FeaturesConfig setPartitionFilteringEnforced(boolean partitionFilteringEnforced)
+    {
+        this.partitionFilteringEnforced = partitionFilteringEnforced;
+        return this;
+    }
+
+    public String getPartitionFilteringTables()
+    {
+        return partitionFilteringTables;
+    }
+
+    @Config("optimizer.partition-filtering-tables")
+    public FeaturesConfig setPartitionFilteringTables(String tables)
+    {
+        this.partitionFilteringTables = tables;
         return this;
     }
 

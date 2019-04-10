@@ -14,6 +14,7 @@
 package com.facebook.presto.sql.analyzer;
 
 import com.facebook.presto.Session;
+import com.facebook.presto.SystemSessionProperties;
 import com.facebook.presto.cost.CostCalculator;
 import com.facebook.presto.cost.StatsCalculator;
 import com.facebook.presto.execution.DataDefinitionTask;
@@ -104,7 +105,7 @@ public class QueryExplainer
 
     public Analysis analyze(Session session, Statement statement, List<Expression> parameters, WarningCollector warningCollector)
     {
-        Analyzer analyzer = new Analyzer(session, metadata, sqlParser, accessControl, Optional.of(this), parameters, warningCollector);
+        Analyzer analyzer = new Analyzer(rebuildSession(session), metadata, sqlParser, accessControl, Optional.of(this), parameters, warningCollector);
         return analyzer.analyze(statement);
     }
 
@@ -176,6 +177,8 @@ public class QueryExplainer
 
     public Plan getLogicalPlan(Session session, Statement statement, List<Expression> parameters, WarningCollector warningCollector, PlanNodeIdAllocator idAllocator)
     {
+        session = rebuildSession(session);
+
         // analyze statement
         Analysis analysis = analyze(session, statement, parameters, warningCollector);
         // plan statement
@@ -185,8 +188,34 @@ public class QueryExplainer
 
     private SubPlan getDistributedPlan(Session session, Statement statement, List<Expression> parameters, WarningCollector warningCollector)
     {
+        session = rebuildSession(session);
         PlanNodeIdAllocator idAllocator = new PlanNodeIdAllocator();
         Plan plan = getLogicalPlan(session, statement, parameters, warningCollector, idAllocator);
         return planFragmenter.createSubPlans(session, plan, false, idAllocator, warningCollector);
+    }
+
+    // Hack !!!
+    // In order to enable explain regardless of partition filtering, need to rebuild a session with partition filtering to false.
+    private Session rebuildSession(Session session)
+    {
+        if (SystemSessionProperties.enforcePartitionFilter(session)) {
+            Session.SessionBuilder sessionBuilder = Session.builder(metadata.getSessionPropertyManager())
+                    .setQueryId(session.getQueryId())
+                    .setTransactionId(session.getTransactionId().orElse(null))
+                    .setIdentity(session.getIdentity())
+                    .setSource(session.getSource().orElse(null))
+                    .setCatalog(session.getCatalog().orElse(null))
+                    .setSchema(session.getSchema().orElse(null))
+                    .setTimeZoneKey(session.getTimeZoneKey())
+                    .setLocale(session.getLocale())
+                    .setRemoteUserAddress(session.getRemoteUserAddress().orElse(null))
+                    .setUserAgent(session.getUserAgent().orElse(null))
+                    .setStartTime(session.getStartTime());
+            for (Map.Entry<String, String> entry : session.getSystemProperties().entrySet()) {
+                sessionBuilder = sessionBuilder.setSystemProperty(entry.getKey(), entry.getValue());
+            }
+            return sessionBuilder.setSystemProperty(SystemSessionProperties.PARTITION_FILTER, "false").build();
+        }
+        return session;
     }
 }
