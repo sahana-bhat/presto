@@ -15,6 +15,7 @@ package com.facebook.presto.execution;
 
 import com.facebook.presto.Session;
 import com.facebook.presto.server.SessionContext;
+import com.facebook.presto.server.StatementProgressRecorder;
 import com.facebook.presto.spi.ConnectorId;
 import com.facebook.presto.spi.security.Identity;
 import com.facebook.presto.spi.session.ResourceEstimates;
@@ -148,5 +149,10 @@ public class TestingSessionContext
     public int getQueryLoggingSize()
     {
         return session.getQueryLoggingSize();
+    }
+
+    public Optional<StatementProgressRecorder.Instance> getStatementProgressReporter()
+    {
+        return Optional.empty();
     }
 }

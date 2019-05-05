@@ -99,8 +99,9 @@ public final class HttpRequestSessionContext
     private final boolean clientTransactionSupport;
     private final String clientInfo;
     private final int queryLoggingSize;
+    private final StatementProgressRecorder.Instance progressRecorderInstance;
 
-    public HttpRequestSessionContext(HttpServletRequest servletRequest, String user, String catalog)
+    public HttpRequestSessionContext(HttpServletRequest servletRequest, String user, String catalog, StatementProgressRecorder.Instance progressRecorderInstance)
             throws WebApplicationException
     {
         this.catalog = catalog;
@@ -172,12 +173,13 @@ public final class HttpRequestSessionContext
         String transactionIdHeader = servletRequest.getHeader(PRESTO_TRANSACTION_ID);
         clientTransactionSupport = transactionIdHeader != null;
         transactionId = parseTransactionId(transactionIdHeader);
+        this.progressRecorderInstance = progressRecorderInstance;
     }
 
     public HttpRequestSessionContext(HttpServletRequest servletRequest)
             throws WebApplicationException
     {
-        this(servletRequest, servletRequest.getHeader(PRESTO_USER), servletRequest.getHeader(PRESTO_CATALOG));
+        this(servletRequest, servletRequest.getHeader(PRESTO_USER), servletRequest.getHeader(PRESTO_CATALOG), new StatementProgressRecorder().create());
     }
 
     private static List<String> splitSessionHeader(Enumeration<String> headers)
@@ -452,5 +454,11 @@ public final class HttpRequestSessionContext
     public int getQueryLoggingSize()
     {
         return queryLoggingSize;
+    }
+
+    @Override
+    public Optional<StatementProgressRecorder.Instance> getStatementProgressReporter()
+    {
+        return Optional.of(progressRecorderInstance);
     }
 }

@@ -24,6 +24,7 @@ import com.facebook.presto.operator.ExchangeClientSupplier;
 import com.facebook.presto.server.ForStatementResource;
 import com.facebook.presto.server.HttpRequestSessionContext;
 import com.facebook.presto.server.SessionContext;
+import com.facebook.presto.server.StatementProgressRecorder;
 import com.facebook.presto.server.StatementResourceConfig;
 import com.facebook.presto.spi.QueryId;
 import com.facebook.presto.spi.block.BlockEncodingSerde;
@@ -112,6 +113,8 @@ public class StatementResource
     private final CounterStat createQueryRequests = new CounterStat();
     private final StatementResourceConfig statementResourceConfig;
 
+    private final StatementProgressRecorder progressRecorder = new StatementProgressRecorder();
+
     @Inject
     public StatementResource(
             QueryManager queryManager,
@@ -162,7 +165,7 @@ public class StatementResource
             proto = uriInfo.getRequestUri().getScheme();
         }
 
-        SessionContext sessionContext = new HttpRequestSessionContext(servletRequest, getUserFromRequest(servletRequest), getCatalogFromRequest(servletRequest));
+        SessionContext sessionContext = new HttpRequestSessionContext(servletRequest, getUserFromRequest(servletRequest), getCatalogFromRequest(servletRequest), progressRecorder.create());
 
         ExchangeClient exchangeClient = exchangeClientSupplier.get(new SimpleLocalMemoryContext(newSimpleAggregatedMemoryContext(), StatementResource.class.getSimpleName()));
         Query query = Query.create(
@@ -316,7 +319,9 @@ public class StatementResource
             response.header(PRESTO_CLEAR_TRANSACTION_ID, true);
         }
 
-        return response.build();
+        Response responseBuilt = response.build();
+        query.getStatementProgress().ifPresent(progress -> progress.recordResponseBuilt());
+        return responseBuilt;
     }
 
     @DELETE
@@ -350,5 +355,12 @@ public class StatementResource
     public CounterStat getCreateQueryRequests()
     {
         return createQueryRequests;
+    }
+
+    @Managed
+    @Nested
+    public StatementProgressRecorder getProgressRecorder()
+    {
+        return progressRecorder;
     }
 }

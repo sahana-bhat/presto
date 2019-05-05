@@ -308,6 +308,8 @@ public class SqlQueryManager
     public ListenableFuture<?> createQuery(QueryId queryId, SessionContext sessionContext, String query)
     {
         QueryCreationFuture queryCreationFuture = new QueryCreationFuture();
+        sessionContext.getStatementProgressReporter().ifPresent(progressReporter -> progressReporter.schedulingQueryCreate());
+
         boundedExecutor.execute(embedVersion.embedVersion(() -> {
             try {
                 createQueryInternal(queryId, sessionContext, query, resourceGroupManager);
@@ -327,7 +329,7 @@ public class SqlQueryManager
         requireNonNull(query, "query is null");
         checkArgument(!query.isEmpty(), "query must not be empty string");
         checkArgument(!queryTracker.tryGetQuery(queryId).isPresent(), "query %s already exists", queryId);
-
+        sessionContext.getStatementProgressReporter().ifPresent(progressReporter -> progressReporter.creatingQuery());
         Session session = null;
         SelectionContext<C> selectionContext = null;
         QueryExecution queryExecution;
