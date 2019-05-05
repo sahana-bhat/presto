@@ -123,6 +123,7 @@ public class TestFeaturesConfig
                 .setIndexLoaderTimeout(new Duration(20, SECONDS))
                 .setOptimizedRepartitioningEnabled(false)
                 .setListNonBuiltInFunctions(false)
+                .setForceSingleNodePlan(false)
                 .setTupleDomainLimitForInPredicate(Integer.MAX_VALUE));
     }
 
@@ -205,6 +206,7 @@ public class TestFeaturesConfig
                 .put("index-loader-timeout", "10s")
                 .put("experimental.optimized-repartitioning", "true")
                 .put("list-non-built-in-functions", "true")
+                .put("optimizer.force-single-node-plan", "true")
                 .put("optimizer.tuple-domain-limit-in-predicate", "10")
                 .build();
 
@@ -284,6 +286,7 @@ public class TestFeaturesConfig
                 .setIndexLoaderTimeout(new Duration(10, SECONDS))
                 .setOptimizedRepartitioningEnabled(true)
                 .setListNonBuiltInFunctions(true)
+                .setForceSingleNodePlan(true)
                 .setTupleDomainLimitForInPredicate(10);
         assertFullMapping(properties, expected);
     }

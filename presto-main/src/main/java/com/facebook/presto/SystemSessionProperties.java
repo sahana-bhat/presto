@@ -137,6 +137,7 @@ public final class SystemSessionProperties
     public static final String OPTIMIZED_REPARTITIONING_ENABLED = "optimized_repartitioning";
     public static final String QUERY_SUBMIT_USER = "query_submit_user";
     public static final String TUPLE_DOMAIN_LIMIT_FOR_IN_PREDICATE = "tuple_domain_limit_for_in_predicate";
+    private static final String FORCE_SINGLE_NODE_PLAN = "force_single_node_plan";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -649,6 +650,11 @@ public final class SystemSessionProperties
                         featuresConfig.isTableWriterMergeOperatorEnabled(),
                         false),
                 booleanProperty(
+                        FORCE_SINGLE_NODE_PLAN,
+                        "Force single node plan that avoids fragmentation and exchanges",
+                        featuresConfig.isForceSingleNodePlan(),
+                        false),
+                booleanProperty(
                         OPTIMIZE_FULL_OUTER_JOIN_WITH_COALESCE,
                         "optimize partition properties for queries using COALESCE + FULL OUTER JOIN",
                         featuresConfig.isOptimizeFullOuterJoinWithCoalesce(),
@@ -1149,5 +1155,9 @@ public final class SystemSessionProperties
     public static int getTupleDomainLimitForInPredicate(Session session)
     {
         return session.getSystemProperty(TUPLE_DOMAIN_LIMIT_FOR_IN_PREDICATE, Integer.class);
+    }
+    public static boolean isForceSingleNodePlan(Session session)
+    {
+        return session.getSystemProperty(FORCE_SINGLE_NODE_PLAN, Boolean.class);
     }
 }
