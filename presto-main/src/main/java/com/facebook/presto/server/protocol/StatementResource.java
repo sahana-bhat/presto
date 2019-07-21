@@ -159,7 +159,7 @@ public class StatementResource
             proto = uriInfo.getRequestUri().getScheme();
         }
 
-        SessionContext sessionContext = new HttpRequestSessionContext(servletRequest);
+        SessionContext sessionContext = new HttpRequestSessionContext(servletRequest, getUserFromRequest(servletRequest));
 
         ExchangeClient exchangeClient = exchangeClientSupplier.get(new SimpleLocalMemoryContext(newSimpleAggregatedMemoryContext(), StatementResource.class.getSimpleName()));
         Query query = Query.create(
@@ -184,6 +184,11 @@ public class StatementResource
             Duration waitForEntireResponseDuration = new Duration(Long.valueOf(waitForEntireResponseMs), MILLISECONDS);
             asyncGetEntireQueryResults(query, uriInfo, proto, waitForEntireResponseDuration, asyncResponse);
         }
+    }
+
+    private String getUserFromRequest(HttpServletRequest servletRequest)
+    {
+        return statementResourceConfig.getHeadersForUser().stream().map(servletRequest::getHeader).filter(x -> !isNullOrEmpty(x)).findFirst().orElse(null);
     }
 
     @GET

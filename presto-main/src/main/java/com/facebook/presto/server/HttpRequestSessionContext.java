@@ -98,14 +98,14 @@ public final class HttpRequestSessionContext
     private final boolean clientTransactionSupport;
     private final String clientInfo;
 
-    public HttpRequestSessionContext(HttpServletRequest servletRequest)
+    public HttpRequestSessionContext(HttpServletRequest servletRequest, String user)
             throws WebApplicationException
     {
         catalog = trimEmptyToNull(servletRequest.getHeader(PRESTO_CATALOG));
         schema = trimEmptyToNull(servletRequest.getHeader(PRESTO_SCHEMA));
         assertRequest((catalog != null) || (schema == null), "Schema is set but catalog is not");
 
-        String user = trimEmptyToNull(servletRequest.getHeader(PRESTO_USER));
+        user = trimEmptyToNull(user);
         assertRequest(user != null, "User must be set");
         identity = new Identity(
                 user,
@@ -161,6 +161,12 @@ public final class HttpRequestSessionContext
         String transactionIdHeader = servletRequest.getHeader(PRESTO_TRANSACTION_ID);
         clientTransactionSupport = transactionIdHeader != null;
         transactionId = parseTransactionId(transactionIdHeader);
+    }
+
+    public HttpRequestSessionContext(HttpServletRequest servletRequest)
+            throws WebApplicationException
+    {
+        this(servletRequest, servletRequest.getHeader(PRESTO_USER));
     }
 
     private static List<String> splitSessionHeader(Enumeration<String> headers)

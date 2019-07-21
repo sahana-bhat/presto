@@ -31,6 +31,8 @@ public class TestStatementResourceConfig
     public void testDefaults()
     {
         assertRecordedDefaults(recordDefaults(StatementResourceConfig.class)
+
+                .setHeadersForUser(null)
                 .setDefaultWaitForEntireResponseIntervalMs(null));
     }
 
@@ -39,9 +41,11 @@ public class TestStatementResourceConfig
     {
         Map<String, String> properties = new ImmutableMap.Builder<String, String>()
                 .put("statement.default-wait-for-entire-response-interval", "1m")
+                .put("statement.headers-for-user", "RPC-Caller")
                 .build();
 
         StatementResourceConfig expected = new StatementResourceConfig()
+                .setHeadersForUser("RPC-Caller")
                 .setDefaultWaitForEntireResponseIntervalMs(new Duration(1, TimeUnit.MINUTES));
 
         assertFullMapping(properties, expected);
