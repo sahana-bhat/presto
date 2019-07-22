@@ -30,6 +30,7 @@ import org.testng.annotations.Test;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static com.facebook.presto.SessionTestUtils.TEST_SESSION;
 import static com.facebook.presto.execution.QueryState.QUEUED;
@@ -147,6 +148,7 @@ public class TestQueryStateInfo
                         DataSize.valueOf("35GB"),
                         DataSize.valueOf("36GB"),
                         ImmutableList.of(),
+                        new Duration(0, TimeUnit.MILLISECONDS),
                         ImmutableList.of()),
                 Optional.empty(),
                 Optional.empty(),

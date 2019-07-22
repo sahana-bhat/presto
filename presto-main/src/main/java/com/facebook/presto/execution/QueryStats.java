@@ -97,6 +97,7 @@ public class QueryStats
     private final List<StageGcStatistics> stageGcStatistics;
 
     private final List<OperatorStats> operatorSummaries;
+    private final Duration scanBlockedTime;
 
     @JsonCreator
     public QueryStats(
@@ -155,7 +156,7 @@ public class QueryStats
             @JsonProperty("writtenIntermediatePhysicalDataSize") DataSize writtenIntermediatePhysicalDataSize,
 
             @JsonProperty("stageGcStatistics") List<StageGcStatistics> stageGcStatistics,
-
+            @JsonProperty("scanBlockedTime") Duration scanBlockedTime,
             @JsonProperty("operatorSummaries") List<OperatorStats> operatorSummaries)
     {
         this.createTime = requireNonNull(createTime, "createTime is null");
@@ -224,7 +225,7 @@ public class QueryStats
         this.writtenIntermediatePhysicalDataSize = requireNonNull(writtenIntermediatePhysicalDataSize, "writtenIntermediatePhysicalDataSize is null");
 
         this.stageGcStatistics = ImmutableList.copyOf(requireNonNull(stageGcStatistics, "stageGcStatistics is null"));
-
+        this.scanBlockedTime = requireNonNull(scanBlockedTime, "scan blocked time is null");
         this.operatorSummaries = ImmutableList.copyOf(requireNonNull(operatorSummaries, "operatorSummaries is null"));
     }
 
@@ -276,6 +277,7 @@ public class QueryStats
                 new DataSize(0, BYTE),
                 new DataSize(0, BYTE),
                 ImmutableList.of(),
+                new Duration(0, MILLISECONDS),
                 ImmutableList.of());
     }
 
@@ -565,5 +567,11 @@ public class QueryStats
         return succinctBytes(operatorSummaries.stream()
                 .mapToLong(stats -> stats.getSpilledDataSize().toBytes())
                 .sum());
+    }
+
+    @JsonProperty
+    public Duration getScanBlockedTime()
+    {
+        return scanBlockedTime;
     }
 }

@@ -61,6 +61,7 @@
     "writtenOutputPhysicalDataSize": "0B",
     "writtenIntermediatePhysicalDataSize": "0B",
     "stageGcStatistics": [],
+    "scanBlockedTime": "0ms",
     "operatorSummaries": []
   },
   "setSessionProperties": {},

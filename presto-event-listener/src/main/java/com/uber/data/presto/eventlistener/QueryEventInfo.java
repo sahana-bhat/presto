@@ -73,6 +73,7 @@ public class QueryEventInfo
 
     private class Completed
     {
+        private long scanBlockTimeMs;
         private final int totalTasks;
         private final int totalStages;
         private final long endTimeMs;
@@ -105,6 +106,7 @@ public class QueryEventInfo
             this.elapsedTimeMs = endTimeMs - createTimeMs;
 
             // Query Statistics
+            this.scanBlockTimeMs = queryStatistics.getScanBlockTime().toMillis();
             this.totalTasks = queryStatistics.getPeakRunningTasks();
             this.totalStages = queryStatistics.getStageGcStatistics().size();
             this.queuedTime = queryStatistics.getQueuedTime().toMillis();
@@ -171,6 +173,7 @@ public class QueryEventInfo
             map.put("totalStages", this.totalStages);
             map.put("operatorSummaries", this.operatorSummaries);
             map.put("sessionLogEntries", this.sessionLogEntries);
+            map.put("scanBlockTimeMs", this.scanBlockTimeMs);
         }
 
         private void populateCommonTagsForM3AndKafka(Map<String, String> tags)
@@ -191,6 +194,7 @@ public class QueryEventInfo
             publishTimerToM3(scope, "wallTime", wallTimeMs, tags);
             publishTimerToM3(scope, "blockedTime", blockedTimeMs, tags);
             publishTimerToM3(scope, "analysisTime", analysisTime, tags);
+            publishTimerToM3(scope, "scanBlockTimeMs", scanBlockTimeMs, tags);
             scope.gauge("memory", this.memory, tags);
             scope.gauge("totalDrivers", this.totalDrivers, tags);
             scope.gauge("peakMemoryReservation", this.peakMemoryReservation, tags);

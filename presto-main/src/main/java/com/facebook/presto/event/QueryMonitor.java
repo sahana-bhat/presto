@@ -178,7 +178,8 @@ public class QueryMonitor
                         ImmutableList.of(),
                         ImmutableList.of(),
                         Optional.empty(),
-                        ImmutableList.of()),
+                        ImmutableList.of(),
+                        ofMillis(0)),
                 createQueryContext(queryInfo.getSession(), queryInfo.getResourceGroupId()),
                 new QueryIOMetadata(ImmutableList.of(), Optional.empty()),
                 createQueryFailureInfo(failure, Optional.empty()),
@@ -293,7 +294,8 @@ public class QueryMonitor
                 memoryDistributionBuilder.build(),
                 operatorSummaries.build(),
                 Optional.of(queryInfo.getMemoryPool()),
-                sessionLogEntries.build());
+                sessionLogEntries.build(),
+                ofMillis(queryStats.getScanBlockedTime().toMillis()));
     }
 
     private QueryContext createQueryContext(SessionRepresentation session, Optional<ResourceGroupId> resourceGroup)

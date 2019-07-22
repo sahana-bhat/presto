@@ -57,6 +57,7 @@ public class QueryStatistics
 
     private final List<String> operatorSummaries;
     private final List<String> sessionLogEntries;
+    private final Duration scanBlockTime;
 
     public QueryStatistics(
             int totalTasks,
@@ -85,7 +86,8 @@ public class QueryStatistics
             List<ResourceDistribution> peakMemoryDistribution,
             List<String> operatorSummaries,
             Optional<MemoryPoolId> memoryPoolId,
-            List<String> sessionLogEntries)
+            List<String> sessionLogEntries,
+            Duration scanBlockTime)
     {
         this.totalTasks = totalTasks;
         this.cpuTime = requireNonNull(cpuTime, "cpuTime is null");
@@ -114,6 +116,7 @@ public class QueryStatistics
         this.operatorSummaries = requireNonNull(operatorSummaries, "operatorSummaries is null");
         this.memoryPoolId = requireNonNull(memoryPoolId, "memoryPoolId is null");
         this.sessionLogEntries = requireNonNull(sessionLogEntries, "session log entries is null");
+        this.scanBlockTime = requireNonNull(scanBlockTime, "scanblock time is null");
     }
 
     public int getTotalTasks()
@@ -249,5 +252,10 @@ public class QueryStatistics
     public List<String> getSessionLogEntries()
     {
         return sessionLogEntries;
+    }
+
+    public Duration getScanBlockTime()
+    {
+        return scanBlockTime;
     }
 }

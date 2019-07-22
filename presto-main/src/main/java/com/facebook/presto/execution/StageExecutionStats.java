@@ -82,6 +82,7 @@ public class StageExecutionStats
     private final StageGcStatistics gcInfo;
 
     private final List<OperatorStats> operatorSummaries;
+    private final long scanBlockedTimeMs;
 
     @JsonCreator
     public StageExecutionStats(
@@ -124,6 +125,7 @@ public class StageExecutionStats
             @JsonProperty("outputPositions") long outputPositions,
 
             @JsonProperty("physicalWrittenDataSize") DataSize physicalWrittenDataSize,
+            @JsonProperty("scanBlockedTimeMs") long scanBlockedTimeMs,
 
             @JsonProperty("gcInfo") StageGcStatistics gcInfo,
 
@@ -181,6 +183,8 @@ public class StageExecutionStats
 
         this.physicalWrittenDataSize = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null");
 
+        checkArgument(scanBlockedTimeMs >= 0, "max scan block time is negative");
+        this.scanBlockedTimeMs = scanBlockedTimeMs;
         this.gcInfo = requireNonNull(gcInfo, "gcInfo is null");
 
         this.operatorSummaries = ImmutableList.copyOf(requireNonNull(operatorSummaries, "operatorSummaries is null"));
@@ -358,6 +362,12 @@ public class StageExecutionStats
     public DataSize getPhysicalWrittenDataSize()
     {
         return physicalWrittenDataSize;
+    }
+
+    @JsonProperty
+    public long getScanBlockedTimeMs()
+    {
+        return scanBlockedTimeMs;
     }
 
     @JsonProperty
