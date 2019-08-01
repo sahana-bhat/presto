@@ -51,6 +51,7 @@ public class QueryStatistics
     private final List<ResourceDistribution> peakMemoryDistribution;
 
     private final List<String> operatorSummaries;
+    private final List<String> sessionLogEntries;
 
     public QueryStatistics(
             Duration cpuTime,
@@ -75,7 +76,8 @@ public class QueryStatistics
             boolean complete,
             List<ResourceDistribution> cpuTimeDistribution,
             List<ResourceDistribution> peakMemoryDistribution,
-            List<String> operatorSummaries)
+            List<String> operatorSummaries,
+            List<String> sessionLogEntries)
     {
         this.cpuTime = requireNonNull(cpuTime, "cpuTime is null");
         this.wallTime = requireNonNull(wallTime, "wallTime is null");
@@ -100,6 +102,7 @@ public class QueryStatistics
         this.cpuTimeDistribution = requireNonNull(cpuTimeDistribution, "cpuTimeDistribution is null");
         this.peakMemoryDistribution = requireNonNull(peakMemoryDistribution, "peakMemoryDistribution is null");
         this.operatorSummaries = requireNonNull(operatorSummaries, "operatorSummaries is null");
+        this.sessionLogEntries = requireNonNull(sessionLogEntries, "session log entries is null");
     }
 
     public Duration getCpuTime()
@@ -215,5 +218,10 @@ public class QueryStatistics
     public List<String> getOperatorSummaries()
     {
         return operatorSummaries;
+    }
+
+    public List<String> getSessionLogEntries()
+    {
+        return sessionLogEntries;
     }
 }

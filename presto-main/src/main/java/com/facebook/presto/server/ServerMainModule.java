@@ -99,6 +99,7 @@ import com.facebook.presto.spi.relation.DeterminismEvaluator;
 import com.facebook.presto.spi.relation.DomainTranslator;
 import com.facebook.presto.spi.relation.PredicateCompiler;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
+import com.facebook.presto.spi.session.SessionLogger;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.TypeManager;
 import com.facebook.presto.spiller.FileSingleStreamSpillerFactory;
@@ -327,6 +328,7 @@ public class ServerMainModule
         jsonCodecBinder(binder).bindJsonCodec(StageInfo.class);
         jsonCodecBinder(binder).bindJsonCodec(TaskInfo.class);
         jsonCodecBinder(binder).bindJsonCodec(OperatorStats.class);
+        jsonCodecBinder(binder).bindJsonCodec(SessionLogger.Entry.class);
         jsonCodecBinder(binder).bindJsonCodec(ExecutionFailureInfo.class);
         jsonCodecBinder(binder).bindJsonCodec(TableCommitContext.class);
         smileCodecBinder(binder).bindSmileCodec(TaskStatus.class);

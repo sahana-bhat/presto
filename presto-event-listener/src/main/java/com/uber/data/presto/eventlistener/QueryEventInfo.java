@@ -92,6 +92,7 @@ public class QueryEventInfo
         private final String failureJson;
         private final List<ColumnAccessEntry> columnAccess;
         private final List<String> operatorSummaries;
+        private final List<String> sessionLogEntries;
 
         public Completed(QueryCompletedEvent queryCompletedEvent)
         {
@@ -119,6 +120,7 @@ public class QueryEventInfo
 
             // Column Predicates
             this.operatorSummaries = queryStatistics.getOperatorSummaries();
+            this.sessionLogEntries = queryStatistics.getSessionLogEntries();
 
             // Failure related
             if (queryCompletedEvent.getFailureInfo().isPresent()) {
@@ -162,6 +164,7 @@ public class QueryEventInfo
             map.put("totalTasks", this.totalTasks);
             map.put("totalStages", this.totalStages);
             map.put("operatorSummaries", this.operatorSummaries);
+            map.put("sessionLogEntries", this.sessionLogEntries);
         }
 
         private void populateCommonTagsForM3AndKafka(Map<String, String> tags)
@@ -397,7 +400,9 @@ public class QueryEventInfo
         map.put("createTime", TimeUnit.SECONDS.convert(this.createTimeMs, TimeUnit.MILLISECONDS));
         map.put("createTimeMs", this.createTimeMs);
         completed.ifPresent(c -> c.populateMap(map));
-
+        map.put("remoteClientAddress", this.remoteClientAddress);
+        map.put("userAgent", this.userAgent);
+        map.put("sessionProperties", this.sessionProperties);
         return map;
     }
 }

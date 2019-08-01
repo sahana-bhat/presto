@@ -50,6 +50,7 @@ import com.facebook.presto.spi.eventlistener.QueryOutputMetadata;
 import com.facebook.presto.spi.eventlistener.QueryStatistics;
 import com.facebook.presto.spi.eventlistener.ResourceDistribution;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupId;
+import com.facebook.presto.spi.session.SessionLogger;
 import com.facebook.presto.sql.planner.plan.PlanFragmentId;
 import com.facebook.presto.transaction.TransactionId;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -85,6 +86,7 @@ public class QueryMonitor
 
     private final JsonCodec<StageInfo> stageInfoCodec;
     private final JsonCodec<OperatorStats> operatorStatsCodec;
+    private final JsonCodec<SessionLogger.Entry> sessionLogEntryCodec;
     private final JsonCodec<ExecutionFailureInfo> executionFailureInfoCodec;
     private final EventListenerManager eventListenerManager;
     private final String serverVersion;
@@ -98,6 +100,7 @@ public class QueryMonitor
     public QueryMonitor(
             JsonCodec<StageInfo> stageInfoCodec,
             JsonCodec<OperatorStats> operatorStatsCodec,
+            JsonCodec<SessionLogger.Entry> sessionLogEntryCodec,
             JsonCodec<ExecutionFailureInfo> executionFailureInfoCodec,
             EventListenerManager eventListenerManager,
             NodeInfo nodeInfo,
@@ -109,6 +112,7 @@ public class QueryMonitor
         this.eventListenerManager = requireNonNull(eventListenerManager, "eventListenerManager is null");
         this.stageInfoCodec = requireNonNull(stageInfoCodec, "stageInfoCodec is null");
         this.operatorStatsCodec = requireNonNull(operatorStatsCodec, "operatorStatsCodec is null");
+        this.sessionLogEntryCodec = requireNonNull(sessionLogEntryCodec, "session log entry codec is null");
         this.executionFailureInfoCodec = requireNonNull(executionFailureInfoCodec, "executionFailureInfoCodec is null");
         this.serverVersion = requireNonNull(nodeVersion, "nodeVersion is null").toString();
         this.serverAddress = requireNonNull(nodeInfo, "nodeInfo is null").getExternalAddress();
@@ -168,6 +172,7 @@ public class QueryMonitor
                         ImmutableList.of(),
                         0,
                         true,
+                        ImmutableList.of(),
                         ImmutableList.of(),
                         ImmutableList.of(),
                         ImmutableList.of()),
@@ -245,6 +250,10 @@ public class QueryMonitor
         for (OperatorStats summary : queryInfo.getQueryStats().getOperatorSummaries()) {
             operatorSummaries.add(operatorStatsCodec.toJson(summary));
         }
+        ImmutableList.Builder<String> sessionLogEntries = ImmutableList.builder();
+        if (queryInfo.getSessionLogEntries().isPresent()) {
+            queryInfo.getSessionLogEntries().get().forEach(entry -> sessionLogEntries.add(sessionLogEntryCodec.toJson(entry)));
+        }
 
         QueryStats queryStats = queryInfo.getQueryStats();
 
@@ -277,7 +286,8 @@ public class QueryMonitor
                 queryInfo.isCompleteInfo(),
                 cpuDistributionBuilder.build(),
                 memoryDistributionBuilder.build(),
-                operatorSummaries.build());
+                operatorSummaries.build(),
+                sessionLogEntries.build());
     }
 
     private QueryContext createQueryContext(SessionRepresentation session, Optional<ResourceGroupId> resourceGroup)
