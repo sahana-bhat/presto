@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_USER;
+import static com.google.common.base.Strings.emptyToNull;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 public class StatementResourceConfig
@@ -35,6 +36,7 @@ public class StatementResourceConfig
     private static final List<String> DEFAULT_HEADERS_FOR_USER_FIELD = ImmutableList.of(PRESTO_USER);
     private List<String> headersForUserField = DEFAULT_HEADERS_FOR_USER_FIELD;
     private Optional<Duration> defaultWaitForEntireResponseIntervalMs = Optional.empty();
+    private Optional<String> defaultCatalog = Optional.empty();
 
     @Nonnull
     public List<String> getHeadersForUser()
@@ -64,6 +66,19 @@ public class StatementResourceConfig
     public StatementResourceConfig setDefaultWaitForEntireResponseIntervalMs(Duration defaultWaitForEntireResponseIntervalMs)
     {
         this.defaultWaitForEntireResponseIntervalMs = Optional.ofNullable(defaultWaitForEntireResponseIntervalMs);
+        return this;
+    }
+
+    @Nonnull
+    public Optional<String> getDefaultCatalog()
+    {
+        return defaultCatalog;
+    }
+
+    @Config("statement.default-catalog")
+    public StatementResourceConfig setDefaultCatalog(String defaultCatalog)
+    {
+        this.defaultCatalog = Optional.ofNullable(emptyToNull(defaultCatalog));
         return this;
     }
 }

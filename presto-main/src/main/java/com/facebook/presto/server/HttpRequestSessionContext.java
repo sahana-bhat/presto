@@ -100,10 +100,10 @@ public final class HttpRequestSessionContext
     private final String clientInfo;
     private final int queryLoggingSize;
 
-    public HttpRequestSessionContext(HttpServletRequest servletRequest, String user)
+    public HttpRequestSessionContext(HttpServletRequest servletRequest, String user, String catalog)
             throws WebApplicationException
     {
-        catalog = trimEmptyToNull(servletRequest.getHeader(PRESTO_CATALOG));
+        this.catalog = catalog;
         schema = trimEmptyToNull(servletRequest.getHeader(PRESTO_SCHEMA));
         assertRequest((catalog != null) || (schema == null), "Schema is set but catalog is not");
 
@@ -177,7 +177,7 @@ public final class HttpRequestSessionContext
     public HttpRequestSessionContext(HttpServletRequest servletRequest)
             throws WebApplicationException
     {
-        this(servletRequest, servletRequest.getHeader(PRESTO_USER));
+        this(servletRequest, servletRequest.getHeader(PRESTO_USER), servletRequest.getHeader(PRESTO_CATALOG));
     }
 
     private static List<String> splitSessionHeader(Enumeration<String> headers)

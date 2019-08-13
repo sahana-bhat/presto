@@ -33,6 +33,7 @@ public class TestStatementResourceConfig
         assertRecordedDefaults(recordDefaults(StatementResourceConfig.class)
 
                 .setHeadersForUser(null)
+                .setDefaultCatalog(null)
                 .setDefaultWaitForEntireResponseIntervalMs(null));
     }
 
@@ -42,10 +43,12 @@ public class TestStatementResourceConfig
         Map<String, String> properties = new ImmutableMap.Builder<String, String>()
                 .put("statement.default-wait-for-entire-response-interval", "1m")
                 .put("statement.headers-for-user", "RPC-Caller")
+                .put("statement.default-catalog", "hive")
                 .build();
 
         StatementResourceConfig expected = new StatementResourceConfig()
                 .setHeadersForUser("RPC-Caller")
+                .setDefaultCatalog("hive")
                 .setDefaultWaitForEntireResponseIntervalMs(new Duration(1, TimeUnit.MINUTES));
 
         assertFullMapping(properties, expected);

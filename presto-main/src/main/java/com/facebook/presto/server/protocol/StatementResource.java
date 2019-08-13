@@ -68,6 +68,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import static com.facebook.airlift.concurrent.Threads.threadsNamed;
 import static com.facebook.airlift.http.server.AsyncResponseHandler.bindAsyncResponse;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_ADDED_PREPARE;
+import static com.facebook.presto.client.PrestoHeaders.PRESTO_CATALOG;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CLEAR_SESSION;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CLEAR_TRANSACTION_ID;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_DEALLOCATED_PREPARE;
@@ -78,7 +79,9 @@ import static com.facebook.presto.client.PrestoHeaders.PRESTO_SET_SESSION;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_STARTED_TRANSACTION_ID;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_WAIT_FOR_ENTIRE_RESPONSE_MS;
 import static com.facebook.presto.memory.context.AggregatedMemoryContext.newSimpleAggregatedMemoryContext;
+import static com.google.common.base.Strings.emptyToNull;
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static com.google.common.base.Strings.nullToEmpty;
 import static com.google.common.net.HttpHeaders.X_FORWARDED_PROTO;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
@@ -159,7 +162,7 @@ public class StatementResource
             proto = uriInfo.getRequestUri().getScheme();
         }
 
-        SessionContext sessionContext = new HttpRequestSessionContext(servletRequest, getUserFromRequest(servletRequest));
+        SessionContext sessionContext = new HttpRequestSessionContext(servletRequest, getUserFromRequest(servletRequest), getCatalogFromRequest(servletRequest));
 
         ExchangeClient exchangeClient = exchangeClientSupplier.get(new SimpleLocalMemoryContext(newSimpleAggregatedMemoryContext(), StatementResource.class.getSimpleName()));
         Query query = Query.create(
@@ -189,6 +192,15 @@ public class StatementResource
     private String getUserFromRequest(HttpServletRequest servletRequest)
     {
         return statementResourceConfig.getHeadersForUser().stream().map(servletRequest::getHeader).filter(x -> !isNullOrEmpty(x)).findFirst().orElse(null);
+    }
+
+    private String getCatalogFromRequest(HttpServletRequest servletRequest)
+    {
+        String givenCatalog = servletRequest.getHeader(PRESTO_CATALOG);
+        if (givenCatalog == null) {
+            givenCatalog = statementResourceConfig.getDefaultCatalog().orElse(null);
+        }
+        return emptyToNull(nullToEmpty(givenCatalog).trim());
     }
 
     @GET
