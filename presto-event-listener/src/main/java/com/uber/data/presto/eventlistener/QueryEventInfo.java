@@ -73,7 +73,8 @@ public class QueryEventInfo
 
     private class Completed
     {
-        private long scanBlockTimeMs;
+        private final long scanBlockTimeMs;
+        private final long nonScanBlockTimeMs;
         private final int totalTasks;
         private final int totalStages;
         private final long endTimeMs;
@@ -119,6 +120,7 @@ public class QueryEventInfo
             this.peakMemoryReservation = queryStatistics.getPeakTotalNonRevocableMemoryBytes();
             this.rawInputPositions = queryStatistics.getTotalRows();
             this.rawInputDataSize = queryStatistics.getTotalBytes();
+            this.nonScanBlockTimeMs = Math.max(0, elapsedTimeMs - scanBlockTimeMs);
 
             // Query IOMetadata
             this.columnAccess = queryIOMetadata.getInputs().stream().map(ColumnAccessEntry::new).collect(toImmutableList());
@@ -174,6 +176,7 @@ public class QueryEventInfo
             map.put("operatorSummaries", this.operatorSummaries);
             map.put("sessionLogEntries", this.sessionLogEntries);
             map.put("scanBlockTimeMs", this.scanBlockTimeMs);
+            map.put("nonScanBlockTimeMs", this.nonScanBlockTimeMs);
         }
 
         private void populateCommonTagsForM3AndKafka(Map<String, String> tags)
@@ -195,6 +198,7 @@ public class QueryEventInfo
             publishTimerToM3(scope, "blockedTime", blockedTimeMs, tags);
             publishTimerToM3(scope, "analysisTime", analysisTime, tags);
             publishTimerToM3(scope, "scanBlockTimeMs", scanBlockTimeMs, tags);
+            publishTimerToM3(scope, "nonScanBlockTime", nonScanBlockTimeMs, tags);
             scope.gauge("memory", this.memory, tags);
             scope.gauge("totalDrivers", this.totalDrivers, tags);
             scope.gauge("peakMemoryReservation", this.peakMemoryReservation, tags);
