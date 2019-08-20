@@ -131,6 +131,7 @@ public class FeaturesConfig
     private DataSize filterAndProjectMinOutputPageSize = new DataSize(500, KILOBYTE);
     private int filterAndProjectMinOutputPageRowCount = 256;
     private int maxGroupingSets = 2048;
+    private int tupleDomainLimitForInPredicate = Integer.MAX_VALUE;
     private boolean legacyUnnestArrayRows;
 
     private boolean jsonSerdeCodeGenerationEnabled;
@@ -524,6 +525,18 @@ public class FeaturesConfig
     public FeaturesConfig setWriterMinSize(DataSize writerMinSize)
     {
         this.writerMinSize = writerMinSize;
+        return this;
+    }
+
+    public int getTupleDomainLimitForInPredicate()
+    {
+        return tupleDomainLimitForInPredicate;
+    }
+
+    @Config("optimizer.tuple-domain-limit-in-predicate")
+    public FeaturesConfig setTupleDomainLimitForInPredicate(int tupleDomainLimitForInPredicate)
+    {
+        this.tupleDomainLimitForInPredicate = tupleDomainLimitForInPredicate;
         return this;
     }
 

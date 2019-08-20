@@ -136,6 +136,7 @@ public final class SystemSessionProperties
     public static final String INDEX_LOADER_TIMEOUT = "index_loader_timeout";
     public static final String OPTIMIZED_REPARTITIONING_ENABLED = "optimized_repartitioning";
     public static final String QUERY_SUBMIT_USER = "query_submit_user";
+    public static final String TUPLE_DOMAIN_LIMIT_FOR_IN_PREDICATE = "tuple_domain_limit_for_in_predicate";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -670,6 +671,10 @@ public final class SystemSessionProperties
                         QUERY_SUBMIT_USER,
                         "User who submits this query",
                         null,
+                        false),
+                integerProperty(TUPLE_DOMAIN_LIMIT_FOR_IN_PREDICATE,
+                        "Max number of items in in-list for which tuple-domain will be extracted",
+                        featuresConfig.getTupleDomainLimitForInPredicate(),
                         false));
     }
 
@@ -1139,5 +1144,10 @@ public final class SystemSessionProperties
     public static boolean isOptimizedRepartitioningEnabled(Session session)
     {
         return session.getSystemProperty(OPTIMIZED_REPARTITIONING_ENABLED, Boolean.class);
+    }
+
+    public static int getTupleDomainLimitForInPredicate(Session session)
+    {
+        return session.getSystemProperty(TUPLE_DOMAIN_LIMIT_FOR_IN_PREDICATE, Integer.class);
     }
 }

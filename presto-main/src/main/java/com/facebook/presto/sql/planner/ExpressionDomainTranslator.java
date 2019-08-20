@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.facebook.presto.SystemSessionProperties.getTupleDomainLimitForInPredicate;
 import static com.facebook.presto.metadata.CastType.CAST;
 import static com.facebook.presto.metadata.CastType.SATURATED_FLOOR_CAST;
 import static com.facebook.presto.sql.ExpressionUtils.and;
@@ -686,6 +687,10 @@ public final class ExpressionDomainTranslator
 
             InListExpression valueList = (InListExpression) node.getValueList();
             checkState(!valueList.getValues().isEmpty(), "InListExpression should never be empty");
+
+            if (valueList.getValues().size() >= getTupleDomainLimitForInPredicate(session)) {
+                return new ExtractionResult(TupleDomain.all(), node);
+            }
 
             ImmutableList.Builder<Expression> disjuncts = ImmutableList.builder();
             for (Expression expression : valueList.getValues()) {

@@ -13,7 +13,13 @@
  */
 package com.facebook.presto.sql.planner;
 
+import com.facebook.presto.Session;
+import com.facebook.presto.SystemSessionProperties;
+import com.facebook.presto.execution.QueryManagerConfig;
+import com.facebook.presto.execution.TaskManagerConfig;
+import com.facebook.presto.memory.MemoryManagerConfig;
 import com.facebook.presto.metadata.Metadata;
+import com.facebook.presto.metadata.SessionPropertyManager;
 import com.facebook.presto.spi.predicate.Domain;
 import com.facebook.presto.spi.predicate.Range;
 import com.facebook.presto.spi.predicate.TupleDomain;
@@ -86,6 +92,7 @@ import static com.facebook.presto.sql.tree.ComparisonExpression.Operator.LESS_TH
 import static com.facebook.presto.sql.tree.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static com.facebook.presto.sql.tree.ComparisonExpression.Operator.NOT_EQUAL;
 import static com.facebook.presto.testing.TestingConnectorSession.SESSION;
+import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
 import static com.facebook.presto.type.ColorType.COLOR;
 import static io.airlift.slice.Slices.utf8Slice;
 import static java.lang.String.format;
@@ -838,6 +845,12 @@ public class TestExpressionDomainTranslator
                 in(C_BIGINT, ImmutableList.of(1L, 2L)),
                 withColumnDomains(ImmutableMap.of(C_BIGINT, Domain.create(ValueSet.ofRanges(Range.equal(BIGINT, 1L), Range.equal(BIGINT, 2L)), false))));
 
+        assertUnsupportedPredicate(
+                in(C_BIGINT, ImmutableList.of(1L, 2L)),
+                testSessionBuilder(new SessionPropertyManager(
+                        new SystemSessionProperties(new QueryManagerConfig(), new TaskManagerConfig(),
+                                new MemoryManagerConfig(), new FeaturesConfig().setTupleDomainLimitForInPredicate(1)))).build());
+
         assertPredicateTranslates(
                 in(C_COLOR, ImmutableList.of(colorLiteral(COLOR_VALUE_1), colorLiteral(COLOR_VALUE_2))),
                 withColumnDomains(ImmutableMap.of(C_COLOR, Domain.create(ValueSet.of(COLOR, COLOR_VALUE_1, COLOR_VALUE_2), false))));
@@ -1239,6 +1252,13 @@ public class TestExpressionDomainTranslator
     private void assertUnsupportedPredicate(Expression expression)
     {
         ExtractionResult result = fromPredicate(expression);
+        assertEquals(result.getRemainingExpression(), expression);
+        assertEquals(result.getTupleDomain(), TupleDomain.all());
+    }
+
+    private void assertUnsupportedPredicate(Expression expression, Session session)
+    {
+        ExtractionResult result = ExpressionDomainTranslator.fromPredicate(metadata, session, expression, TYPES);
         assertEquals(result.getRemainingExpression(), expression);
         assertEquals(result.getTupleDomain(), TupleDomain.all());
     }
