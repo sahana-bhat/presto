@@ -125,7 +125,9 @@ public class TestHiveClientConfig
                 .setRangeFiltersOnSubscriptsEnabled(false)
                 .setClientFallbackSimpleAuthAllowed(false)
                 .setHdfsObserverReadEnabled(false)
-                .setParquetColumnDecryptionEnabled(true));
+                .setParquetColumnDecryptionEnabled(true)
+                .setOptimizedParquetReaderEnabled(false)
+                .setParquetVerificationEnabled(false));
     }
 
     @Test
@@ -216,6 +218,8 @@ public class TestHiveClientConfig
                 .put("hive.ipc.client.fallback-to-simple-auth-allowed", "true")
                 .put("hive.hdfs-observer-read-enabled", "true")
                 .put("hive.enable-parquet-column-decryption", "false")
+                .put("hive.enable-optimized-parquet-reader", "true")
+                .put("hive.enable-parquet-verification", "true")
                 .build();
 
         HiveClientConfig expected = new HiveClientConfig()
@@ -303,7 +307,9 @@ public class TestHiveClientConfig
                 .setRangeFiltersOnSubscriptsEnabled(true)
                 .setClientFallbackSimpleAuthAllowed(true)
                 .setHdfsObserverReadEnabled(true)
-                .setParquetColumnDecryptionEnabled(false);
+                .setParquetColumnDecryptionEnabled(false)
+                .setOptimizedParquetReaderEnabled(true)
+                .setParquetVerificationEnabled(true);
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }

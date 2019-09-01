@@ -21,7 +21,7 @@ import org.apache.parquet.io.api.Binary;
 import static com.facebook.presto.parquet.ParquetTimestampUtils.getTimestampMillis;
 
 public class TimestampColumnReader
-        extends PrimitiveColumnReader
+        extends AbstractColumnReaderV1
 {
     public TimestampColumnReader(RichColumnDescriptor descriptor)
     {

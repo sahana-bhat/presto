@@ -158,6 +158,8 @@ public class HiveClientConfig
     private boolean zstdJniDecompressionEnabled;
 
     private boolean isParquetColumnDecryptionEnabled = true;
+    private boolean isOptimizedParquetReaderEnabled;
+    private boolean isParquetVerificationEnabled;
 
     public int getMaxInitialSplits()
     {
@@ -1294,5 +1296,31 @@ public class HiveClientConfig
     public boolean isParquetColumnDecryptionEnabled()
     {
         return this.isParquetColumnDecryptionEnabled;
+    }
+
+    @Config("hive.enable-optimized-parquet-reader")
+    @ConfigDescription("enable optimized parquet reader")
+    public HiveClientConfig setOptimizedParquetReaderEnabled(boolean isOptimizedParquetReaderEnabled)
+    {
+        this.isOptimizedParquetReaderEnabled = isOptimizedParquetReaderEnabled;
+        return this;
+    }
+
+    public boolean isOptimizedParquetReaderEnabled()
+    {
+        return this.isOptimizedParquetReaderEnabled;
+    }
+
+    @Config("hive.enable-parquet-verification")
+    @ConfigDescription("enable optimized parquet reader")
+    public HiveClientConfig setParquetVerificationEnabled(boolean parquetVerificationEnabled)
+    {
+        this.isParquetVerificationEnabled = parquetVerificationEnabled;
+        return this;
+    }
+
+    public boolean isParquetVerificationEnabled()
+    {
+        return this.isParquetVerificationEnabled;
     }
 }

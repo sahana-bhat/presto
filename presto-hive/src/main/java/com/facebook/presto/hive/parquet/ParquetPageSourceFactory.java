@@ -75,7 +75,9 @@ import static com.facebook.presto.hive.HiveErrorCode.HIVE_MISSING_DATA;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_PARTITION_SCHEMA_MISMATCH;
 import static com.facebook.presto.hive.HiveSessionProperties.getParquetMaxReadBlockSize;
 import static com.facebook.presto.hive.HiveSessionProperties.isFailOnCorruptedParquetStatistics;
+import static com.facebook.presto.hive.HiveSessionProperties.isOptimizedParquetReaderEnabled;
 import static com.facebook.presto.hive.HiveSessionProperties.isParquetColumnDecryptionEnabled;
+import static com.facebook.presto.hive.HiveSessionProperties.isParquetVerificationEnabled;
 import static com.facebook.presto.hive.HiveSessionProperties.isUseParquetColumnNames;
 import static com.facebook.presto.hive.parquet.HdfsParquetDataSource.buildHdfsParquetDataSource;
 import static com.facebook.presto.memory.context.AggregatedMemoryContext.newSimpleAggregatedMemoryContext;
@@ -159,6 +161,8 @@ public class ParquetPageSourceFactory
                     columns,
                     isUseParquetColumnNames(session),
                     isFailOnCorruptedParquetStatistics(session),
+                    isOptimizedParquetReaderEnabled(session),
+                    isParquetVerificationEnabled(session),
                     getParquetMaxReadBlockSize(session),
                     typeManager,
                     effectivePredicate,
@@ -178,6 +182,8 @@ public class ParquetPageSourceFactory
                     columns,
                     isUseParquetColumnNames(session),
                     isFailOnCorruptedParquetStatistics(session),
+                    isOptimizedParquetReaderEnabled(session),
+                    isParquetVerificationEnabled(session),
                     getParquetMaxReadBlockSize(session),
                     typeManager,
                     effectivePredicate,
@@ -198,6 +204,8 @@ public class ParquetPageSourceFactory
             List<HiveColumnHandle> columns,
             boolean useParquetColumnNames,
             boolean failOnCorruptedParquetStatistics,
+            boolean optimizedReaderEnabled,
+            boolean parquetVerificationEnabled,
             DataSize maxReadBlockSize,
             TypeManager typeManager,
             TupleDomain<HiveColumnHandle> effectivePredicate,
@@ -250,7 +258,9 @@ public class ParquetPageSourceFactory
                     blocks.build(),
                     dataSource,
                     systemMemoryContext,
-                    maxReadBlockSize);
+                    maxReadBlockSize,
+                    optimizedReaderEnabled,
+                    parquetVerificationEnabled);
 
             return new ParquetPageSource(
                     parquetReader,
@@ -302,6 +312,8 @@ public class ParquetPageSourceFactory
             List<HiveColumnHandle> columns,
             boolean useParquetColumnNames,
             boolean failOnCorruptedParquetStatistics,
+            boolean optimizedReaderEnabled,
+            boolean parquetVerificationEnabled,
             DataSize maxReadBlockSize,
             TypeManager typeManager,
             TupleDomain<HiveColumnHandle> effectivePredicate,
@@ -363,6 +375,8 @@ public class ParquetPageSourceFactory
                     dataSource,
                     systemMemoryContext,
                     maxReadBlockSize,
+                    optimizedReaderEnabled,
+                    parquetVerificationEnabled,
                     fileDecryptor);
 
             return new ParquetPageSource(

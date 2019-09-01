@@ -93,6 +93,8 @@ public final class HiveSessionProperties
     public static final String MAX_BUCKETS_FOR_GROUPED_EXECUTION = "max_buckets_for_grouped_execution";
     public static final String OFFLINE_DATA_DEBUG_MODE_ENABLED = "offline_data_debug_mode_enabled";
     private static final String ENABLE_PARQUET_COLUMN_DECRYPTION = "enable_parquet_column_decryption";
+    private static final String ENABLE_OPTIMIZED_PARQUET_READER = "enable_parquet_optimized_reader";
+    private static final String ENABLE_PARQUET_VERIFICATION = "enable_parquet_verification";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -415,6 +417,16 @@ public final class HiveSessionProperties
                         ENABLE_PARQUET_COLUMN_DECRYPTION,
                         "Is parquet column decryption enabled",
                         hiveClientConfig.isParquetColumnDecryptionEnabled(),
+                        false),
+                booleanProperty(
+                        ENABLE_OPTIMIZED_PARQUET_READER,
+                        "Is optimized parquet reader enabled",
+                        hiveClientConfig.isOptimizedParquetReaderEnabled(),
+                        false),
+                booleanProperty(
+                        ENABLE_PARQUET_VERIFICATION,
+                        "Is parquet reader results verification enabled",
+                        hiveClientConfig.isParquetVerificationEnabled(),
                         false));
     }
 
@@ -702,6 +714,16 @@ public final class HiveSessionProperties
     public static boolean isParquetColumnDecryptionEnabled(ConnectorSession session)
     {
         return session.getProperty(ENABLE_PARQUET_COLUMN_DECRYPTION, Boolean.class);
+    }
+
+    public static boolean isOptimizedParquetReaderEnabled(ConnectorSession session)
+    {
+        return session.getProperty(ENABLE_OPTIMIZED_PARQUET_READER, Boolean.class);
+    }
+
+    public static boolean isParquetVerificationEnabled(ConnectorSession session)
+    {
+        return session.getProperty(ENABLE_PARQUET_VERIFICATION, Boolean.class);
     }
 
     public static PropertyMetadata<DataSize> dataSizeSessionProperty(String name, String description, DataSize defaultValue, boolean hidden)

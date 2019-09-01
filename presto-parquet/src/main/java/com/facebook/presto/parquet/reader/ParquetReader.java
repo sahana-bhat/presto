@@ -15,15 +15,21 @@ package com.facebook.presto.parquet.reader;
 
 import com.facebook.presto.memory.context.AggregatedMemoryContext;
 import com.facebook.presto.memory.context.LocalMemoryContext;
+import com.facebook.presto.parquet.ColumnReader;
+import com.facebook.presto.parquet.ColumnReaderFactory;
 import com.facebook.presto.parquet.Field;
 import com.facebook.presto.parquet.GroupField;
 import com.facebook.presto.parquet.ParquetCorruptionException;
 import com.facebook.presto.parquet.ParquetDataSource;
+import com.facebook.presto.parquet.ParquetResultVerifierUtils;
 import com.facebook.presto.parquet.PrimitiveField;
 import com.facebook.presto.parquet.RichColumnDescriptor;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.block.ArrayBlock;
 import com.facebook.presto.spi.block.Block;
+import com.facebook.presto.spi.block.BlockBuilder;
+import com.facebook.presto.spi.block.IntArrayBlock;
+import com.facebook.presto.spi.block.LongArrayBlock;
 import com.facebook.presto.spi.block.RowBlock;
 import com.facebook.presto.spi.block.RunLengthEncodedBlock;
 import com.facebook.presto.spi.type.MapType;
@@ -41,6 +47,7 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.PrimitiveColumnIO;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -51,9 +58,13 @@ import java.util.Optional;
 import static com.facebook.presto.parquet.ParquetValidationUtils.validateParquet;
 import static com.facebook.presto.parquet.reader.ListColumnReader.calculateCollectionOffsets;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_SCHEMA_PROPERTY;
+import static com.facebook.presto.spi.type.BigintType.BIGINT;
+import static com.facebook.presto.spi.type.IntegerType.INTEGER;
+import static com.facebook.presto.spi.type.SmallintType.SMALLINT;
 import static com.facebook.presto.spi.type.StandardTypes.ARRAY;
 import static com.facebook.presto.spi.type.StandardTypes.MAP;
 import static com.facebook.presto.spi.type.StandardTypes.ROW;
+import static com.facebook.presto.spi.type.TinyintType.TINYINT;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -71,6 +82,8 @@ public class ParquetReader
     private final List<BlockMetaData> blocks;
     private final List<PrimitiveColumnIO> columns;
     private final AggregatedMemoryContext systemMemoryContext;
+    private final boolean optimizedReaderEnabled;
+    private final boolean enableVerification;
 
     private int currentBlock;
     private long currentPosition;
@@ -86,22 +99,28 @@ public class ParquetReader
 
     protected final ParquetDataSource dataSource;
     protected BlockMetaData currentBlockMetadata;
-    protected final PrimitiveColumnReader[] columnReaders;
+    protected final ColumnReader[] columnReaders;
+    protected final ColumnReader[] verificationColumnReaders;
 
     public ParquetReader(MessageColumnIO
             messageColumnIO,
             List<BlockMetaData> blocks,
             ParquetDataSource dataSource,
             AggregatedMemoryContext systemMemoryContext,
-            DataSize maxReadBlockSize)
+            DataSize maxReadBlockSize,
+            boolean optimizedReaderEnabled,
+            boolean enableVerification)
     {
         this.blocks = blocks;
         this.dataSource = requireNonNull(dataSource, "dataSource is null");
         this.systemMemoryContext = requireNonNull(systemMemoryContext, "systemMemoryContext is null");
         this.currentRowGroupMemoryContext = systemMemoryContext.newAggregatedMemoryContext();
         this.maxReadBlockBytes = requireNonNull(maxReadBlockSize, "maxReadBlockSize is null").toBytes();
+        this.optimizedReaderEnabled = optimizedReaderEnabled;
+        this.enableVerification = enableVerification;
         columns = messageColumnIO.getLeaves();
-        columnReaders = new PrimitiveColumnReader[columns.size()];
+        columnReaders = new ColumnReader[columns.size()];
+        verificationColumnReaders = enableVerification ? new ColumnReader[columns.size()] : null;
         maxBytesPerCell = new long[columns.size()];
     }
 
@@ -132,6 +151,12 @@ public class ParquetReader
         currentPosition += batchSize;
         Arrays.stream(columnReaders)
                 .forEach(reader -> reader.prepareNextRead(batchSize));
+
+        if (enableVerification) {
+            Arrays.stream(verificationColumnReaders)
+                    .forEach(reader -> reader.prepareNextRead(batchSize));
+        }
+
         return batchSize;
     }
 
@@ -214,8 +239,8 @@ public class ParquetReader
     {
         ColumnDescriptor columnDescriptor = field.getDescriptor();
         int fieldId = field.getId();
-        PrimitiveColumnReader columnReader = columnReaders[fieldId];
-        if (columnReader.getPageReader() == null) {
+        ColumnReader columnReader = columnReaders[fieldId];
+        if (!columnReader.inited()) {
             validateParquet(currentBlockMetadata.getRowCount() > 0, "Row group has 0 rows");
             ColumnChunkMetaData metadata = getColumnChunkMetaData(columnDescriptor);
             long startingPosition = metadata.getStartingPos();
@@ -223,12 +248,27 @@ public class ParquetReader
             byte[] buffer = allocateBlock(totalSize);
             dataSource.readFully(startingPosition, buffer);
             PageReader pageReader = createPageReader(buffer, totalSize, metadata, columnDescriptor);
-            columnReader.setPageReader(pageReader);
+            columnReader.init(pageReader, field);
+
+            if (enableVerification) {
+                ColumnReader verificationColumnReader = verificationColumnReaders[field.getId()];
+                PageReader pageReaderVerification = createPageReader(buffer, totalSize, metadata, columnDescriptor);
+                verificationColumnReader.init(pageReaderVerification, field);
+            }
         }
         ColumnChunk columnChunk;
 
         try {
-            columnChunk = columnReader.readPrimitive(field);
+            ColumnChunk actual = columnReader.readNext();
+            actual = rewriteIfNeeded(actual, field.getDescriptor().getPrimitiveType().getPrimitiveTypeName(), field.getType());
+
+            if (enableVerification) {
+                ColumnReader verificationColumnReader = verificationColumnReaders[field.getId()];
+                ColumnChunk expected = verificationColumnReader.readNext();
+                ParquetResultVerifierUtils.verifyColumnChunks(actual, expected, columnDescriptor.getPath().length > 1, field, dataSource.getId());
+            }
+
+            columnChunk = actual;
         }
         catch (UnsupportedOperationException e) {
             throw new PrestoException(INVALID_SCHEMA_PROPERTY, format("There is a mismatch between file schema and partition schema. " +
@@ -282,7 +322,11 @@ public class ParquetReader
     {
         for (PrimitiveColumnIO columnIO : columns) {
             RichColumnDescriptor column = new RichColumnDescriptor(columnIO.getColumnDescriptor(), columnIO.getType().asPrimitiveType());
-            columnReaders[columnIO.getId()] = PrimitiveColumnReader.createReader(column);
+            columnReaders[columnIO.getId()] = ColumnReaderFactory.createReader(column, optimizedReaderEnabled);
+
+            if (enableVerification) {
+                verificationColumnReaders[columnIO.getId()] = ColumnReaderFactory.createReader(column, false);
+            }
         }
     }
 
@@ -319,5 +363,79 @@ public class ParquetReader
     public AggregatedMemoryContext getSystemMemoryContext()
     {
         return systemMemoryContext;
+    }
+
+    /**
+     * The reader returns the Block type (LongArrayBlock or IntArrayBlock) based on the physical type of the column in Parquet file, but
+     * operators after scan expect output block type based on the metadata defined in Hive table. This causes issues as the operators call
+     * methods that are based on the expected output block type which the returned block type may not have implemented.
+     * To overcome this issue rewrite the block.
+     * <p>
+     * Note: this is a hack until we refactor the way we pass the output column info to ParquetReader and ParquetPageSource.
+     *
+     * @param columnChunk
+     * @param physicalDataType
+     * @param outputType
+     * @return
+     */
+    private static ColumnChunk rewriteIfNeeded(ColumnChunk columnChunk, PrimitiveTypeName physicalDataType, Type outputType)
+    {
+        Block newBlock = null;
+        if (SMALLINT.equals(outputType) || TINYINT.equals(outputType)) {
+            if (columnChunk.getBlock() instanceof IntArrayBlock) {
+                newBlock = rewriteIntegerArrayBlock((IntArrayBlock) columnChunk.getBlock(), outputType);
+            }
+            else if (columnChunk.getBlock() instanceof LongArrayBlock) {
+                newBlock = rewriteLongArrayBlock((LongArrayBlock) columnChunk.getBlock(), outputType);
+            }
+        }
+        else if (INTEGER.equals(outputType) && physicalDataType == PrimitiveTypeName.INT64) {
+            if (columnChunk.getBlock() instanceof LongArrayBlock) {
+                newBlock = rewriteLongArrayBlock((LongArrayBlock) columnChunk.getBlock(), outputType);
+            }
+        }
+        else if (BIGINT.equals(outputType) && physicalDataType == PrimitiveTypeName.INT32) {
+            if (columnChunk.getBlock() instanceof IntArrayBlock) {
+                newBlock = rewriteIntegerArrayBlock((IntArrayBlock) columnChunk.getBlock(), outputType);
+            }
+        }
+
+        if (newBlock != null) {
+            return new ColumnChunk(newBlock, columnChunk.getDefinitionLevels(), columnChunk.getRepetitionLevels());
+        }
+
+        return columnChunk;
+    }
+
+    private static Block rewriteIntegerArrayBlock(IntArrayBlock intArrayBlock, Type targetType)
+    {
+        int positionCount = intArrayBlock.getPositionCount();
+        BlockBuilder newBlockBuilder = targetType.createBlockBuilder(null, positionCount);
+        for (int position = 0; position < positionCount; position++) {
+            if (intArrayBlock.isNull(position)) {
+                newBlockBuilder.appendNull();
+            }
+            else {
+                targetType.writeLong(newBlockBuilder, intArrayBlock.getInt(position));
+            }
+        }
+
+        return newBlockBuilder.build();
+    }
+
+    private static Block rewriteLongArrayBlock(LongArrayBlock longArrayBlock, Type targetType)
+    {
+        int positionCount = longArrayBlock.getPositionCount();
+        BlockBuilder newBlockBuilder = targetType.createBlockBuilder(null, positionCount);
+        for (int position = 0; position < positionCount; position++) {
+            if (longArrayBlock.isNull(position)) {
+                newBlockBuilder.appendNull();
+            }
+            else {
+                targetType.writeLong(newBlockBuilder, longArrayBlock.getLong(position, 0));
+            }
+        }
+
+        return newBlockBuilder.build();
     }
 }

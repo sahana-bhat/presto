@@ -20,7 +20,7 @@ import com.facebook.presto.spi.type.Type;
 import static java.lang.Float.floatToRawIntBits;
 
 public class FloatColumnReader
-        extends PrimitiveColumnReader
+        extends AbstractColumnReaderV1
 {
     public FloatColumnReader(RichColumnDescriptor descriptor)
     {

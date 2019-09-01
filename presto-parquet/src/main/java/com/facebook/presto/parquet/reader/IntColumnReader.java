@@ -18,7 +18,7 @@ import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.type.Type;
 
 public class IntColumnReader
-        extends PrimitiveColumnReader
+        extends AbstractColumnReaderV1
 {
     public IntColumnReader(RichColumnDescriptor descriptor)
     {

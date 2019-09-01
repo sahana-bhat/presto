@@ -38,9 +38,11 @@ public class CryptoParquetReader
                                ParquetDataSource dataSource,
                                AggregatedMemoryContext systemMemoryContext,
                                DataSize maxReadBlockSize,
+                               boolean optimizedReaderEnabled,
+                               boolean enableVerification,
                                InternalFileDecryptor fileDecryptor)
     {
-        super(messageColumnIO, blocks, dataSource, systemMemoryContext, maxReadBlockSize);
+        super(messageColumnIO, blocks, dataSource, systemMemoryContext, maxReadBlockSize, optimizedReaderEnabled, enableVerification);
         this.fileDecryptor = fileDecryptor;
     }
 

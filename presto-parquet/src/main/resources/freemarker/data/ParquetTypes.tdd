@@ -1,0 +1,28 @@
+{
+    types: [
+        {
+            className: "Int64ColumnReader",
+            blockType: "LongArrayBlock",
+            valuesDecoder: "Int64ValuesDecoder",
+            primitiveType: "long"
+        },
+        {
+            className: "TimestampColumnReader",
+            blockType: "LongArrayBlock",
+            valuesDecoder: "TimestampValuesDecoder",
+            primitiveType: "long"
+        },
+        {
+            className: "Int32ColumnReader",
+            blockType: "IntArrayBlock",
+            valuesDecoder: "Int32ValuesDecoder",
+            primitiveType: "int"
+        },
+        {
+            className: "BooleanColumnReader",
+            blockType: "ByteArrayBlock",
+            valuesDecoder: "BooleanValuesDecoder",
+            primitiveType: "byte"
+        }
+    ]
+}

@@ -1,0 +1,11 @@
+<#list parquetTypes.types as type>
+<@pp.changeOutputFile name="/com/facebook/presto/parquet/readerv2/${type.className}.java" />
+<#assign updatedTemplate = simpleTypeTemplate?replace("FixedWidthColumnReader", "${type.className}")>
+<#assign updatedTemplate = updatedTemplate?replace("import com.facebook.presto.parquet.readerv2.TemplateVariables.TemplateValue;", "")>
+<#assign updatedTemplate = updatedTemplate?replace("import com.facebook.presto.parquet.readerv2.TemplateVariables.TemplateArrayBlock", "import com.facebook.presto.spi.block.${type.blockType}")>
+<#assign updatedTemplate = updatedTemplate?replace("import com.facebook.presto.parquet.readerv2.TemplateVariables.TemplateValuesDecoder", "import com.facebook.presto.parquet.readerv2.decoders.${type.valuesDecoder}")>
+<#assign updatedTemplate = updatedTemplate?replace("TemplateArrayBlock", "${type.blockType}")>
+<#assign updatedTemplate = updatedTemplate?replace("TemplateValuesDecoder", "${type.valuesDecoder}")>
+<#assign updatedTemplate = updatedTemplate?replace("TemplateValue", "${type.primitiveType}")>
+${updatedTemplate}
+</#list>

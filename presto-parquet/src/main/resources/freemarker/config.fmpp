@@ -1,0 +1,5 @@
+data: {
+    parquetTypes:   tdd(../data/ParquetTypes.tdd)
+    simpleTypeTemplate: text(../../../java/com/facebook/presto/parquet/readerv2/FixedWidthColumnReader.java)
+    nestedTypeTemplate: text(../../../java/com/facebook/presto/parquet/readerv2/FixedWidthNestedColumnReader.java)
+}
