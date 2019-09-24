@@ -29,30 +29,21 @@ import static org.testng.Assert.fail;
 
 public class TestStaticHiveCluster
 {
-    private static final HiveMetastoreClient DEFAULT_CLIENT = createFakeMetastoreClient();
     private static final HiveMetastoreClient FALLBACK_CLIENT = createFakeMetastoreClient();
 
     private static final StaticMetastoreConfig CONFIG_WITH_FALLBACK = new StaticMetastoreConfig()
-            .setMetastoreUris("thrift://default:8080,thrift://fallback:8090,thrift://fallback2:8090");
+            .setMetastoreUris("thrift://random1:8080,thrift://random2:8090,thrift://random3:8090");
 
     private static final StaticMetastoreConfig CONFIG_WITHOUT_FALLBACK = new StaticMetastoreConfig()
             .setMetastoreUris("thrift://default:8080");
 
     private static final StaticMetastoreConfig CONFIG_WITH_FALLBACK_WITH_USER = new StaticMetastoreConfig()
-            .setMetastoreUris("thrift://default:8080,thrift://fallback:8090,thrift://fallback2:8090")
+            .setMetastoreUris("thrift://random1:8080,thrift://random2:8090,thrift://random3:8090")
             .setMetastoreUsername("presto");
 
     private static final StaticMetastoreConfig CONFIG_WITHOUT_FALLBACK_WITH_USER = new StaticMetastoreConfig()
             .setMetastoreUris("thrift://default:8080")
             .setMetastoreUsername("presto");
-
-    @Test
-    public void testDefaultHiveMetastore()
-             throws TException
-    {
-        HiveCluster cluster = createHiveCluster(CONFIG_WITH_FALLBACK, singletonList(DEFAULT_CLIENT));
-        assertEquals(cluster.createMetastoreClient(), DEFAULT_CLIENT);
-    }
 
     @Test
     public void testFallbackHiveMetastore()
@@ -66,7 +57,7 @@ public class TestStaticHiveCluster
     public void testFallbackHiveMetastoreFails()
     {
         HiveCluster cluster = createHiveCluster(CONFIG_WITH_FALLBACK, asList(null, null, null));
-        assertCreateClientFails(cluster, "Failed connecting to Hive metastore: [default:8080, fallback:8090, fallback2:8090]");
+        assertCreateClientFails(cluster, "Failed connecting to Hive metastore: [random1:8080, random2:8090, random3:8090]");
     }
 
     @Test
@@ -80,7 +71,7 @@ public class TestStaticHiveCluster
     public void testFallbackHiveMetastoreWithHiveUser()
             throws TException
     {
-        HiveCluster cluster = createHiveCluster(CONFIG_WITH_FALLBACK_WITH_USER, asList(null, null, FALLBACK_CLIENT));
+        HiveCluster cluster = createHiveCluster(CONFIG_WITH_FALLBACK_WITH_USER, asList(null, FALLBACK_CLIENT, null));
         assertEquals(cluster.createMetastoreClient(), FALLBACK_CLIENT);
     }
 
