@@ -24,6 +24,7 @@ import com.datastax.driver.core.policies.RoundRobinPolicy;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.datastax.driver.core.policies.WhiteListPolicy;
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.presto.cassandra.util.LangleyCredentialsProvider;
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Provides;
@@ -126,8 +127,14 @@ public class CassandraClientModule
         }
         clusterBuilder.withSocketOptions(socketOptions);
 
-        if (config.getUsername() != null && config.getPassword() != null) {
+        if (config.getUsername() != null && config.getPassword() != null
+                && config.getLangleyCredentialsPath() == null) {
             clusterBuilder.withCredentials(config.getUsername(), config.getPassword());
+        }
+
+        if (config.getLangleyCredentialsPath() != null) {
+            LangleyCredentialsProvider authProvider = new LangleyCredentialsProvider(config.getLangleyCredentialsPath());
+            clusterBuilder.withCredentials(authProvider.getUsername(connectorId.toString()), authProvider.getPassword(connectorId.toString()));
         }
 
         QueryOptions options = new QueryOptions();

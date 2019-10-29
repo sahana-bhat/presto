@@ -50,6 +50,7 @@ public class TestCassandraClientConfig
                 .setRetryPolicy(RetryPolicyType.DEFAULT)
                 .setUseDCAware(false)
                 .setDcAwareLocalDC(null)
+                .setLangleyCredentialsPath(null)
                 .setDcAwareUsedHostsPerRemoteDc(0)
                 .setDcAwareAllowRemoteDCsForLocal(false)
                 .setUseTokenAware(false)
@@ -92,6 +93,7 @@ public class TestCassandraClientConfig
                 .put("cassandra.speculative-execution.limit", "10")
                 .put("cassandra.speculative-execution.delay", "101s")
                 .put("cassandra.protocol-version", "V2")
+                .put("cassandra.langley-credential-path", "/dummy/path/secrets.json")
                 .build();
 
         CassandraClientConfig expected = new CassandraClientConfig()
@@ -120,7 +122,8 @@ public class TestCassandraClientConfig
                 .setNoHostAvailableRetryTimeout(new Duration(3, MINUTES))
                 .setSpeculativeExecutionLimit(10)
                 .setSpeculativeExecutionDelay(new Duration(101, SECONDS))
-                .setProtocolVersion(V2);
+                .setProtocolVersion(V2)
+                .setLangleyCredentialsPath("/dummy/path/secrets.json");
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }

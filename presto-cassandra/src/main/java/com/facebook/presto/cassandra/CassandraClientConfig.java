@@ -54,6 +54,7 @@ public class CassandraClientConfig
     private boolean allowDropTable;
     private String username;
     private String password;
+    private String langleyFilePath;
     private Duration clientReadTimeout = new Duration(SocketOptions.DEFAULT_READ_TIMEOUT_MILLIS, MILLISECONDS);
     private Duration clientConnectTimeout = new Duration(SocketOptions.DEFAULT_CONNECT_TIMEOUT_MILLIS, MILLISECONDS);
     private Integer clientSoLinger;
@@ -203,6 +204,19 @@ public class CassandraClientConfig
     public CassandraClientConfig setPassword(String password)
     {
         this.password = password;
+        return this;
+    }
+
+    public String getLangleyCredentialsPath()
+    {
+        return langleyFilePath;
+    }
+
+    @Config("cassandra.langley-credential-path")
+    @ConfigSecuritySensitive
+    public CassandraClientConfig setLangleyCredentialsPath(String credentialFilePath)
+    {
+        this.langleyFilePath = credentialFilePath;
         return this;
     }
 
