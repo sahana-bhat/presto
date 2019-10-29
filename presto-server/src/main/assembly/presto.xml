@@ -168,5 +168,9 @@
             <directory>${project.build.directory}/dependency/presto-elasticsearch-${project.version}</directory>
             <outputDirectory>plugin/presto-elasticsearch</outputDirectory>
         </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/dependency/presto-event-listener-${project.version}</directory>
+            <outputDirectory>plugin/presto-event-listener</outputDirectory>
+        </fileSet>
     </fileSets>
 </assembly>

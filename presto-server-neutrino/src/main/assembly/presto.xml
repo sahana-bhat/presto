@@ -80,5 +80,9 @@
             <directory>${project.build.directory}/dependency/presto-geospatial-${project.version}</directory>
             <outputDirectory>plugin/geospatial</outputDirectory>
         </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/dependency/presto-event-listener-${project.version}</directory>
+            <outputDirectory>plugin/presto-event-listener</outputDirectory>
+        </fileSet>
     </fileSets>
 </assembly>
