@@ -19,5 +19,5 @@ applications:
     app_type: command_line
     health_check: neutrino/udeploy_health_check.sh
     command_line:
-      run_cmd: './neutrino/start.sh presto-server-neutrino/target/presto-server-0.229-SNAPSHOT/presto-server-0.229-SNAPSHOT'
+      run_cmd: './neutrino/start.sh presto-server-neutrino/target/presto-server-0.231-SNAPSHOT/presto-server-0.231-SNAPSHOT'
 
