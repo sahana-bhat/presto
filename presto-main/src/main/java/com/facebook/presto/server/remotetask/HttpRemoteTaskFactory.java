@@ -182,7 +182,8 @@ public class HttpRemoteTaskFactory
             OutputBuffers outputBuffers,
             PartitionedSplitCountTracker partitionedSplitCountTracker,
             boolean summarizeTaskInfo,
-            TableWriteInfo tableWriteInfo)
+            TableWriteInfo tableWriteInfo,
+            boolean delayTaskStart)
     {
         return new HttpRemoteTask(session,
                 taskId,
@@ -211,6 +212,7 @@ public class HttpRemoteTaskFactory
                 tableWriteInfo,
                 maxTaskUpdateSizeInBytes,
                 bypassHttpForLocal && Objects.equals(node, localNode) ? taskManager : null,
-                timeoutExecutor);
+                timeoutExecutor,
+                delayTaskStart);
     }
 }
