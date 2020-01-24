@@ -1,0 +1,68 @@
+[
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "geofences_configstore_udr_geofences",
+    "datacenter": "dca1",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "prodh"
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "geofences_configstore_udr_geofences",
+    "datacenter": "phx2",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "prodh"
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "geofences_configstore_udr_geofences",
+    "datacenter": "dca1",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "prodj"
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "geofences_configstore_udr_geofences",
+    "datacenter": "phx2",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "prodj"
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "geofences_configstore_udr_geofences",
+    "datacenter": "phx2",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "stagingb"
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "geofences_configstore_udr_geofences",
+    "datacenter": "phx2",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "staginga"
+  }
+]

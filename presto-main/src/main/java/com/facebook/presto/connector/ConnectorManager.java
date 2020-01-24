@@ -188,6 +188,7 @@ public class ConnectorManager
     {
         checkState(!stopped.get(), "ConnectorManager is stopped");
         ConnectorFactory existingConnectorFactory = connectorFactories.putIfAbsent(connectorFactory.getName(), connectorFactory);
+        Logger.get("ConnectorManager").debug("Connector: " + connectorFactory.getName());
         checkArgument(existingConnectorFactory == null, "Connector %s is already registered", connectorFactory.getName());
         handleResolver.addConnectorName(connectorFactory.getName(), connectorFactory.getHandleResolver());
     }

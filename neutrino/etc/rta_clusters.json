@@ -1,0 +1,23 @@
+{
+    "config" : {
+    },
+    "types" : {
+        "pinot" : {
+            "config" : {
+                "pinot.controller-urls" : "localhost:5436",
+                "pinot.allow-multiple-aggregations" : "true",
+                "pinot.http-client.min-threads" : 1,
+                "pinot.http-client.max-threads" : 4,
+                "pinot.extra-http-headers": ""
+            },
+            "environments" : {
+                "dca1": {
+                    "baseConfigFile":"etc/catalog/pinotprod.properties"
+                },
+                "phx2": {
+                    "baseConfigFile":"etc/catalog/pinotprod.properties"
+                }
+            }
+        }
+    }
+}

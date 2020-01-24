@@ -125,6 +125,7 @@
         <module>presto-pinot-toolkit</module>
         <module>presto-cli</module>
         <module>presto-benchmark-driver</module>
+        <module>presto-rta</module>
         <module>presto-server</module>
         <module>presto-server-rpm</module>
         <module>presto-docs</module>
@@ -308,6 +309,12 @@
             <dependency>
                 <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-pinot-toolkit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-rta</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

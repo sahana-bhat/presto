@@ -84,5 +84,9 @@
             <directory>${project.build.directory}/dependency/presto-event-listener-${project.version}</directory>
             <outputDirectory>plugin/presto-event-listener</outputDirectory>
         </fileSet>
+        <fileSet>
+            <directory>${project.build.directory}/dependency/presto-rta-${project.version}</directory>
+            <outputDirectory>plugin/rta</outputDirectory>
+        </fileSet>
     </fileSets>
 </assembly>

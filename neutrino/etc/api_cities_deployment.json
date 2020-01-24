@@ -1,0 +1,74 @@
+[
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "api_cities",
+    "datacenter": "dca1",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "prodh",
+    "rtaCluster": {}
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "api_cities",
+    "datacenter": "phx2",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "prodh",
+    "rtaCluster": {}
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "api_cities",
+    "datacenter": "dca1",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "prodj",
+    "rtaCluster": {}
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "api_cities",
+    "datacenter": "phx2",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "prodj",
+    "rtaCluster": {}
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "api_cities",
+    "datacenter": "phx2",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "stagingb",
+    "rtaCluster": {}
+  },
+  {
+    "storageType": "ARESDB",
+    "namespace": "rta",
+    "name": "api_cities",
+    "datacenter": "phx2",
+    "version": 2,
+    "schema": "{}",
+    "config": "{}",
+    "deleted": false,
+    "cluster": "staginga",
+    "rtaCluster": {}
+  }
+]
