@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class RtaConfig
 {
     private String rtaUmsService;
+    private String rtaEnvironment;
     private Optional<String> configFile = Optional.empty();
     private Duration cacheExpiryTime = new Duration(1, TimeUnit.HOURS);
     private Optional<String> dataCenterOverride = Optional.empty();
@@ -41,6 +42,19 @@ public class RtaConfig
     public RtaConfig setRtaUmsService(String rtaUmsService)
     {
         this.rtaUmsService = rtaUmsService;
+        return this;
+    }
+
+    @NotNull
+    public String getRtaEnvironment()
+    {
+        return rtaEnvironment;
+    }
+
+    @Config("rtaums_environment")
+    public RtaConfig setRtaEnvironment(String environment)
+    {
+        this.rtaEnvironment = environment;
         return this;
     }
 

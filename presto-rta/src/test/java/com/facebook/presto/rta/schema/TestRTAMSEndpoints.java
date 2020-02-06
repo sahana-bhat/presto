@@ -29,18 +29,18 @@ public class TestRTAMSEndpoints
     @Test
     public void testTablesEndpoint()
     {
-        assertEquals(RTAMSEndpoints.getTablesFromNamespace("rta"), "http://localhost:5436/namespaces/rta");
+        assertEquals(RTAMSEndpoints.getTablesFromNamespace("rta", "production"), "http://localhost:5436/namespaces/rta?environment=production");
     }
 
     @Test
     public void testSchemaEndpoint()
     {
-        assertEquals(RTAMSEndpoints.getTableSchema("rta", "table"), "http://localhost:5436/tables/definitions/rta/table");
+        assertEquals(RTAMSEndpoints.getTableSchema("rta", "table", "production"), "http://localhost:5436/tables/definitions/rta/table?environment=production");
     }
 
     @Test
     public void testDeploymentEndpoint()
     {
-        assertEquals(RTAMSEndpoints.getDeployment("rta", "table"), "http://localhost:5436/tables/rta/table/deployments");
+        assertEquals(RTAMSEndpoints.getDeployment("rta", "table", "production"), "http://localhost:5436/tables/rta/table/deployments?environment=production");
     }
 }

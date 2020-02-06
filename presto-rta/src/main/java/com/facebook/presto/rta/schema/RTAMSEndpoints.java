@@ -19,9 +19,10 @@ public final class RTAMSEndpoints
     private static final String RTAMS_HOST = "localhost";
     private static final int RTAMS_PORT = 5436;
     private static final String NAMESPACE_ENDPOINT = "namespaces";
+    private static final String TABLES_FROM_NAMESPACE = "namespaces/%s?environment=%s";
     // Parameters: namespace, table
-    private static final String SCHEMA_FROM_NAMESPACE_TABLE = "tables/definitions/%s/%s";
-    private static final String DEPLOYMENT_FROM_NAMESPACE_TABLE = "tables/%s/%s/deployments";
+    private static final String SCHEMA_FROM_NAMESPACE_TABLE = "tables/definitions/%s/%s?environment=%s";
+    private static final String DEPLOYMENT_FROM_NAMESPACE_TABLE = "tables/%s/%s/deployments?environment=%s";
 
     private RTAMSEndpoints()
     {
@@ -37,20 +38,21 @@ public final class RTAMSEndpoints
         return String.format("%s/%s", getURL(), NAMESPACE_ENDPOINT);
     }
 
-    public static String getTablesFromNamespace(String namespace)
+    public static String getTablesFromNamespace(String namespace, String environment)
     {
-        return String.format("%s/%s", getNamespaces(), namespace);
+        String tablesFromNamespaceEndpoint = String.format(TABLES_FROM_NAMESPACE, namespace, environment);
+        return String.format("%s/%s", getURL(), tablesFromNamespaceEndpoint);
     }
 
-    public static String getTableSchema(String namespace, String tableName)
+    public static String getTableSchema(String namespace, String tableName, String environment)
     {
-        String tableSchemaEndpoint = String.format(SCHEMA_FROM_NAMESPACE_TABLE, namespace, tableName);
+        String tableSchemaEndpoint = String.format(SCHEMA_FROM_NAMESPACE_TABLE, namespace, tableName, environment);
         return String.format("%s/%s", getURL(), tableSchemaEndpoint);
     }
 
-    public static String getDeployment(String namespace, String tableName)
+    public static String getDeployment(String namespace, String tableName, String environment)
     {
-        String tableDeploymentEndpoint = String.format(DEPLOYMENT_FROM_NAMESPACE_TABLE, namespace, tableName);
+        String tableDeploymentEndpoint = String.format(DEPLOYMENT_FROM_NAMESPACE_TABLE, namespace, tableName, environment);
         return String.format("%s/%s", getURL(), tableDeploymentEndpoint);
     }
 }

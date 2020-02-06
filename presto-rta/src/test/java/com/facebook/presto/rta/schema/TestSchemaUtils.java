@@ -75,7 +75,7 @@ public final class TestSchemaUtils
             return new TestingResponse(status, headers.build(), deploymentOutput);
         });
         client = Mockito.spy(client);
-        RTAMSClient rtamsClient = new RTAMSClient(client, "rtaums-staging");
+        RTAMSClient rtamsClient = new RTAMSClient(client, "rtaums-staging", "production");
         return rtamsClient;
     }
 }

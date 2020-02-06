@@ -19,9 +19,9 @@
                 "pinot.allow-multiple-aggregations" : true,
                 "pinot.forbid-segment-queries" : true,
                 "pinot.http-client.min-threads" : 1,
-                "pinot.http-client.max-threads" : 4,
+                "pinot.http-client.max-threads" : 16,
                 "pinot.extra-http-headers": ""
-            }
+           }
         }
     }
 }

@@ -35,12 +35,10 @@ if [[ "$1" == "--env" && "$2" == "local" ]]; then
   echo "Preparing for local environment"
   echo '{"cassandra":{"cassandra_dev":{"username":"dev", "password":""}}}' > $SCRIPT_DIR/secrets.json
   LANGLEY_PATH=$SCRIPT_DIR/secrets.json
-  if [[ -f $RUNNING_ETC/catalog/rta.properties ]]; then
-    echo "datacenter_override=dca1" >> $RUNNING_ETC/catalog/rta.properties
-  fi
-  if [[ -f $RUNNING_ETC/catalog/rta_staging.properties ]]; then
-    echo "datacenter_override=dca1" >> $RUNNING_ETC/catalog/rta_staging.properties
-  fi
+  echo "datacenter_override=dca1" >> $RUNNING_ETC/catalog/rta.properties
+  echo "datacenter_override=dca1" >> $RUNNING_ETC/catalog/rta_staging.properties
+  echo "datacenter_override=dca1" >> $RUNNING_ETC/catalog/rtadev.properties
+  echo "datacenter_override=dca1" >> $RUNNING_ETC/catalog/rtadev_staging.properties
   shift
   shift
 else

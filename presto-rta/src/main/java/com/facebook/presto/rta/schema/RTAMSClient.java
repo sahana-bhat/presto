@@ -68,12 +68,14 @@ public class RTAMSClient
 
     private HttpClient httpClient;
     private final String muttleyService;
+    private final String environment;
 
-    private RTAMSClient(HttpClient httpClient, String muttleyService, Optional<RtaMetrics> rtaMetrics)
+    private RTAMSClient(HttpClient httpClient, String muttleyService, Optional<RtaMetrics> rtaMetrics, String environment)
     {
         this.muttleyService = muttleyService;
         this.httpClient = httpClient;
         this.rtaMetrics = rtaMetrics;
+        this.environment = environment;
     }
 
     public List<RTADefinition> getExtraDefinitions(String extraDefinitionFiles)
@@ -98,15 +100,15 @@ public class RTAMSClient
         return deployments.build();
     }
 
-    public RTAMSClient(HttpClient httpClient, String rtaMsService)
+    public RTAMSClient(HttpClient httpClient, String rtaMsService, String rtaMsEnv)
     {
-        this(httpClient, rtaMsService, Optional.empty());
+        this(httpClient, rtaMsService, Optional.empty(), rtaMsEnv);
     }
 
     @Inject
     public RTAMSClient(@ForRTAMS HttpClient httpClient, RtaConfig rtaConfig, RtaMetrics rtaMetrics)
     {
-        this(httpClient, rtaConfig.getRtaUmsService(), Optional.of(rtaMetrics));
+        this(httpClient, rtaConfig.getRtaUmsService(), Optional.of(rtaMetrics), rtaConfig.getRtaEnvironment());
     }
 
     Request.Builder getBaseRequest()
@@ -156,18 +158,18 @@ public class RTAMSClient
     public List<String> getTables(String namespace)
             throws IOException
     {
-        return callGet(rtaMetrics.map(RtaMetrics::getTablesMetric), URI.create(RTAMSEndpoints.getTablesFromNamespace(namespace)), response -> Arrays.asList(mapper.readValue(response, String[].class)));
+        return callGet(rtaMetrics.map(RtaMetrics::getTablesMetric), URI.create(RTAMSEndpoints.getTablesFromNamespace(namespace, environment)), response -> Arrays.asList(mapper.readValue(response, String[].class)));
     }
 
     public RTADefinition getDefinition(final String namespace, final String tableName)
             throws IOException
     {
-        return callGet(rtaMetrics.map(RtaMetrics::getDefinitionMetric), URI.create(RTAMSEndpoints.getTableSchema(namespace, tableName)), response -> mapper.readValue(response, RTADefinition.class));
+        return callGet(rtaMetrics.map(RtaMetrics::getDefinitionMetric), URI.create(RTAMSEndpoints.getTableSchema(namespace, tableName, environment)), response -> mapper.readValue(response, RTADefinition.class));
     }
 
     public List<RTADeployment> getDeployments(final String namespace, final String tableName)
             throws IOException
     {
-        return callGet(rtaMetrics.map(RtaMetrics::getDeploymentsMetric), URI.create(RTAMSEndpoints.getDeployment(namespace, tableName)), response -> mapper.readValue(response, new TypeReference<List<RTADeployment>>() {}));
+        return callGet(rtaMetrics.map(RtaMetrics::getDeploymentsMetric), URI.create(RTAMSEndpoints.getDeployment(namespace, tableName, environment)), response -> mapper.readValue(response, new TypeReference<List<RTADeployment>>() {}));
     }
 }
