@@ -64,7 +64,7 @@ public class TestDbBenchmarkSuiteSupplier
         handle.execute("DELETE FROM benchmark_queries");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testSupplySuite()
     {
         insertBenchmarkQuery(handle, QUERY_SET, "Q1", "SELECT 1");
