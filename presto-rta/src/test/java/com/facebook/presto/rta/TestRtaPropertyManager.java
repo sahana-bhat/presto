@@ -15,7 +15,9 @@ package com.facebook.presto.rta;
 
 import com.facebook.presto.rta.schema.RTADeployment;
 import com.facebook.presto.rta.schema.TestSchemaUtils;
+import com.facebook.presto.testing.assertions.Assert;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -24,6 +26,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.collect.Iterators.getOnlyElement;
 import static org.testng.Assert.assertEquals;
@@ -47,10 +50,10 @@ public class TestRtaPropertyManager
     {
         RtaPropertyManager rtaPropertyManager = new RtaPropertyManager(rtaConfig.setDataCenterOverride("phx8"));
         List<RTADeployment> rtaDeployments = rtaPropertyManager.winningDeployment(ImmutableList.of(
-//                new RTADeployment("aresdb", "nocare", "nocare", "nocare", "dca1", null),
+                new RTADeployment("aresdb", "nocare", "nocare", "nocare", "dca1", null),
                 new RTADeployment("pinot", "nocare", "nocare", "pinot-cluster-a", "phx7", null),
-//                new RTADeployment("aresdb", "nocare", "nocare", "nocare", "phx7", null),
-//                new RTADeployment("aresdb", "nocare", "nocare", "nocare", "phx8", null),
+                new RTADeployment("aresdb", "nocare", "nocare", "nocare", "phx7", null),
+                new RTADeployment("aresdb", "nocare", "nocare", "nocare", "phx8", null),
                 new RTADeployment("pinot", "nocare", "nocare", "pinot-cluster-b", "pHX8", null),
                 new RTADeployment("pinot", "somecare", "somecare", "pinot-cluster-b", "Phx8", null)));
         assertEquals(rtaDeployments.size(), 2);
@@ -60,22 +63,22 @@ public class TestRtaPropertyManager
         assertTrue(picked.getDataCenter().equalsIgnoreCase("phx8"));
     }
 
-//    @Test
-//    public void testDatacenterSortingRealWorld()
-//            throws IOException
-//    {
-//        ImmutableList<RTADeployment> deployments = ImmutableList.of(
-//                new RTADeployment("aresdb", "bi", "bi_latam_eats_trips", "prodj", "phx2", null),
-//                new RTADeployment("aresdb", "bi", "bi_latam_eats_trips", "prodj", "dca1", null));
-//        for (Map.Entry<String, String> entry : ImmutableMap.of("dca1", "dca1", "phx3", "phx2").entrySet()) {
-//            String deploymentDc = entry.getKey();
-//            String expectedDc = entry.getValue();
-//            RtaPropertyManager rtaPropertyManager = new RtaPropertyManager(rtaConfig.setDataCenterOverride(deploymentDc));
-//            RTADeployment picked = getOnlyElement(rtaPropertyManager.winningDeployment(deployments).iterator());
-//            Assert.assertEquals(picked.getStorageType(), RtaStorageType.ARESDB);
-//            Assert.assertTrue(picked.getDataCenter().equalsIgnoreCase(expectedDc), String.format("Expected: %s, Got: %s", expectedDc, picked));
-//        }
-//    }
+    @Test
+    public void testDatacenterSortingRealWorld()
+            throws IOException
+    {
+        ImmutableList<RTADeployment> deployments = ImmutableList.of(
+                new RTADeployment("aresdb", "bi", "bi_latam_eats_trips", "prodj", "phx2", null),
+                new RTADeployment("aresdb", "bi", "bi_latam_eats_trips", "prodj", "dca1", null));
+        for (Map.Entry<String, String> entry : ImmutableMap.of("dca1", "dca1", "phx3", "phx2").entrySet()) {
+            String deploymentDc = entry.getKey();
+            String expectedDc = entry.getValue();
+            RtaPropertyManager rtaPropertyManager = new RtaPropertyManager(rtaConfig.setDataCenterOverride(deploymentDc));
+            RTADeployment picked = getOnlyElement(rtaPropertyManager.winningDeployment(deployments).iterator());
+            Assert.assertEquals(picked.getStorageType(), RtaStorageType.ARESDB);
+            Assert.assertTrue(picked.getDataCenter().equalsIgnoreCase(expectedDc), String.format("Expected: %s, Got: %s", expectedDc, picked));
+        }
+    }
 
     @Test
     public void testGetDefaultDeployment()

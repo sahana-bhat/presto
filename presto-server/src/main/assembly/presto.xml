@@ -165,6 +165,10 @@
             <outputDirectory>plugin/presto-thrift</outputDirectory>
         </fileSet>
         <fileSet>
+            <directory>${project.build.directory}/dependency/presto-aresdb-${project.version}</directory>
+            <outputDirectory>plugin/aresdb</outputDirectory>
+        </fileSet>
+        <fileSet>
             <directory>${project.build.directory}/dependency/presto-elasticsearch-${project.version}</directory>
             <outputDirectory>plugin/presto-elasticsearch</outputDirectory>
         </fileSet>

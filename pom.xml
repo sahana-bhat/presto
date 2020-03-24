@@ -79,6 +79,8 @@
     </properties>
 
     <modules>
+        <module>presto-aresdb</module>
+        <module>presto-aresdb-toolkit</module>
         <module>presto-atop</module>
         <module>presto-spi</module>
         <module>presto-array</module>
@@ -317,6 +319,18 @@
             <dependency>
                 <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-rta</artifactId>
+		        <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+		        <artifactId>presto-aresdb</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-aresdb-toolkit</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

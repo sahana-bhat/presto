@@ -120,6 +120,11 @@ public final class Marker
         return valueBlock;
     }
 
+    public Optional<Object> getValueOptional()
+    {
+        return valueBlock.map(valueBlock -> Utils.blockToNativeValue(type, valueBlock));
+    }
+
     public Object getValue()
     {
         if (!valueBlock.isPresent()) {

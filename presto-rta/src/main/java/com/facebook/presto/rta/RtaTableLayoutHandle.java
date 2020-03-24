@@ -13,6 +13,8 @@
  */
 package com.facebook.presto.rta;
 
+import com.facebook.presto.aresdb.AresDbTableHandle;
+import com.facebook.presto.aresdb.AresDbTableLayoutHandle;
 import com.facebook.presto.pinot.PinotTableHandle;
 import com.facebook.presto.pinot.PinotTableLayoutHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
@@ -73,6 +75,8 @@ public class RtaTableLayoutHandle
         switch (table.getKey().getType()) {
             case PINOT:
                 return new PinotTableLayoutHandle((PinotTableHandle) table.getHandle());
+            case ARESDB:
+                return new AresDbTableLayoutHandle((AresDbTableHandle) table.getHandle());
             default:
                 throw new IllegalStateException("Unknown connector type " + table.getKey().getType());
         }

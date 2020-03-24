@@ -14,6 +14,7 @@
 
 package com.facebook.presto.rta.schema;
 
+import com.facebook.presto.rta.RtaStorageType;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -24,23 +25,23 @@ import static org.testng.Assert.assertTrue;
 
 public class TestRTAClient
 {
-//    @Test
-//    public void testDeployments()
-//            throws IOException
-//    {
-//        List<RTADeployment> deployments = TestSchemaUtils.getDeployments();
-//        Assert.assertEquals(deployments.size(), 1);
-//        RTADeployment deployment = deployments.get(0);
-//        Assert.assertEquals(deployment.getCluster(), "stagingb");
-//        Assert.assertEquals(deployment.getName(), "rta_eats_order");
-//        Assert.assertEquals(deployment.getNamespace(), "rta");
-//        Assert.assertEquals(deployment.getStorageType(), RtaStorageType.ARESDB);
-//        Assert.assertEquals(deployment.getRtaCluster().getStorageType(), "ARESDB");
-//        Assert.assertEquals(deployment.getRtaCluster().getRegion(), "phx2");
-//        Assert.assertEquals(deployment.getRtaCluster().getName(), "ares-stagingb");
-//        Assert.assertEquals(deployment.getRtaCluster().getMuttleyRoService(), "gforcedb-stagingb");
-//        Assert.assertEquals(deployment.getRtaCluster().getMuttleyRwService(), "ares-controller");
-//    }
+    @Test
+    public void testDeployments()
+            throws IOException
+    {
+        List<RTADeployment> deployments = TestSchemaUtils.getDeployments();
+        assertEquals(deployments.size(), 1);
+        RTADeployment deployment = deployments.get(0);
+        assertEquals(deployment.getCluster(), "stagingb");
+        assertEquals(deployment.getName(), "rta_eats_order");
+        assertEquals(deployment.getNamespace(), "rta");
+        assertEquals(deployment.getStorageType(), RtaStorageType.ARESDB);
+        assertEquals(deployment.getRtaCluster().getStorageType(), "ARESDB");
+        assertEquals(deployment.getRtaCluster().getRegion(), "phx2");
+        assertEquals(deployment.getRtaCluster().getName(), "ares-stagingb");
+        assertEquals(deployment.getRtaCluster().getMuttleyRoService(), "gforcedb-stagingb");
+        assertEquals(deployment.getRtaCluster().getMuttleyRwService(), "ares-controller");
+    }
 
     @Test
     public void testDefinition()

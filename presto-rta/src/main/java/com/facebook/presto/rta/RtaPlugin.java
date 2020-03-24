@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.rta;
 
+import com.facebook.presto.aresdb.AresDbConnectorFactory;
 import com.facebook.presto.pinot.PinotConnectorFactory;
 import com.facebook.presto.spi.ConnectorHandleResolver;
 import com.facebook.presto.spi.Plugin;
@@ -58,6 +59,6 @@ public class RtaPlugin
     @Override
     public Iterable<ConnectorFactory> getConnectorFactories()
     {
-        return ImmutableList.of(new RtaConnectorFactory(), new ConnectorFactoryResolverOnly(new PinotConnectorFactory()));
+        return ImmutableList.of(new RtaConnectorFactory(), new ConnectorFactoryResolverOnly(new PinotConnectorFactory()), new ConnectorFactoryResolverOnly(new AresDbConnectorFactory()));
     }
 }

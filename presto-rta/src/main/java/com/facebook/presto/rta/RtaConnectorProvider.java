@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.rta;
 
+import com.facebook.presto.aresdb.AresDbConnectorFactory;
 import com.facebook.presto.pinot.PinotConnectorFactory;
 import com.facebook.presto.spi.connector.Connector;
 import com.facebook.presto.spi.connector.ConnectorContext;
@@ -58,6 +59,8 @@ public class RtaConnectorProvider
         switch (type) {
             case PINOT:
                 return new PinotConnectorFactory();
+            case ARESDB:
+                return new AresDbConnectorFactory();
             default:
                 throw new UnsupportedOperationException("Invalid rta storage type " + type);
         }

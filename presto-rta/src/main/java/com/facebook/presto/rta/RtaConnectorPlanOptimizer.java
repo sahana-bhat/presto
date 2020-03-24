@@ -14,6 +14,7 @@
 package com.facebook.presto.rta;
 
 import com.facebook.airlift.log.Logger;
+import com.facebook.presto.aresdb.AresDbTableHandle;
 import com.facebook.presto.pinot.PinotTableHandle;
 import com.facebook.presto.spi.ConnectorPlanOptimizer;
 import com.facebook.presto.spi.ConnectorSession;
@@ -131,6 +132,9 @@ public class RtaConnectorPlanOptimizer
             if (rtaTableHandle.getHandle() instanceof PinotTableHandle) {
                 tableHandleMap.put(((PinotTableHandle) rtaTableHandle.getHandle()).toSchemaTableName().toString(), rtaTableHandle);
             }
+            else if (rtaTableHandle.getHandle() instanceof AresDbTableHandle) {
+                tableHandleMap.put(((AresDbTableHandle) rtaTableHandle.getHandle()).toSchemaTableName().toString(), rtaTableHandle);
+            }
             else {
                 throw new PrestoException(GENERIC_INTERNAL_ERROR, "Found unexpected underlying connector: " + rtaTableHandle.getHandle().getClass());
             }
@@ -140,6 +144,13 @@ public class RtaConnectorPlanOptimizer
         {
             if (connectorTableHandle instanceof PinotTableHandle) {
                 String key = ((PinotTableHandle) connectorTableHandle).toSchemaTableName().toString();
+
+                if (tableHandleMap.containsKey(key)) {
+                    return tableHandleMap.get(key);
+                }
+            }
+            else if (connectorTableHandle instanceof AresDbTableHandle) {
+                String key = ((AresDbTableHandle) connectorTableHandle).toSchemaTableName().toString();
 
                 if (tableHandleMap.containsKey(key)) {
                     return tableHandleMap.get(key);

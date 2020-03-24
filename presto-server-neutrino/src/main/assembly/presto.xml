@@ -77,6 +77,10 @@
             <outputDirectory>plugin/pinot</outputDirectory>
         </fileSet>
         <fileSet>
+            <directory>${project.build.directory}/dependency/presto-aresdb-${project.version}</directory>
+            <outputDirectory>plugin/aresdb</outputDirectory>
+        </fileSet>
+        <fileSet>
             <directory>${project.build.directory}/dependency/presto-geospatial-${project.version}</directory>
             <outputDirectory>plugin/geospatial</outputDirectory>
         </fileSet>

@@ -209,7 +209,7 @@ public class RtaPropertyManager
                     Map<String, String> configsForEnvironment = new HashMap<>(configsForType);
                     HashMap<String, String> configsBuilder = new HashMap<>(perEnvironmentSpec.getResolvedConfigs(configsForEnvironment));
                     if (dataCenter.isPresent() && !rtaStorageKey.getDataCenter().equalsIgnoreCase(dataCenter.get().getFullDcNameWithNumber())) {
-                        configsBuilder.compute("pinot.extra-http-headers", (ignored, existingHeaders) -> {
+                        configsBuilder.compute(typeStr.toLowerCase(ENGLISH) + ".extra-http-headers", (ignored, existingHeaders) -> {
                             HashMap<String, String> existingHeadersParsed = new HashMap<>(existingHeaders == null ? ImmutableMap.of() : Splitter.on(",").trimResults().omitEmptyStrings().withKeyValueSeparator(":").split(existingHeaders));
                             existingHeadersParsed.put("Rpc-Routing-Zone", rtaStorageKey.getDataCenter());
                             existingHeadersParsed.put("Rpc-Routing-Delegate", "crosszone");

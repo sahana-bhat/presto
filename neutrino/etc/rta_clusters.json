@@ -2,6 +2,39 @@
     "config" : {
     },
     "types" : {
+        "aresdb" : {
+           "config" : {
+               "aresdb.service-url" : "localhost:5436",
+               "aresdb.fetch-timeout" : "15s",
+               "aresdb.max-limit-without-aggregates" : 1000,
+               "aresdb.single-split-limit" : "1d",
+               "aresdb.cache-duration" : "2d",
+               "aresdb.unsafe-to-cache-interval" : "36h",
+               "aresdb.max-cache-size" : "100MB"
+           },
+           "environments" : {
+               "phx2-staginga" : {
+                   "config" : {
+                       "aresdb.service-name" : "gforcedb-staginga"
+                   }
+               },
+               "phx2-stagingb" : {
+                   "config" : {
+                       "aresdb.service-name" : "gforcedb-stagingb"
+                   }
+               },
+               "phx2-prodj" : {
+                   "config" : {
+                       "aresdb.service-name" : "gforcedb-prodj"
+                   }
+               },
+               "dca1-prodj" : {
+                   "config" : {
+                       "aresdb.service-name" : "gforcedb-prodj"
+                   }
+               }
+           }
+        },
         "pinot" : {
             "config" : {
                 "pinot.controller-urls" : "localhost:5436",

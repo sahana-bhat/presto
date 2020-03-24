@@ -14,6 +14,8 @@
 package com.facebook.presto.rta;
 
 import com.facebook.airlift.log.Logger;
+import com.facebook.presto.aresdb.AresDbColumnHandle;
+import com.facebook.presto.aresdb.AresDbTableHandle;
 import com.facebook.presto.pinot.PinotColumnHandle;
 import com.facebook.presto.pinot.PinotTableHandle;
 import com.facebook.presto.rta.schema.RTASchemaHandler;
@@ -95,6 +97,10 @@ public class RtaMetadata
                 case PINOT:
                     underlyingHandle = new PinotTableHandle(connectorId.getId(), storageTableName, storageTableName);
                     break;
+                case ARESDB:
+                    Optional<String> timestampField = entity.getTimestampField();
+                    underlyingHandle = new AresDbTableHandle(connectorId.getId(), storageTableName, timestampField, entity.getTimestampType(), timestampField.isPresent() ? entity.getRetention() : Optional.empty(), Optional.empty(), Optional.empty());
+                    break;
                 default:
                     return Optional.empty();
             }
@@ -175,6 +181,8 @@ public class RtaMetadata
         switch (storageType) {
             case PINOT:
                 return new PinotColumnHandle(name, type, PinotColumnHandle.PinotColumnType.REGULAR);
+            case ARESDB:
+                return new AresDbColumnHandle(name, type, AresDbColumnHandle.AresDbColumnType.REGULAR);
             default:
                 throw new IllegalStateException("Invalid underlying handle of type " + storageType);
         }
@@ -216,6 +224,9 @@ public class RtaMetadata
         checkType(tableHandle, RtaTableHandle.class, "tableHandle");
         if (columnHandle instanceof PinotColumnHandle) {
             return ((PinotColumnHandle) columnHandle).getColumnMetadata();
+        }
+        else if (columnHandle instanceof AresDbColumnHandle) {
+            return ((AresDbColumnHandle) columnHandle).getColumnMetadata();
         }
         else {
             throw new IllegalStateException("Unknown column handle type " + columnHandle + " of type " + (columnHandle == null ? "null" : columnHandle.getClass()));
