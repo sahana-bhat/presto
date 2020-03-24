@@ -202,7 +202,7 @@ public class DelegationTokenAuthenticator
         }
     }
 
-    public final class TokenUserPrincipal
+    public static final class TokenUserPrincipal
             implements Principal
     {
         private final String username;

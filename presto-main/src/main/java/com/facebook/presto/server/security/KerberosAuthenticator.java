@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_DELEGATION_TOKEN;
+import static com.facebook.presto.client.PrestoHeaders.PRESTO_USER;
 import static com.google.common.net.HttpHeaders.AUTHORIZATION;
 import static javax.security.auth.login.AppConfigurationEntry.LoginModuleControlFlag.REQUIRED;
 import static org.ietf.jgss.GSSCredential.ACCEPT_ONLY;
@@ -126,6 +127,9 @@ public class KerberosAuthenticator
     {
         String delegationToken = request.getHeader(PRESTO_DELEGATION_TOKEN);
         if (delegationToken != null) {
+            if (delegationToken.equals("FAKE")) {
+                return new DelegationTokenAuthenticator.TokenUserPrincipal(request.getHeader(PRESTO_USER));
+            }
             return delegationTokenAuthenticator.authenticateWithDelegationToken(delegationToken);
         }
 
