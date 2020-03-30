@@ -184,6 +184,15 @@ public class TestUberSystemAccessControl
     }
 
     @Test
+    public void testTableWhitelist()
+    {
+        SystemAccessControl accessControl = newAccessControl();
+
+        assertAllowedTableAccess(accessControl, presto, newCST("rta", "rta", "neutrino_eats_trips"), ImmutableSet.of("col1"));
+        assertDeniedTableAccess(accessControl, presto, newCST("rta", "rta", "any_other_table"), ImmutableSet.of("col1"));
+    }
+
+    @Test
     public void testImpersonations()
     {
         SystemAccessControl accessControl = newAccessControl();

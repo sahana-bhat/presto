@@ -23,6 +23,7 @@ public class UberSystemAccessControlConfig
 {
     private final Optional<List<UberCatalogAccessControlRule>> catalogs;
     private final Optional<List<UberSchemaAccessControlRule>> schemas;
+    private final Optional<List<UberTableAccessControlRule>> tables;
     private final Optional<List<UberImpersonationControlRule>> impersonations;
     private final Optional<String> kerberosRules;
 
@@ -31,10 +32,12 @@ public class UberSystemAccessControlConfig
             @JsonProperty("catalogs") Optional<List<UberCatalogAccessControlRule>> catalogs,
             @JsonProperty("schemas") Optional<List<UberSchemaAccessControlRule>> schemas,
             @JsonProperty("impersonations") Optional<List<UberImpersonationControlRule>> impersonations,
+            @JsonProperty("tables") Optional<List<UberTableAccessControlRule>> tables,
             @JsonProperty("kerberosRules") Optional<String> kerberosRules)
     {
         this.catalogs = catalogs;
         this.schemas = schemas;
+        this.tables = tables;
         this.impersonations = impersonations;
         this.kerberosRules = kerberosRules;
     }
@@ -42,6 +45,11 @@ public class UberSystemAccessControlConfig
     public Optional<List<UberCatalogAccessControlRule>> getCatalogs()
     {
         return catalogs;
+    }
+
+    public Optional<List<UberTableAccessControlRule>> getTables()
+    {
+        return tables;
     }
 
     public Optional<List<UberSchemaAccessControlRule>> getSchemas()

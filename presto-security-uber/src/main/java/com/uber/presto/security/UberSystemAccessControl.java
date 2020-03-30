@@ -62,13 +62,15 @@ public class UberSystemAccessControl
 
     private final Optional<List<UberCatalogAccessControlRule>> catalogRules;
     private final Optional<List<UberSchemaAccessControlRule>> schemaRules;
+    private final Optional<List<UberTableAccessControlRule>> tableRules;
     private final Optional<List<UberImpersonationControlRule>> impersonationRules;
 
     private UberSystemAccessControl(Optional<List<UberCatalogAccessControlRule>> catalogRules, Optional<List<UberSchemaAccessControlRule>> schemaRules,
-            Optional<List<UberImpersonationControlRule>> impersonationRules)
+            Optional<List<UberImpersonationControlRule>> impersonationRules, Optional<List<UberTableAccessControlRule>> tableRules)
     {
         this.catalogRules = catalogRules;
         this.schemaRules = schemaRules;
+        this.tableRules = tableRules;
         this.impersonationRules = impersonationRules;
     }
 
@@ -106,6 +108,24 @@ public class UberSystemAccessControl
             Optional<Boolean> allowed = rule.match(identity.getUser(), catalogName, schemaName);
             if (allowed.isPresent()) {
                 return allowed.get();
+            }
+        }
+
+        return false;
+    }
+
+    private boolean canAccessTable(Identity identity, String catalogName, String schemaName, String tableName)
+    {
+        if (canAccessSchema(identity, catalogName, schemaName)) {
+            if (!tableRules.isPresent()) {
+                return true;
+            }
+
+            for (UberTableAccessControlRule rule : tableRules.get()) {
+                Optional<Boolean> allowed = rule.match(identity.getUser(), catalogName, schemaName, tableName);
+                if (allowed.isPresent()) {
+                    return allowed.get();
+                }
             }
         }
 
@@ -229,7 +249,7 @@ public class UberSystemAccessControl
     {
         ImmutableSet.Builder<SchemaTableName> filteredTables = ImmutableSet.builder();
         for (SchemaTableName tableName : tableNames) {
-            if (canAccessSchema(identity, catalogName, tableName.getSchemaName())) {
+            if (canAccessTable(identity, catalogName, tableName.getSchemaName(), tableName.getTableName())) {
                 filteredTables.add(tableName);
             }
         }
@@ -255,7 +275,7 @@ public class UberSystemAccessControl
     @Override
     public void checkCanSelectFromColumns(Identity identity, CatalogSchemaTableName table, Set<String> columns)
     {
-        if (!canAccessSchema(identity, table.getCatalogName(), table.getSchemaTableName().getSchemaName())) {
+        if (!canAccessTable(identity, table.getCatalogName(), table.getSchemaTableName().getSchemaName(), table.getSchemaTableName().getTableName())) {
             denySelectColumns(table.getSchemaTableName().getTableName(), columns);
         }
     }
@@ -283,7 +303,7 @@ public class UberSystemAccessControl
     @Override
     public void checkCanCreateViewWithSelectFromColumns(Identity identity, CatalogSchemaTableName table, Set<String> columns)
     {
-        if (!canAccessSchema(identity, table.getCatalogName(), table.getSchemaTableName().getSchemaName())) {
+        if (!canAccessTable(identity, table.getCatalogName(), table.getSchemaTableName().getSchemaName(), table.getSchemaTableName().getTableName())) {
             denyCreateView(table.getSchemaTableName().getTableName());
         }
     }
@@ -334,7 +354,7 @@ public class UberSystemAccessControl
 
                 rules.getKerberosRules().ifPresent(kerberosRules -> KerberosName.setRules(kerberosRules));
 
-                return new UberSystemAccessControl(rules.getCatalogs(), rules.getSchemas(), rules.getImpersonations());
+                return new UberSystemAccessControl(rules.getCatalogs(), rules.getSchemas(), rules.getImpersonations(), rules.getTables());
             }
             catch (SecurityException | IOException | InvalidPathException e) {
                 throw new RuntimeException(e);

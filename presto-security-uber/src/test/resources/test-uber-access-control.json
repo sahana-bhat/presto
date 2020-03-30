@@ -17,6 +17,10 @@
       "user" : "(alice|bob)",
       "catalog": "elastic",
       "allow": true
+    },
+    {
+      "catalog": "rta",
+      "allow": true
     }
   ],
   "schemas": [
@@ -51,6 +55,42 @@
       "catalog": "elastic",
       "schema": "bobschema",
       "allow": true
+    },
+    {
+      "catalog": "rta",
+      "schema": "rta",
+      "allow": true
+    }
+  ],
+  "tables": [
+    {
+      "user": "presto",
+      "catalog": "jmx",
+      "allow": true
+    },
+    {
+      "catalog": "hive",
+      "allow": true
+    },
+    {
+      "catalog": "system",
+      "allow": true
+    },
+    {
+      "user" : "(alice|bob)",
+      "catalog": "elastic",
+      "allow": true
+    },
+    {
+      "catalog": "rta",
+      "schema": "rta",
+      "table": "neutrino_eats_trips",
+      "allow": true
+    },
+    {
+      "catalog": "rta",
+      "schema": "rta",
+      "allow": false
     }
   ],
 

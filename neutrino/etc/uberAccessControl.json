@@ -1,0 +1,44 @@
+{
+  "catalogs": [
+    {
+      "catalog": "rta",
+      "allow": true
+    },
+    {
+      "catalog": "pinotadhoc",
+      "allow": true
+    },
+    {
+      "catalog": "pinotstg",
+      "allow": true
+    },
+    {
+      "catalog": "pinotphxstg",
+      "allow": true
+    },
+    {
+      "catalog": "pinotsandbox",
+      "allow": true
+    },
+    {
+      "catalog": "cassandra_dev",
+      "allow": true
+    },
+    {
+      "catalog": "rta_staging",
+      "allow": true
+    },
+    {
+      "catalog": "pinotprod",
+      "allow": true
+    },
+    {
+      "catalog": "rtadev",
+      "allow": true
+    },
+    {
+      "catalog": "rtadev_staging",
+      "allow": true
+    }
+  ]
+}
