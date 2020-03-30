@@ -152,6 +152,8 @@ public class QueryMonitor
                         Optional.empty(),
                         Optional.empty()),
                 new QueryStatistics(
+                        0,
+                        ofMillis(0),
                         ofMillis(0),
                         ofMillis(0),
                         ofMillis(0),
@@ -175,6 +177,7 @@ public class QueryMonitor
                         ImmutableList.of(),
                         ImmutableList.of(),
                         ImmutableList.of(),
+                        Optional.empty(),
                         ImmutableList.of()),
                 createQueryContext(queryInfo.getSession(), queryInfo.getResourceGroupId()),
                 new QueryIOMetadata(ImmutableList.of(), Optional.empty()),
@@ -264,9 +267,11 @@ public class QueryMonitor
         }
 
         return new QueryStatistics(
+                queryStats.getTotalTasks(),
                 ofMillis(queryStats.getTotalCpuTime().toMillis()),
                 ofMillis(queryStats.getTotalScheduledTime().toMillis()),
                 ofMillis(queryStats.getQueuedTime().toMillis()),
+                ofMillis(queryStats.getTotalBlockedTime().toMillis()),
                 Optional.of(ofMillis(queryStats.getAnalysisTime().toMillis())),
                 queryStats.getPeakRunningTasks(),
                 queryStats.getPeakUserMemoryReservation().toBytes(),
@@ -287,6 +292,7 @@ public class QueryMonitor
                 cpuDistributionBuilder.build(),
                 memoryDistributionBuilder.build(),
                 operatorSummaries.build(),
+                Optional.of(queryInfo.getMemoryPool()),
                 sessionLogEntries.build());
     }
 
@@ -364,6 +370,8 @@ public class QueryMonitor
         }
 
         Optional<QueryOutputMetadata> output = Optional.empty();
+        Optional<String> plan = Optional.empty();
+        ImmutableList.Builder<String> predicates = ImmutableList.builder();
         if (queryInfo.getOutput().isPresent()) {
             Optional<TableFinishInfo> tableFinishInfo = queryInfo.getQueryStats().getOperatorSummaries().stream()
                     .map(OperatorStats::getInfo)

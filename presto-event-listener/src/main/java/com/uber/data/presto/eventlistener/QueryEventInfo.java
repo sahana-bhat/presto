@@ -81,6 +81,7 @@ public class QueryEventInfo
         private final double memory;
         private final long cpuTimeMs; // aggregate across all tasks
         private final long wallTimeMs; // aggregate across all tasks
+        private final long blockedTimeMs; // aggregate across all tasks
         private final long analysisTime;
         private final long totalDrivers;          // aka completedSplits
         private final long peakMemoryReservation; // aka peakMemoryBytes
@@ -93,6 +94,7 @@ public class QueryEventInfo
         private final List<ColumnAccessEntry> columnAccess;
         private final List<String> operatorSummaries;
         private final List<String> sessionLogEntries;
+        private final String memoryPool;
 
         public Completed(QueryCompletedEvent queryCompletedEvent)
         {
@@ -109,6 +111,7 @@ public class QueryEventInfo
             this.memory = queryStatistics.getCumulativeMemory();
             this.cpuTimeMs = queryStatistics.getCpuTime().toMillis();
             this.wallTimeMs = queryStatistics.getWallTime().toMillis();
+            this.blockedTimeMs = queryStatistics.getBlockedTime().toMillis();
             this.analysisTime = queryStatistics.getAnalysisTime().orElse(Duration.ZERO).toMillis();
             this.totalDrivers = queryStatistics.getCompletedSplits();
             this.peakMemoryReservation = queryStatistics.getPeakTotalNonRevocableMemoryBytes();
@@ -118,9 +121,10 @@ public class QueryEventInfo
             // Query IOMetadata
             this.columnAccess = queryIOMetadata.getInputs().stream().map(ColumnAccessEntry::new).collect(toImmutableList());
 
-            // Column Predicates
             this.operatorSummaries = queryStatistics.getOperatorSummaries();
+
             this.sessionLogEntries = queryStatistics.getSessionLogEntries();
+            this.memoryPool = queryStatistics.getMemoryPoolId().isPresent() ? queryStatistics.getMemoryPoolId().get().getId() : "";
 
             // Failure related
             if (queryCompletedEvent.getFailureInfo().isPresent()) {
@@ -151,6 +155,8 @@ public class QueryEventInfo
             map.put("cpuTimeMs", this.cpuTimeMs);
             map.put("wallTime", TimeUnit.SECONDS.convert(this.wallTimeMs, TimeUnit.MILLISECONDS));
             map.put("wallTimeMs", this.wallTimeMs);
+            map.put("blockedTime", TimeUnit.SECONDS.convert(this.blockedTimeMs, TimeUnit.MILLISECONDS));
+            map.put("blockedTimeMs", this.blockedTimeMs);
             map.put("analysisTime", this.analysisTime);
             map.put("totalDrivers", this.totalDrivers);
             map.put("peakMemoryReservation", this.peakMemoryReservation);
@@ -171,6 +177,7 @@ public class QueryEventInfo
         {
             tags.put("errorType", this.errorType);
             tags.put("errorName", this.errorName);
+            tags.put("memorypool", this.memoryPool);
         }
 
         public void sendToM3(Scope scope)
@@ -182,6 +189,7 @@ public class QueryEventInfo
             publishTimerToM3(scope, "queuedTime", queuedTime, tags);
             publishTimerToM3(scope, "cpuTime", cpuTimeMs, tags);
             publishTimerToM3(scope, "wallTime", wallTimeMs, tags);
+            publishTimerToM3(scope, "blockedTime", blockedTimeMs, tags);
             publishTimerToM3(scope, "analysisTime", analysisTime, tags);
             scope.gauge("memory", this.memory, tags);
             scope.gauge("totalDrivers", this.totalDrivers, tags);
@@ -400,9 +408,7 @@ public class QueryEventInfo
         map.put("createTime", TimeUnit.SECONDS.convert(this.createTimeMs, TimeUnit.MILLISECONDS));
         map.put("createTimeMs", this.createTimeMs);
         completed.ifPresent(c -> c.populateMap(map));
-        map.put("remoteClientAddress", this.remoteClientAddress);
-        map.put("userAgent", this.userAgent);
-        map.put("sessionProperties", this.sessionProperties);
+
         return map;
     }
 }

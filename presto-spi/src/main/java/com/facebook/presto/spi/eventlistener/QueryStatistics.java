@@ -13,6 +13,8 @@
  */
 package com.facebook.presto.spi.eventlistener;
 
+import com.facebook.presto.spi.memory.MemoryPoolId;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -21,9 +23,11 @@ import static java.util.Objects.requireNonNull;
 
 public class QueryStatistics
 {
+    private final int totalTasks;
     private final Duration cpuTime;
     private final Duration wallTime;
     private final Duration queuedTime;
+    private final Duration blockedTime;
     private final Optional<Duration> analysisTime;
 
     private final int peakRunningTasks;
@@ -40,6 +44,7 @@ public class QueryStatistics
     private final long writtenOutputRows;
     private final long writtenIntermediateBytes;
 
+    private final Optional<MemoryPoolId> memoryPoolId;
     private final double cumulativeMemory;
 
     private final List<StageGcStatistics> stageGcStatistics;
@@ -54,9 +59,11 @@ public class QueryStatistics
     private final List<String> sessionLogEntries;
 
     public QueryStatistics(
+            int totalTasks,
             Duration cpuTime,
             Duration wallTime,
             Duration queuedTime,
+            Duration blockedTime,
             Optional<Duration> analysisTime,
             int peakRunningTasks,
             long peakUserMemoryBytes,
@@ -77,12 +84,15 @@ public class QueryStatistics
             List<ResourceDistribution> cpuTimeDistribution,
             List<ResourceDistribution> peakMemoryDistribution,
             List<String> operatorSummaries,
+            Optional<MemoryPoolId> memoryPoolId,
             List<String> sessionLogEntries)
     {
+        this.totalTasks = totalTasks;
         this.cpuTime = requireNonNull(cpuTime, "cpuTime is null");
         this.wallTime = requireNonNull(wallTime, "wallTime is null");
         this.queuedTime = requireNonNull(queuedTime, "queuedTime is null");
         this.analysisTime = requireNonNull(analysisTime, "analysisTime is null");
+        this.blockedTime = requireNonNull(blockedTime, "blockedTime is null");
         this.peakRunningTasks = peakRunningTasks;
         this.peakUserMemoryBytes = peakUserMemoryBytes;
         this.peakTotalNonRevocableMemoryBytes = peakTotalNonRevocableMemoryBytes;
@@ -102,7 +112,18 @@ public class QueryStatistics
         this.cpuTimeDistribution = requireNonNull(cpuTimeDistribution, "cpuTimeDistribution is null");
         this.peakMemoryDistribution = requireNonNull(peakMemoryDistribution, "peakMemoryDistribution is null");
         this.operatorSummaries = requireNonNull(operatorSummaries, "operatorSummaries is null");
+        this.memoryPoolId = requireNonNull(memoryPoolId, "memoryPoolId is null");
         this.sessionLogEntries = requireNonNull(sessionLogEntries, "session log entries is null");
+    }
+
+    public int getTotalTasks()
+    {
+        return totalTasks;
+    }
+
+    public Optional<MemoryPoolId> getMemoryPoolId()
+    {
+        return memoryPoolId;
     }
 
     public Duration getCpuTime()
@@ -118,6 +139,11 @@ public class QueryStatistics
     public Duration getQueuedTime()
     {
         return queuedTime;
+    }
+
+    public Duration getBlockedTime()
+    {
+        return blockedTime;
     }
 
     public Optional<Duration> getAnalysisTime()
