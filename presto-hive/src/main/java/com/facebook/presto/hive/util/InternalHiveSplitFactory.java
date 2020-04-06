@@ -175,7 +175,7 @@ public class InternalHiveSplitFactory
                 relativePath.toString(),
                 start,
                 start + length,
-                length,
+                fileSize,
                 blocks,
                 readBucketNumber,
                 tableBucketNumber,

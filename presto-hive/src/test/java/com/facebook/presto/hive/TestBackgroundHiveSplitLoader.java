@@ -75,9 +75,11 @@ public class TestBackgroundHiveSplitLoader
 
     private static final String SAMPLE_PATH = "hdfs://VOL1:9000/db_name/table_name/000000_0";
     private static final String SAMPLE_PATH_FILTERED = "hdfs://VOL1:9000/db_name/table_name/000000_1";
+    private static final String SAMPLE_LARGE_FILE_PATH = "hdfs://VOL1:9000/db_name/table_name/largefile";
 
     private static final Path RETURNED_PATH = new Path(SAMPLE_PATH);
     private static final Path FILTERED_PATH = new Path(SAMPLE_PATH_FILTERED);
+    private static final Path LARGE_FILE_PATH = new Path(SAMPLE_LARGE_FILE_PATH);
 
     private static final Executor EXECUTOR = newCachedThreadPool(daemonThreadsNamed("test-%s"));
 
@@ -86,6 +88,9 @@ public class TestBackgroundHiveSplitLoader
     private static final List<HiveFileInfo> TEST_FILES = ImmutableList.of(
             createHiveFileInfo(locatedFileStatus(RETURNED_PATH), Optional.empty()),
             createHiveFileInfo(locatedFileStatus(FILTERED_PATH), Optional.empty()));
+
+    private static final List<HiveFileInfo> TEST_LARGE_FILE_LIST = ImmutableList.of(
+            createHiveFileInfo(locatedFileStatus(LARGE_FILE_PATH, new DataSize(70, MEGABYTE).toBytes()), Optional.empty()));
 
     private static final List<Column> PARTITION_COLUMNS = ImmutableList.of(
             new Column("partitionColumn", HIVE_INT, Optional.empty()));
@@ -165,6 +170,26 @@ public class TestBackgroundHiveSplitLoader
         List<String> paths = drain(hiveSplitSource);
         assertEquals(paths.size(), 1);
         assertEquals(paths.get(0), RETURNED_PATH.toString());
+    }
+
+    @Test
+    public void testMultiSplitsInSingleFile()
+            throws Exception
+    {
+        BackgroundHiveSplitLoader backgroundHiveSplitLoader = backgroundHiveSplitLoader(
+                TEST_LARGE_FILE_LIST,
+                Optional.empty());
+
+        HiveSplitSource hiveSplitSource = hiveSplitSource(backgroundHiveSplitLoader);
+        backgroundHiveSplitLoader.start(hiveSplitSource);
+        List<HiveSplit> splits = drainSplits(hiveSplitSource);
+        assertEquals(splits.size(), 2);
+        assertEquals(splits.get(0).getStart(), 0);
+        assertEquals(splits.get(0).getLength(), 33554432);
+        assertEquals(splits.get(0).getFileSize(), 73400320);
+        assertEquals(splits.get(1).getStart(), 33554432);
+        assertEquals(splits.get(1).getLength(), 39845888);
+        assertEquals(splits.get(1).getFileSize(), 73400320);
     }
 
     @Test
@@ -381,6 +406,23 @@ public class TestBackgroundHiveSplitLoader
                 null,
                 path,
                 new BlockLocation[] {});
+    }
+
+    private static LocatedFileStatus locatedFileStatus(Path path, long fileSize)
+    {
+        return new LocatedFileStatus(
+                fileSize,
+                false,
+                0,
+                fileSize,
+                0L,
+                0L,
+                null,
+                null,
+                null,
+                null,
+                path,
+                new BlockLocation[] {new BlockLocation(null, null, 0, fileSize)});
     }
 
     private static class TestingDirectoryLister
