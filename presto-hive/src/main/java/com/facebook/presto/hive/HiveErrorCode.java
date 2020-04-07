@@ -19,6 +19,7 @@ import com.facebook.presto.spi.ErrorType;
 
 import java.util.Optional;
 
+import static com.facebook.presto.hive.HiveErrorCode.Constants.DATA_ARCHIVED_ERROR_MESSAGE;
 import static com.facebook.presto.hive.HiveErrorCode.Constants.DEFAULT_ERROR_MESSAGE;
 import static com.facebook.presto.hive.HiveErrorCode.Constants.UACCESS_ERROR_MESSAGE;
 import static com.facebook.presto.hive.MetastoreErrorCode.ERROR_CODE_MASK;
@@ -71,7 +72,8 @@ public enum HiveErrorCode
     // HIVE_UNKNOWN_COLUMN_STATISTIC_TYPE(39, INTERNAL_ERROR) moved to MetastoreErrorCode
     HIVE_TABLE_BUCKETING_IS_IGNORED(40, USER_ERROR),
     HIVE_TRANSACTION_NOT_FOUND(41, INTERNAL_ERROR),
-    HIVE_PERMISSION_ERROR(42, EXTERNAL, UACCESS_ERROR_MESSAGE),
+    HIVE_PERMISSION_ERROR(90, EXTERNAL, UACCESS_ERROR_MESSAGE),
+    HIVE_DATA_ARCHIVED_ERROR(91, EXTERNAL, DATA_ARCHIVED_ERROR_MESSAGE),
     /**/;
 
     private final ErrorCode errorCode;
@@ -101,8 +103,11 @@ public enum HiveErrorCode
         return guidance;
     }
 
-    class Constants
+    public class Constants
     {
+        public static final String DATA_ARCHIVED_PREFIX = "_DATA_ARCHIVED_CONTACT_hdfs-dev-group@uber.com";
+
+        static final String DATA_ARCHIVED_ERROR_MESSAGE = "Please check http://t.uber.com/data-archived for more information.";
         static final String DEFAULT_ERROR_MESSAGE = "Please find table owner through https://databook.uberinternal.com/ and report the issue.";
         static final String UACCESS_ERROR_MESSAGE = "Please follow the FAQ http://t.uber.com/uaccess_getting_started to get access to this dataset. "
                 + "If unresolved, please ask in https://uchat.uberinternal.com/uber/channels/data-security-community.";

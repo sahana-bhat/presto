@@ -22,6 +22,7 @@ import com.google.common.collect.Iterators;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.security.AccessControlException;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -30,7 +31,10 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 
+import static com.facebook.presto.hive.HiveErrorCode.Constants.DATA_ARCHIVED_PREFIX;
+import static com.facebook.presto.hive.HiveErrorCode.HIVE_DATA_ARCHIVED_ERROR;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_FILE_NOT_FOUND;
+import static com.facebook.presto.hive.HiveErrorCode.HIVE_PERMISSION_ERROR;
 import static com.facebook.presto.hive.MetastoreErrorCode.HIVE_FILESYSTEM_ERROR;
 import static java.util.Objects.requireNonNull;
 
@@ -160,9 +164,21 @@ public class HiveFileIterator
         {
             namenodeStats.getRemoteIteratorNext().recordException(exception);
             if (exception instanceof FileNotFoundException) {
+                if (exception.getMessage().contains(DATA_ARCHIVED_PREFIX)) {
+                    return new PrestoException(HIVE_DATA_ARCHIVED_ERROR, "The part of the data you are looking for is archived for cost efficiency reasons", exception);
+                }
+
                 return new PrestoException(HIVE_FILE_NOT_FOUND, "Partition location does not exist: " + path);
             }
-            return new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed to list directory: " + path, exception);
+            else if (exception instanceof AccessControlException) {
+                throw new PrestoException(HIVE_PERMISSION_ERROR, "Seems like a security problem, " +
+                        "please try to follow the FAQ http://t.uber.com/uaccess_getting_started to resolve the issue first. " +
+                        "If it persists, please ask in https://uchat.uberinternal.com/uber/channels/data-security-community." + exception.getMessage());
+            }
+
+            return new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed to list directory: " + path +
+                    ". If you believe you have permissions check if the directory corresponds to a recent partition which could be in " +
+                    "the process of data ingestion at this moment. Please retry your query after sometime. " + exception.getMessage(), exception);
         }
     }
 
