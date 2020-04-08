@@ -19,6 +19,7 @@ import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.DoubleType;
 import com.facebook.presto.spi.type.Type;
+import com.facebook.presto.spi.type.VarbinaryType;
 import com.facebook.presto.spi.type.VarcharType;
 import io.airlift.units.Duration;
 
@@ -59,6 +60,8 @@ public class RTATableEntity
                 return DoubleType.DOUBLE;
             case "boolean":
                 return BooleanType.BOOLEAN;
+            case "bytes":
+                return VarbinaryType.VARBINARY;
             default:
                 throw new UnsupportedOperationException("Don't know how to convert RTA type " + type);
         }
