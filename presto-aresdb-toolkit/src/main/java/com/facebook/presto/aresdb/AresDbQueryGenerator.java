@@ -137,6 +137,16 @@ public class AresDbQueryGenerator
         {
             return isQueryShort;
         }
+
+        @Override
+        public String toString()
+        {
+            return toStringHelper(this)
+                    .add("generatedAql", generatedAql)
+                    .add("context", context)
+                    .add("isQueryShort", isQueryShort)
+                    .toString();
+        }
     }
 
     public Optional<AresDbQueryGeneratorResult> generate(PlanNode plan, ConnectorSession session)

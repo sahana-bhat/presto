@@ -67,6 +67,7 @@ public class AresDbTableHandle
                 .add("timeStampType", timeStampType)
                 .add("retention", retention)
                 .add("isQueryShort", isQueryShort)
+                .add("generatedResult", generatedResult)
                 .toString();
     }
 
