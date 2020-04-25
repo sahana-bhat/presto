@@ -63,7 +63,6 @@ NODE_ID="$HOSTNAME"
 if [[ -n "$UDEPLOY_EXECUTION_ID" ]]; then
     NODE_ID="$UDEPLOY_EXECUTION_ID"
 fi
-NODE_ID=$(echo $NODE_ID|sed 's/-/_/g'|tr '[:upper:]' '[:lower:]')
 
 NEUTRINO_CLUSTER_NAME=''
 if [[ -n "$UBER_DATACENTER" ]]; then
@@ -74,7 +73,7 @@ if [[ -n "$UBER_DATACENTER" ]]; then
         fi
     fi
 fi
-
+NODE_ID=$(echo $NODE_ID|sed 's/-/_/g'|tr '[:upper:]' '[:lower:]')
 $SED_COMMAND "s/%UNIQUE_NODE_ID%/$NODE_ID/g" $RUNNING_ETC/node.properties
 export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-1.8.0-openjdk-amd64}
 mkdir -p $SCRIPT_DIR/log
