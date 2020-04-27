@@ -273,6 +273,7 @@ public final class ParquetTypeUtils
 
         ImmutableList.Builder<org.apache.parquet.schema.Type> typeBuilder = ImmutableList.builder();
         org.apache.parquet.schema.Type parentType = getParquetTypeByName(subfield.getRootName(), baseType);
+        String rootName = parentType.getName();
 
         for (PathElement field : subfield.getPath()) {
             if (field instanceof NestedField) {
@@ -291,13 +292,13 @@ public final class ParquetTypeUtils
 
         List<org.apache.parquet.schema.Type> subfieldTypes = typeBuilder.build();
         if (subfieldTypes.isEmpty()) {
-            return new MessageType(subfield.getRootName(), ImmutableList.of());
+            return new MessageType(rootName, ImmutableList.of());
         }
         org.apache.parquet.schema.Type type = subfieldTypes.get(subfieldTypes.size() - 1);
         for (int i = subfieldTypes.size() - 2; i >= 0; --i) {
             GroupType groupType = subfieldTypes.get(i).asGroupType();
             type = new MessageType(groupType.getName(), ImmutableList.of(type));
         }
-        return new MessageType(subfield.getRootName(), ImmutableList.of(type));
+        return new MessageType(rootName, ImmutableList.of(type));
     }
 }
