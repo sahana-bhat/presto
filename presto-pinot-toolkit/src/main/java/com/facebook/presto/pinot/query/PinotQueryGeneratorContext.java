@@ -338,7 +338,8 @@ public class PinotQueryGeneratorContext
             query += " " + limitKeyWord + " " + queryLimit;
         }
 
-        List<Integer> indices = getIndicesMappingFromPinotSchemaToPrestoSchema(query, getAssignments());
+        LinkedHashMap<VariableReferenceExpression, PinotColumnHandle> assignments = getAssignments();
+        List<Integer> indices = getIndicesMappingFromPinotSchemaToPrestoSchema(query, assignments);
         return new PinotQueryGenerator.GeneratedPql(tableName, query, indices, groupByColumns.size(), filter.isPresent(), isQueryShort);
     }
 
@@ -358,7 +359,7 @@ public class PinotQueryGeneratorContext
         expressionsInPinotOrder.putAll(selections);
 
         checkSupported(
-                assignments.size() == expressionsInPinotOrder.keySet().stream().filter(key -> !hiddenColumnSet.contains(key)).count(),
+                assignments.size() == expressionsInPinotOrder.keySet().stream().count(),
                 "Expected returned expressions %s to match selections %s",
                 Joiner.on(",").withKeyValueSeparator(":").join(expressionsInPinotOrder),
                 Joiner.on(",").withKeyValueSeparator("=").join(assignments));
@@ -398,7 +399,7 @@ public class PinotQueryGeneratorContext
     public LinkedHashMap<VariableReferenceExpression, PinotColumnHandle> getAssignments()
     {
         LinkedHashMap<VariableReferenceExpression, PinotColumnHandle> result = new LinkedHashMap<>();
-        selections.entrySet().stream().filter(e -> !hiddenColumnSet.contains(e.getKey())).forEach(entry -> {
+        selections.entrySet().stream().forEach(entry -> {
             VariableReferenceExpression variable = entry.getKey();
             Selection selection = entry.getValue();
             PinotColumnHandle handle = selection.getOrigin() == Origin.TABLE_COLUMN ? new PinotColumnHandle(selection.getDefinition(), variable.getType(), PinotColumnHandle.PinotColumnType.REGULAR) : new PinotColumnHandle(variable, PinotColumnHandle.PinotColumnType.DERIVED);

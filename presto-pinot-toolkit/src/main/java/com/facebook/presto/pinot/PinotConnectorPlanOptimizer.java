@@ -175,8 +175,9 @@ public class PinotConnectorPlanOptimizer
                     pinotTableHandle.getSchemaName(),
                     pinotTableHandle.getTableName(),
                     Optional.of(isQueryShort),
-                    Optional.of(pql.get().getGeneratedPql()),
-                    pinotTableHandle.getMuttleyConfig());
+                    pinotTableHandle.getMuttleyConfig(),
+                    Optional.of(ImmutableList.copyOf(assignments.values())),
+                    Optional.of(pql.get().getGeneratedPql()));
             TableHandle newTableHandle = new TableHandle(
                     oldTableHandle.getConnectorId(),
                     newConnectorTableHandle,

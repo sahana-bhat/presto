@@ -59,14 +59,15 @@ public class PinotSplitManager
         this.pinotPrestoConnection = requireNonNull(pinotPrestoConnection, "pinotPrestoConnection is null");
     }
 
-    protected ConnectorSplitSource generateSplitForBrokerBasedScan(PinotTableLayoutHandle tableLayoutHandle, GeneratedPql brokerPql)
+    protected ConnectorSplitSource generateSplitForBrokerBasedScan(PinotTableLayoutHandle tableLayoutHandle, GeneratedPql brokerPql, List<PinotColumnHandle> expectedColumnHandles)
     {
-        return new FixedSplitSource(singletonList(createBrokerSplit(tableLayoutHandle.getTable(), brokerPql)));
+        return new FixedSplitSource(singletonList(createBrokerSplit(tableLayoutHandle.getTable(), brokerPql, expectedColumnHandles)));
     }
 
     protected ConnectorSplitSource generateSplitsForSegmentBasedScan(
             PinotTableLayoutHandle pinotLayoutHandle,
-            ConnectorSession session)
+            ConnectorSession session,
+            List<PinotColumnHandle> expectedColumnHandles)
     {
         PinotTableHandle tableHandle = pinotLayoutHandle.getTable();
         String tableName = tableHandle.getTableName();
@@ -80,8 +81,8 @@ public class PinotSplitManager
             PinotClusterInfoFetcher.TimeBoundary timeBoundary = pinotPrestoConnection.getTimeBoundary(tableHandle);
             String realtime = getSegmentPql(segmentPql, "_REALTIME", timeBoundary.getOnlineTimePredicate());
             String offline = getSegmentPql(segmentPql, "_OFFLINE", timeBoundary.getOfflineTimePredicate());
-            generateSegmentSplits(splits, routingTable, tableHandle, "_REALTIME", session, realtime);
-            generateSegmentSplits(splits, routingTable, tableHandle, "_OFFLINE", session, offline);
+            generateSegmentSplits(splits, expectedColumnHandles, routingTable, tableHandle, "_REALTIME", session, realtime);
+            generateSegmentSplits(splits, expectedColumnHandles, routingTable, tableHandle, "_OFFLINE", session, offline);
         }
 
         Collections.shuffle(splits);
@@ -103,6 +104,7 @@ public class PinotSplitManager
 
     protected void generateSegmentSplits(
             List<ConnectorSplit> splits,
+            List<PinotColumnHandle> expectedColumnHandles,
             Map<String, Map<String, List<String>>> routingTable,
             PinotTableHandle tableHandle,
             String tableNameSuffix,
@@ -122,7 +124,7 @@ public class PinotSplitManager
                 // segments is already shuffled
                 Iterables.partition(segments, numSegmentsInThisSplit).forEach(
                         segmentsForThisSplit -> splits.add(
-                                createSegmentSplit(tableHandle, pql, segmentsForThisSplit, host)));
+                                createSegmentSplit(tableHandle, expectedColumnHandles, pql, segmentsForThisSplit, host)));
             });
         }
     }
@@ -183,10 +185,10 @@ public class PinotSplitManager
             if (PinotSessionProperties.isForbidSegmentQueries(session)) {
                 throw errorSupplier.get();
             }
-            return generateSplitsForSegmentBasedScan(pinotLayoutHandle, session);
+            return generateSplitsForSegmentBasedScan(pinotLayoutHandle, session, pinotTableHandle.getExpectedColumnHandles().orElseThrow(errorSupplier));
         }
         else {
-            return generateSplitForBrokerBasedScan(pinotLayoutHandle, pinotTableHandle.getPql().orElseThrow(errorSupplier));
+            return generateSplitForBrokerBasedScan(pinotLayoutHandle, pinotTableHandle.getPql().orElseThrow(errorSupplier), pinotTableHandle.getExpectedColumnHandles().orElseThrow(errorSupplier));
         }
     }
 }

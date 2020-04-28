@@ -99,12 +99,17 @@ public class RtaMetadata
             ConnectorTableHandle underlyingHandle;
             switch (key.getType()) {
                 case PINOT:
-                    underlyingHandle = new PinotTableHandle(connectorId.getId(), storageTableName, storageTableName,
-                            Optional.empty(), Optional.empty(),
+                    underlyingHandle = new PinotTableHandle(
+                            connectorId.getId(),
+                            storageTableName,
+                            storageTableName,
+                            Optional.empty(),
                             new PinotMuttleyConfig(
                                     rtaCluster.getMuttleyRoService(),
                                     rtaCluster.getMuttleyRwService(),
-                                    propertyManager.getExtraHttpHeaders(deployment)));
+                                    propertyManager.getExtraHttpHeaders(deployment)),
+                            Optional.empty(),
+                            Optional.empty());
                     break;
                 case ARESDB:
                     Optional<String> timestampField = entity.getTimestampField();

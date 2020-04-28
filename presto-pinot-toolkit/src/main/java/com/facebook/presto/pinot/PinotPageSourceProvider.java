@@ -91,6 +91,7 @@ public class PinotPageSourceProvider
                         session,
                         pinotSplit.getBrokerPql().get(),
                         handles,
+                        pinotSplit.getExpectedColumnHandles(),
                         clusterInfoFetcher,
                         objectMapper,
                         pinotSplit.getTableHandle());

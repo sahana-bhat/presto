@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -35,13 +36,20 @@ public final class PinotTableHandle
     private final Optional<Boolean> isQueryShort;
     private final Optional<PinotQueryGenerator.GeneratedPql> pql;
     private final PinotMuttleyConfig muttleyConfig;
+    private final Optional<List<PinotColumnHandle>> expectedColumnHandles;
 
     public PinotTableHandle(
             String connectorId,
             String schemaName,
             String tableName)
     {
-        this(connectorId, schemaName, tableName, Optional.empty(), Optional.empty(), new PinotMuttleyConfig("", "", ImmutableMap.of()));
+        this(connectorId,
+                schemaName,
+                tableName,
+                Optional.empty(),
+                new PinotMuttleyConfig("", "", ImmutableMap.of()),
+                Optional.empty(),
+                Optional.empty());
     }
 
     @JsonCreator
@@ -50,8 +58,9 @@ public final class PinotTableHandle
             @JsonProperty("schemaName") String schemaName,
             @JsonProperty("tableName") String tableName,
             @JsonProperty("isQueryShort") Optional<Boolean> isQueryShort,
-            @JsonProperty("pql") Optional<PinotQueryGenerator.GeneratedPql> pql,
-            @JsonProperty("muttleyConfig") PinotMuttleyConfig config)
+            @JsonProperty("muttleyConfig") PinotMuttleyConfig config,
+            @JsonProperty("expectedColumnHandles") Optional<List<PinotColumnHandle>> expectedColumnHandles,
+            @JsonProperty("pql") Optional<PinotQueryGenerator.GeneratedPql> pql)
     {
         this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.schemaName = requireNonNull(schemaName, "schemaName is null");
@@ -59,6 +68,7 @@ public final class PinotTableHandle
         this.isQueryShort = requireNonNull(isQueryShort, "safe to execute is null");
         this.pql = requireNonNull(pql, "broker pql is null");
         this.muttleyConfig = requireNonNull(config, "config is null");
+        this.expectedColumnHandles = requireNonNull(expectedColumnHandles, "expected column handles is null");
     }
 
     @JsonProperty
@@ -97,6 +107,12 @@ public final class PinotTableHandle
         return muttleyConfig;
     }
 
+    @JsonProperty
+    public Optional<List<PinotColumnHandle>> getExpectedColumnHandles()
+    {
+        return expectedColumnHandles;
+    }
+
     public SchemaTableName toSchemaTableName()
     {
         return new SchemaTableName(schemaName, tableName);
@@ -116,14 +132,15 @@ public final class PinotTableHandle
                 Objects.equals(schemaName, that.schemaName) &&
                 Objects.equals(tableName, that.tableName) &&
                 Objects.equals(isQueryShort, that.isQueryShort) &&
-                Objects.equals(pql, that.pql) &&
-                Objects.equals(muttleyConfig, that.muttleyConfig);
+                Objects.equals(muttleyConfig, that.muttleyConfig) &&
+                Objects.equals(expectedColumnHandles, that.expectedColumnHandles) &&
+                Objects.equals(pql, that.pql);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(connectorId, schemaName, tableName, isQueryShort, pql, muttleyConfig);
+        return Objects.hash(connectorId, schemaName, tableName, isQueryShort, expectedColumnHandles, pql, muttleyConfig);
     }
 
     @Override
@@ -134,6 +151,7 @@ public final class PinotTableHandle
                 .add("schemaName", schemaName)
                 .add("tableName", tableName)
                 .add("isQueryShort", isQueryShort)
+                .add("expectedColumnHandles", expectedColumnHandles)
                 .add("pql", pql)
                 .add("muttleyConfig", muttleyConfig)
                 .toString();
