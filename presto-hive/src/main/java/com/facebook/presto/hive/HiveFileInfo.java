@@ -30,23 +30,26 @@ public class HiveFileInfo
     private final long length;
     private final Optional<byte[]> extraFileInfo;
 
+    private final LocatedFileStatus locatedFileStatus;
+
     public static HiveFileInfo createHiveFileInfo(LocatedFileStatus locatedFileStatus, Optional<byte[]> extraFileContext)
     {
-        return new HiveFileInfo(
-                locatedFileStatus.getPath(),
-                locatedFileStatus.isDirectory(),
-                locatedFileStatus.getBlockLocations(),
-                locatedFileStatus.getLen(),
-                extraFileContext);
+        return new HiveFileInfo(locatedFileStatus, extraFileContext);
     }
 
-    private HiveFileInfo(Path path, boolean isDirectory, BlockLocation[] blockLocations, long length, Optional<byte[]> extraFileInfo)
+    private HiveFileInfo(LocatedFileStatus locatedFileStatus, Optional<byte[]> extraFileInfo)
     {
-        this.path = requireNonNull(path, "path is null");
-        this.isDirectory = isDirectory;
-        this.blockLocations = blockLocations;
-        this.length = length;
+        this.locatedFileStatus = requireNonNull(locatedFileStatus);
+        this.path = requireNonNull(locatedFileStatus.getPath(), "path is null");
+        this.isDirectory = locatedFileStatus.isDirectory();
+        this.blockLocations = locatedFileStatus.getBlockLocations();
+        this.length = locatedFileStatus.getLen();
         this.extraFileInfo = requireNonNull(extraFileInfo, "extraFileInfo is null");
+    }
+
+    public LocatedFileStatus getLocatedFileStatus()
+    {
+        return locatedFileStatus;
     }
 
     public Path getPath()
