@@ -26,12 +26,14 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_SESSION_PROPERTY;
+import static com.facebook.presto.spi.session.PropertyMetadata.booleanProperty;
 import static com.facebook.presto.spi.type.TimeZoneKey.UTC_KEY;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Locale.ENGLISH;
@@ -77,7 +79,21 @@ public class TestingConnectorSession
         this.traceToken = requireNonNull(traceToken, "traceToken is null");
         this.locale = requireNonNull(locale, "locale is null");
         this.startTime = startTime;
-        this.properties = Maps.uniqueIndex(propertyMetadatas, PropertyMetadata::getName);
+        List<PropertyMetadata<?>> newPropertyMetadatas = new ArrayList<>(propertyMetadatas);
+        boolean hdfsObsPropertyFound = false;
+        for (PropertyMetadata<?> metadata : newPropertyMetadatas) {
+            if (metadata.getName().equalsIgnoreCase("hdfs_observer_read_enabled")) {
+                hdfsObsPropertyFound = true;
+            }
+        }
+        if (!hdfsObsPropertyFound) {
+            newPropertyMetadatas.add(booleanProperty(
+                    "hdfs_observer_read_enabled",
+                    "Experimental: enable Observer reads for HDFS",
+                    false,
+                    false));
+        }
+        this.properties = Maps.uniqueIndex(newPropertyMetadatas, PropertyMetadata::getName);
         this.propertyValues = ImmutableMap.copyOf(propertyValues);
         this.clientInfo = clientInfo;
         this.sqlFunctionProperties = SqlFunctionProperties.builder()
