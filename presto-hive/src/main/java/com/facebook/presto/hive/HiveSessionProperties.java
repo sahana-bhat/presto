@@ -96,6 +96,7 @@ public final class HiveSessionProperties
     private static final String ENABLE_OPTIMIZED_PARQUET_READER = "enable_parquet_optimized_reader";
     private static final String ENABLE_PARQUET_VERIFICATION = "enable_parquet_verification";
     public static final String ENABLE_PARTIAL_AGGREGATION_PUSHDOWN = "enable_partial_aggregation_pushdown";
+    private static final String ENABLE_HOODIE_GLOBALLY_CONSISTENT_READS = "hoodie_enable_globally_consistent_reads";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -433,6 +434,11 @@ public final class HiveSessionProperties
                         ENABLE_PARTIAL_AGGREGATION_PUSHDOWN,
                         "Is partial aggregation pushdown enabled for Hive file formats",
                         hiveClientConfig.isPartialAggregationPushdownEnabled(),
+                        false),
+                booleanProperty(
+                        ENABLE_HOODIE_GLOBALLY_CONSISTENT_READS,
+                        "Is hoodie globally consistent reads enabled",
+                        hiveClientConfig.isHoodieGloballyConsistentReadEnabled(),
                         false));
     }
 
@@ -735,6 +741,11 @@ public final class HiveSessionProperties
     public static boolean isPartialAggregationPushdownEnabled(ConnectorSession session)
     {
         return session.getProperty(ENABLE_PARTIAL_AGGREGATION_PUSHDOWN, Boolean.class);
+    }
+
+    public static boolean isHoodieGloballyConsistentReadEnabled(ConnectorSession session)
+    {
+        return session.getProperty(ENABLE_HOODIE_GLOBALLY_CONSISTENT_READS, Boolean.class);
     }
 
     public static PropertyMetadata<DataSize> dataSizeSessionProperty(String name, String description, DataSize defaultValue, boolean hidden)

@@ -163,6 +163,8 @@ public class HiveClientConfig
 
     private boolean isPartialAggregationPushdownEnabled;
 
+    private boolean isHoodieGloballyConsistentReadEnabled;
+
     public int getMaxInitialSplits()
     {
         return maxInitialSplits;
@@ -1337,5 +1339,18 @@ public class HiveClientConfig
     public boolean isPartialAggregationPushdownEnabled()
     {
         return this.isPartialAggregationPushdownEnabled;
+    }
+
+    @Config("hive.hoodie-enable-globally-consistent-reads")
+    @ConfigDescription("enable hoodie globally consistent reads")
+    public HiveClientConfig setHoodieGloballyConsistentReadEnabled(boolean hoodieGloballyConsistentReadEnabled)
+    {
+        this.isHoodieGloballyConsistentReadEnabled = hoodieGloballyConsistentReadEnabled;
+        return this;
+    }
+
+    public boolean isHoodieGloballyConsistentReadEnabled()
+    {
+        return this.isHoodieGloballyConsistentReadEnabled;
     }
 }

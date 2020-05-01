@@ -54,9 +54,12 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -133,7 +136,6 @@ public class TestBackgroundHiveSplitLoader
             "any String.",
             HOODIE_INPUT_FORMAT_CANONICAL_NAME,
             HOODIE_INPUT_FORMAT_CANONICAL_NAME);
-    private static Table hoodieTable;
 
     @Test
     public void testNoPathFilter()
@@ -270,35 +272,155 @@ public class TestBackgroundHiveSplitLoader
     @Test
     public void testLoadSplitsForHoodieTable() throws Exception
     {
-        testLoadSplitsForHoodieTables(false);
+        testLoadSplitsForHoodieTables(false, false);
     }
 
     @Test
     public void testLoadSplitsForMixedHoodieTable() throws Exception
     {
-        testLoadSplitsForHoodieTables(true);
+        testLoadSplitsForHoodieTables(true, false);
     }
 
-    private void testLoadSplitsForHoodieTables(boolean isMixed) throws Exception
+    @Test
+    public void testLoadSplitsForHoodieTableWithGloballyConsistentTimeStamp() throws Exception
+    {
+        testLoadSplitsForHoodieTables(false, true);
+    }
+
+    @Test
+    public void testLoadSplitsForMixedHoodieTableWithGloballyConsistentTimeStamp() throws Exception
+    {
+        testLoadSplitsForHoodieTables(true, true);
+    }
+
+    private void testLoadSplitsForHoodieTables(boolean isMixed, boolean checkWithGloballyReplicatedTs) throws Exception
     {
         //prepare Hoodie DataSet
+        ConnectorSession session = new TestingConnectorSession(
+                new HiveSessionProperties(new HiveClientConfig().setHoodieGloballyConsistentReadEnabled(true),
+                    new OrcFileWriterConfig(), new ParquetFileWriterConfig()).getSessionProperties());
         int numFiles = 19;
         String commitnumber = "123";
+        String newCommitNumber = "124";
         int numNonHoodieFiles = 5;
         File hoodieTableBasePath = Files.createTempDir();
-        List<List<HiveFileInfo>> partitionPathFiles = prepareHoodieDataset(hoodieTableBasePath, numFiles, commitnumber, isMixed, isMixed ? numNonHoodieFiles : 0);
+        Table hoodieTable = table(PARTITION_COLUMNS, Optional.empty(), HOODIE_STORAGE_FORMAT,
+                hoodieTableBasePath.toString(), RAW_TRIPS_TABLE_NAME);
+        Map<Boolean, List<HiveFileInfo>> partitionPathFiles = prepareHoodieDataset(hoodieTableBasePath, numFiles, commitnumber, isMixed, isMixed ? numNonHoodieFiles : 0, true);
         // create the commit file in Hoodie Metadata
         new File(hoodieTableBasePath.toString() + "/.hoodie/", commitnumber + ".commit").createNewFile();
-        List<HiveFileInfo> partitionFiles = partitionPathFiles.stream().flatMap(List::stream).collect(
+        List<HiveFileInfo> partitionFiles = partitionPathFiles.values().stream().flatMap(List::stream).collect(
                 Collectors.toList());
+        List<HiveFileInfo> nonHoodiePartitionFiles = partitionPathFiles.get(Boolean.FALSE);
+        List<HiveSplit> hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, partitionFiles, session);
+
+        verifySplitForHoodieTable(hiveSplits, partitionFiles, numFiles);
+
+        // add one more commit which add new files to the same partitions
+        Map<Boolean, List<HiveFileInfo>> partitionPathToNewFiles =
+                prepareHoodieDataset(hoodieTableBasePath, numFiles, newCommitNumber, isMixed,
+                    isMixed ? numNonHoodieFiles : 0, false);
+        List<HiveFileInfo> newPartitionFiles = partitionPathToNewFiles.values().stream()
+                .flatMap(List::stream).collect(Collectors.toList());
+
+        List<HiveFileInfo> allPartitionFiles = new ArrayList<>(partitionFiles);
+        allPartitionFiles.addAll(partitionPathToNewFiles.get(Boolean.TRUE));
+
+        // because commit is not yet created these should not be visible
+        hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, allPartitionFiles, session);
+
+        verifySplitForHoodieTable(hiveSplits, partitionFiles, numFiles);
+
+        if (checkWithGloballyReplicatedTs) {
+            verifySplitForHoodieTableWithGloballyReplicatedTs(commitnumber, partitionFiles,
+                    partitionFiles, nonHoodiePartitionFiles, allPartitionFiles,
+                    numFiles, isMixed, numNonHoodieFiles, hoodieTable, session);
+        }
+
+        // now create new commit and this should make the new files visible
+        new File(hoodieTableBasePath.toString() + "/.hoodie/",
+            newCommitNumber + ".commit").createNewFile();
+
+        hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, allPartitionFiles, session);
+
+        verifySplitForHoodieTable(hiveSplits, newPartitionFiles, numFiles);
+
+        if (checkWithGloballyReplicatedTs) {
+            // try with ol commit
+            verifySplitForHoodieTableWithGloballyReplicatedTs(commitnumber, partitionFiles,
+                    newPartitionFiles, nonHoodiePartitionFiles, allPartitionFiles,
+                    numFiles, isMixed, numNonHoodieFiles, hoodieTable, session);
+
+            // try with new commit
+            verifySplitForHoodieTableWithGloballyReplicatedTs(newCommitNumber, newPartitionFiles,
+                    newPartitionFiles, nonHoodiePartitionFiles, allPartitionFiles,
+                    numFiles, isMixed, numNonHoodieFiles, hoodieTable, session);
+        }
+
+        // set a session level property to disable globally consistent reads.
+        // for a table which does not have this property at all it should not have any effect
+        hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, allPartitionFiles, SESSION);
+
+        verifySplitForHoodieTable(hiveSplits, newPartitionFiles, numFiles);
+
+        if (checkWithGloballyReplicatedTs) {
+            // because we disabled the feature with hive session property setting it to 0 should not do anything
+            hoodieTable = Table.builder(hoodieTable).setParameters(
+                    ImmutableMap.of(HiveTableProperties.GLOBALLY_CONSISTENT_READ_TIMESTAMP, "0")).build();
+
+            hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, allPartitionFiles, SESSION);
+
+            verifySplitForHoodieTable(hiveSplits, newPartitionFiles, numFiles);
+        }
+    }
+
+    private List<HiveSplit> getHiveSplitsForHoodieTable(Table hoodieTable,
+            List<HiveFileInfo> partitionFiles, ConnectorSession session) throws Exception
+    {
         BackgroundHiveSplitLoader splitLoader = backgroundHiveSplitLoader(partitionFiles,
                 Optional.empty(),
                 Optional.empty(),
                 hoodieTable,
-                Optional.empty());
+                Optional.empty(),
+                session);
         HiveSplitSource hiveSplitSource = hiveSplitSource(hoodieTable, splitLoader);
         splitLoader.start(hiveSplitSource);
-        List<HiveSplit> hiveSplits = drainSplits(hiveSplitSource);
+        return drainSplits(hiveSplitSource);
+    }
+
+    private void verifySplitForHoodieTableWithGloballyReplicatedTs(String commitNumber,
+            List<HiveFileInfo> partitionFilesInCommit, List<HiveFileInfo> latestPartitionFiles,
+            List<HiveFileInfo> numNonHoodiePartitionFiles, List<HiveFileInfo> allPartitionFiles,
+            int numFiles, boolean isMixed, int numNonHoodieFiles, Table hoodieTable, ConnectorSession session) throws Exception
+    {
+        List<HiveSplit> hiveSplits = Collections.emptyList();
+
+        // by setting commit to commitNumber only files created in that commit show up
+        hoodieTable = Table.builder(hoodieTable).setParameters(
+                ImmutableMap.of(HiveTableProperties.GLOBALLY_CONSISTENT_READ_TIMESTAMP, commitNumber)).build();
+        hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, allPartitionFiles, session);
+        verifySplitForHoodieTable(hiveSplits, partitionFilesInCommit, numFiles);
+
+        // by setting the globally replicated timestamp to 0 hoodie files should get filtered out
+        hoodieTable = Table.builder(hoodieTable).setParameters(
+                ImmutableMap.of(HiveTableProperties.GLOBALLY_CONSISTENT_READ_TIMESTAMP, "0")).build();
+        hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, allPartitionFiles, session);
+        verifySplitForHoodieTable(hiveSplits, numNonHoodiePartitionFiles, isMixed ? numNonHoodieFiles : 0);
+
+        // reset the property and this will only get files from commitNumber
+        hoodieTable = Table.builder(hoodieTable).setParameters(
+                ImmutableMap.of(HiveTableProperties.GLOBALLY_CONSISTENT_READ_TIMESTAMP, commitNumber)).build();
+        hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, allPartitionFiles, session);
+        verifySplitForHoodieTable(hiveSplits, partitionFilesInCommit, numFiles);
+
+        // remove the property and get latest commit's files
+        hoodieTable = Table.builder(hoodieTable).setParameters(ImmutableMap.of()).build();
+        hiveSplits = getHiveSplitsForHoodieTable(hoodieTable, allPartitionFiles, session);
+        verifySplitForHoodieTable(hiveSplits, latestPartitionFiles, numFiles);
+    }
+
+    private void verifySplitForHoodieTable(List<HiveSplit> hiveSplits, List<HiveFileInfo> partitionFiles, int numFiles)
+    {
         assertEquals(hiveSplits.size(), numFiles);
 
         // Check split locations match the datafiles created
@@ -347,7 +469,8 @@ public class TestBackgroundHiveSplitLoader
             Optional<Domain> pathDomain,
             Optional<HiveBucketFilter> hiveBucketFilter,
             Table table,
-            Optional<HiveBucketHandle> bucketHandle)
+            Optional<HiveBucketHandle> bucketHandle,
+            ConnectorSession session)
     {
         List<HivePartitionMetadata> hivePartitionMetadatas =
                 ImmutableList.of(
@@ -356,15 +479,12 @@ public class TestBackgroundHiveSplitLoader
                                 Optional.empty(),
                                 ImmutableMap.of()));
 
-        ConnectorSession connectorSession = new TestingConnectorSession(
-                new HiveSessionProperties(new HiveClientConfig().setMaxSplitSize(new DataSize(1.0, GIGABYTE)), new OrcFileWriterConfig(), new ParquetFileWriterConfig()).getSessionProperties());
-
         return new BackgroundHiveSplitLoader(
                 table,
                 hivePartitionMetadatas,
                 pathDomain,
                 createBucketSplitInfo(bucketHandle, hiveBucketFilter),
-                connectorSession,
+                session,
                 new TestingHdfsEnvironment(),
                 new NamenodeStats(),
                 new TestingDirectoryLister(files),
@@ -373,6 +493,19 @@ public class TestBackgroundHiveSplitLoader
                 false,
                 false,
                 false);
+    }
+
+    private static BackgroundHiveSplitLoader backgroundHiveSplitLoader(
+            List<HiveFileInfo> files,
+            Optional<Domain> pathDomain,
+            Optional<HiveBucketFilter> hiveBucketFilter,
+            Table table,
+            Optional<HiveBucketHandle> bucketHandle)
+    {
+        ConnectorSession connectorSession = new TestingConnectorSession(
+                new HiveSessionProperties(new HiveClientConfig().setMaxSplitSize(new DataSize(1.0, GIGABYTE)), new OrcFileWriterConfig(), new ParquetFileWriterConfig()).getSessionProperties());
+
+        return backgroundHiveSplitLoader(files, pathDomain, hiveBucketFilter, table, bucketHandle, connectorSession);
     }
 
     private static BackgroundHiveSplitLoader backgroundHiveSplitLoaderOfflinePartitions()
@@ -463,17 +596,19 @@ public class TestBackgroundHiveSplitLoader
                 .build();
     }
 
-    private static List<List<HiveFileInfo>> prepareHoodieDataset(File basePath, int numberOfFiles,
-                                                                                  String commitNumber, boolean isMixedTable, int numNonHoodieFiles) throws IOException
+    private static Map<Boolean, List<HiveFileInfo>> prepareHoodieDataset(File basePath, int numberOfFiles,
+                                                                         String commitNumber, boolean isMixedTable, int numNonHoodieFiles,
+                                                                         boolean initialize) throws IOException
     {
-        hoodieTable = table(PARTITION_COLUMNS, Optional.empty(), HOODIE_STORAGE_FORMAT, basePath.toString(), RAW_TRIPS_TABLE_NAME);
-        HoodieTableType tableType = HoodieTableType.COPY_ON_WRITE;
-        Properties properties = new Properties();
-        properties.setProperty(HoodieTableConfig.HOODIE_TABLE_NAME_PROP_NAME, RAW_TRIPS_TABLE_NAME);
-        properties.setProperty(HoodieTableConfig.HOODIE_TABLE_TYPE_PROP_NAME, tableType.name());
-        properties.setProperty(HoodieTableConfig.HOODIE_PAYLOAD_CLASS_PROP_NAME, HoodieAvroPayload.class.getName());
-        HoodieTableMetaClient.initTableAndGetMetaClient(new Configuration(), basePath.toString(), properties);
-        File partitionPath = new File(new File(new File(basePath, "2016"), "05"), "01");
+        if (initialize) {
+            HoodieTableType tableType = HoodieTableType.COPY_ON_WRITE;
+            Properties properties = new Properties();
+            properties.setProperty(HoodieTableConfig.HOODIE_TABLE_NAME_PROP_NAME, RAW_TRIPS_TABLE_NAME);
+            properties.setProperty(HoodieTableConfig.HOODIE_TABLE_TYPE_PROP_NAME, tableType.name());
+            properties.setProperty(HoodieTableConfig.HOODIE_PAYLOAD_CLASS_PROP_NAME, HoodieAvroPayload.class.getName());
+            HoodieTableMetaClient.initTableAndGetMetaClient(new Configuration(), basePath.toString(), properties);
+        }
+        File partitionPath = new File(basePath, "2016/05/01");
         partitionPath.mkdirs();
         List<HiveFileInfo> filesInPartition = new ArrayList<>();
         for (int i = 0; i < numberOfFiles - numNonHoodieFiles; i++) {
@@ -482,11 +617,11 @@ public class TestBackgroundHiveSplitLoader
             dataFile.createNewFile();
             filesInPartition.add(createHiveFileInfo(locatedFileStatus(new Path(dataFile.getAbsolutePath())), Optional.empty()));
         }
-        List<List<HiveFileInfo>> result = new ArrayList<>();
-        result.add(filesInPartition);
+        Map<Boolean, List<HiveFileInfo>> result = new HashMap<>();
+        result.put(true, filesInPartition);
 
         if (isMixedTable) {
-            File partitionPath2 = new File(new File(new File(basePath, "2016"), "04"), "30");
+            File partitionPath2 = new File(basePath, "2016/04/30");
             partitionPath2.mkdirs();
             List<HiveFileInfo> filesInPartition2 = new ArrayList<>();
             for (int i = 0; i < numNonHoodieFiles; i++) {
@@ -494,8 +629,12 @@ public class TestBackgroundHiveSplitLoader
                 dataFile.createNewFile();
                 filesInPartition2.add(createHiveFileInfo(locatedFileStatus(new Path(dataFile.getAbsolutePath())), Optional.empty()));
             }
-            result.add(filesInPartition2);
+            result.put(false, filesInPartition2);
         }
+        else {
+            result.put(false, new ArrayList<>());
+        }
+
         return result;
     }
 

@@ -29,6 +29,7 @@ import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.predicate.Domain;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.io.CharStreams;
@@ -205,6 +206,14 @@ public class BackgroundHiveSplitLoader
                     this.hoodieTableMetaClient = new HoodieTableMetaClient(conf, tableBasePath);
                     this.hoodieTimeline = hoodieTableMetaClient.getActiveTimeline().getCommitsTimeline()
                             .filterCompletedInstants();
+                    if (HiveSessionProperties.isHoodieGloballyConsistentReadEnabled(session)) {
+                        String globallyReplicatedCommitForConsistentRead = table.getParameters()
+                                .get(HiveTableProperties.GLOBALLY_CONSISTENT_READ_TIMESTAMP);
+                        if (!Strings.isNullOrEmpty(globallyReplicatedCommitForConsistentRead)) {
+                            this.hoodieTimeline = this.hoodieTimeline.findInstantsInRange(
+                                    "0", globallyReplicatedCommitForConsistentRead);
+                        }
+                    }
                 }
                 catch (TableNotFoundException ex) {
                     throw new PrestoException(HIVE_FILE_NOT_FOUND, ex.getMessage());

@@ -53,6 +53,7 @@ public class HiveTableProperties
     public static final String SAMPLED_TABLES = "datasampling_sampled_tables";
     public static final String SAMPLING_PCT = "datasampling_sampling_pct";
     public static final String SAMPLING_COLUMN = "datasampling_sampling_column";
+    public static final String GLOBALLY_CONSISTENT_READ_TIMESTAMP = "last_replication_timestamp";
 
     private final List<PropertyMetadata<?>> tableProperties;
 
