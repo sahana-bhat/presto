@@ -28,6 +28,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Files;
 import com.uber.hoodie.hadoop.HoodieInputFormat;
 import io.airlift.units.DataSize;
 import org.apache.hadoop.conf.Configuration;
@@ -46,7 +47,6 @@ import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableConfig;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.util.FSUtils;
-import org.junit.rules.TemporaryFolder;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -130,7 +130,6 @@ public class TestBackgroundHiveSplitLoader
             "any String.",
             HOODIE_INPUT_FORMAT_CANONICAL_NAME,
             HOODIE_INPUT_FORMAT_CANONICAL_NAME);
-    private static final TemporaryFolder HOODIE_TABLE_BASE_PATH = new TemporaryFolder();
     private static Table hoodieTable;
 
     @Test
@@ -276,9 +275,10 @@ public class TestBackgroundHiveSplitLoader
         int numFiles = 19;
         String commitnumber = "123";
         int numNonHoodieFiles = 5;
-        List<List<HiveFileInfo>> partitionPathFiles = prepareHoodieDataset(HOODIE_TABLE_BASE_PATH, numFiles, commitnumber, isMixed, isMixed ? numNonHoodieFiles : 0);
+        File hoodieTableBasePath = Files.createTempDir();
+        List<List<HiveFileInfo>> partitionPathFiles = prepareHoodieDataset(hoodieTableBasePath, numFiles, commitnumber, isMixed, isMixed ? numNonHoodieFiles : 0);
         // create the commit file in Hoodie Metadata
-        new File(HOODIE_TABLE_BASE_PATH.getRoot().toString() + "/.hoodie/", commitnumber + ".commit").createNewFile();
+        new File(hoodieTableBasePath.toString() + "/.hoodie/", commitnumber + ".commit").createNewFile();
         List<HiveFileInfo> partitionFiles = partitionPathFiles.stream().flatMap(List::stream).collect(
                 Collectors.toList());
         BackgroundHiveSplitLoader splitLoader = backgroundHiveSplitLoader(partitionFiles,
@@ -451,19 +451,18 @@ public class TestBackgroundHiveSplitLoader
                 .build();
     }
 
-    private static List<List<HiveFileInfo>> prepareHoodieDataset(TemporaryFolder basePath, int numberOfFiles,
+    private static List<List<HiveFileInfo>> prepareHoodieDataset(File basePath, int numberOfFiles,
                                                                                   String commitNumber, boolean isMixedTable, int numNonHoodieFiles) throws IOException
     {
-        HOODIE_TABLE_BASE_PATH.delete();
-        HOODIE_TABLE_BASE_PATH.create();
-        hoodieTable = table(PARTITION_COLUMNS, Optional.empty(), HOODIE_STORAGE_FORMAT, HOODIE_TABLE_BASE_PATH.getRoot().toString(), RAW_TRIPS_TABLE_NAME);
+        hoodieTable = table(PARTITION_COLUMNS, Optional.empty(), HOODIE_STORAGE_FORMAT, basePath.toString(), RAW_TRIPS_TABLE_NAME);
         HoodieTableType tableType = HoodieTableType.COPY_ON_WRITE;
         Properties properties = new Properties();
         properties.setProperty(HoodieTableConfig.HOODIE_TABLE_NAME_PROP_NAME, RAW_TRIPS_TABLE_NAME);
         properties.setProperty(HoodieTableConfig.HOODIE_TABLE_TYPE_PROP_NAME, tableType.name());
         properties.setProperty(HoodieTableConfig.HOODIE_PAYLOAD_CLASS_PROP_NAME, HoodieAvroPayload.class.getName());
-        HoodieTableMetaClient.initTableAndGetMetaClient(new Configuration(), basePath.getRoot().toString(), properties);
-        File partitionPath = basePath.newFolder("2016", "05", "01");
+        HoodieTableMetaClient.initTableAndGetMetaClient(new Configuration(), basePath.toString(), properties);
+        File partitionPath = new File(new File(new File(basePath, "2016"), "05"), "01");
+        partitionPath.mkdirs();
         List<HiveFileInfo> filesInPartition = new ArrayList<>();
         for (int i = 0; i < numberOfFiles - numNonHoodieFiles; i++) {
             File dataFile = new File(partitionPath,
@@ -475,7 +474,8 @@ public class TestBackgroundHiveSplitLoader
         result.add(filesInPartition);
 
         if (isMixedTable) {
-            File partitionPath2 = basePath.newFolder("2016", "04", "30");
+            File partitionPath2 = new File(new File(new File(basePath, "2016"), "04"), "30");
+            partitionPath2.mkdirs();
             List<HiveFileInfo> filesInPartition2 = new ArrayList<>();
             for (int i = 0; i < numNonHoodieFiles; i++) {
                 File dataFile = new File(partitionPath2, "000000_" + i);
