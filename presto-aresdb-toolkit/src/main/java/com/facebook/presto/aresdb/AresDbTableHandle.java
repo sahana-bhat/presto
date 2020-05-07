@@ -37,6 +37,7 @@ public class AresDbTableHandle
     private final Optional<Duration> retention;
     private final Optional<Boolean> isQueryShort;
     private final Optional<AresDbQueryGeneratorResult> generatedResult;
+    private final AresDbMuttleyConfig muttleyConfig;
 
     @JsonCreator
     public AresDbTableHandle(
@@ -46,7 +47,8 @@ public class AresDbTableHandle
             @JsonProperty("timeStampType") Optional<Type> timeStampType,
             @JsonProperty("retention") Optional<Duration> retention,
             Optional<Boolean> isQueryShort,
-            Optional<AresDbQueryGeneratorResult> generatedResult)
+            Optional<AresDbQueryGeneratorResult> generatedResult,
+            @JsonProperty("muttleyConfig") AresDbMuttleyConfig config)
     {
         this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.tableName = requireNonNull(tableName, "tableName is null");
@@ -55,6 +57,7 @@ public class AresDbTableHandle
         this.retention = requireNonNull(retention, "retention is null");
         this.isQueryShort = requireNonNull(isQueryShort, "isQueryShort is null");
         this.generatedResult = requireNonNull(generatedResult, "generatedResult is null");
+        this.muttleyConfig = requireNonNull(config, "config is null");
     }
 
     @Override
@@ -68,6 +71,7 @@ public class AresDbTableHandle
                 .add("retention", retention)
                 .add("isQueryShort", isQueryShort)
                 .add("generatedResult", generatedResult)
+                .add("muttleyConfig", muttleyConfig)
                 .toString();
     }
 
@@ -111,6 +115,12 @@ public class AresDbTableHandle
         return generatedResult;
     }
 
+    @JsonProperty
+    public AresDbMuttleyConfig getMuttleyConfig()
+    {
+        return muttleyConfig;
+    }
+
     @Override
     public boolean equals(Object o)
     {
@@ -129,13 +139,14 @@ public class AresDbTableHandle
                 Objects.equals(timeStampType, that.timeStampType) &&
                 Objects.equals(retention, that.retention) &&
                 Objects.equals(isQueryShort, that.isQueryShort) &&
-                Objects.equals(generatedResult, that.generatedResult);
+                Objects.equals(generatedResult, that.generatedResult) &&
+                Objects.equals(muttleyConfig, that.muttleyConfig);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(connectorId, tableName, timeColumnName, timeStampType, retention, isQueryShort, generatedResult);
+        return Objects.hash(connectorId, tableName, timeColumnName, timeStampType, retention, isQueryShort, generatedResult, muttleyConfig);
     }
 
     public SchemaTableName toSchemaTableName()

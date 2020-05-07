@@ -30,7 +30,7 @@ import static java.util.Objects.requireNonNull;
 public class PinotSplit
         implements ConnectorSplit
 {
-    private final String connectorId;
+    private final PinotTableHandle tableHandle;
     private final SplitType splitType;
 
     // Properties needed for broker split type
@@ -43,14 +43,14 @@ public class PinotSplit
 
     @JsonCreator
     public PinotSplit(
-            @JsonProperty("connectorId") String connectorId,
+            @JsonProperty("tableHandle") PinotTableHandle tableHandle,
             @JsonProperty("splitType") SplitType splitType,
             @JsonProperty("brokerPql") Optional<PinotQueryGenerator.GeneratedPql> brokerPql,
             @JsonProperty("segmentPql") Optional<String> segmentPql,
             @JsonProperty("segments") List<String> segments,
             @JsonProperty("segmentHost") Optional<String> segmentHost)
     {
-        this.connectorId = requireNonNull(connectorId, "connector id is null");
+        this.tableHandle = requireNonNull(tableHandle, "tableHandle is null");
         this.splitType = requireNonNull(splitType, "splitType id is null");
         this.brokerPql = requireNonNull(brokerPql, "brokerPql is null");
         this.segmentPql = requireNonNull(segmentPql, "table name is null");
@@ -68,10 +68,10 @@ public class PinotSplit
         }
     }
 
-    public static PinotSplit createBrokerSplit(String connectorId, PinotQueryGenerator.GeneratedPql brokerPql)
+    public static PinotSplit createBrokerSplit(PinotTableHandle tableHandle, PinotQueryGenerator.GeneratedPql brokerPql)
     {
         return new PinotSplit(
-                requireNonNull(connectorId, "connector id is null"),
+                requireNonNull(tableHandle, "tableHandle is null"),
                 SplitType.BROKER,
                 Optional.of(requireNonNull(brokerPql, "brokerPql is null")),
                 Optional.empty(),
@@ -79,10 +79,10 @@ public class PinotSplit
                 Optional.empty());
     }
 
-    public static PinotSplit createSegmentSplit(String connectorId, String pql, List<String> segments, String segmentHost)
+    public static PinotSplit createSegmentSplit(PinotTableHandle tableHandle, String pql, List<String> segments, String segmentHost)
     {
         return new PinotSplit(
-                requireNonNull(connectorId, "connector id is null"),
+                requireNonNull(tableHandle, "tableHandle is null"),
                 SplitType.SEGMENT,
                 Optional.empty(),
                 Optional.of(requireNonNull(pql, "pql is null")),
@@ -91,9 +91,9 @@ public class PinotSplit
     }
 
     @JsonProperty
-    public String getConnectorId()
+    public PinotTableHandle getTableHandle()
     {
-        return connectorId;
+        return tableHandle;
     }
 
     @JsonProperty
@@ -130,7 +130,7 @@ public class PinotSplit
     public String toString()
     {
         return toStringHelper(this)
-                .add("connectorId", connectorId)
+                .add("tableHandle", tableHandle)
                 .add("splitType", splitType)
                 .add("segmentPql", segmentPql)
                 .add("brokerPql", brokerPql)

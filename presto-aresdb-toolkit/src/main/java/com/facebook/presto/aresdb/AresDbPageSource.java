@@ -94,13 +94,13 @@ public class AresDbPageSource
         this.cache = cache;
         ImmutableList.Builder<Page> cachedPages = ImmutableList.builder();
         ImmutableList.Builder<FluentFuture<AqlResponse>> aqlResponses = ImmutableList.builder();
-        fetch(cachedPages, aqlResponses);
+        fetch(aresDbSplit, cachedPages, aqlResponses);
         this.cachedPages = cachedPages.build();
         this.aqlResponses = aqlResponses.build();
         session.getSessionLogger().log(() -> String.format("Ares start split", aresDbSplit.getIndex()));
     }
 
-    private void fetch(ImmutableList.Builder<Page> cachedPagesBuilder, ImmutableList.Builder<FluentFuture<AqlResponse>> aqlResponses)
+    private void fetch(AresDbSplit aresDbSplit, ImmutableList.Builder<Page> cachedPagesBuilder, ImmutableList.Builder<FluentFuture<AqlResponse>> aqlResponses)
     {
         for (int i = 0; i < aresDbSplit.getAqls().size(); ++i) {
             AresQL aresQL = aresDbSplit.getAqls().get(i);
@@ -115,7 +115,7 @@ public class AresDbPageSource
                 }
             }
             if (miss) {
-                aqlResponses.add(aresDbConnection.queryAndGetResultsAsync(aql, i, aresDbSplit.getIndex(), session).transform(response -> new AqlResponse(augmentedAQL, response, aresQL.isCacheable()), directExecutor()));
+                aqlResponses.add(aresDbConnection.queryAndGetResultsAsync(aresDbSplit, aql, i, aresDbSplit.getIndex(), session).transform(response -> new AqlResponse(augmentedAQL, response, aresQL.isCacheable()), directExecutor()));
             }
         }
     }

@@ -18,6 +18,7 @@ import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.SchemaTableName;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableMap;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -33,13 +34,14 @@ public final class PinotTableHandle
     private final String tableName;
     private final Optional<Boolean> isQueryShort;
     private final Optional<PinotQueryGenerator.GeneratedPql> pql;
+    private final PinotMuttleyConfig muttleyConfig;
 
     public PinotTableHandle(
             String connectorId,
             String schemaName,
             String tableName)
     {
-        this(connectorId, schemaName, tableName, Optional.empty(), Optional.empty());
+        this(connectorId, schemaName, tableName, Optional.empty(), Optional.empty(), new PinotMuttleyConfig("", "", ImmutableMap.of()));
     }
 
     @JsonCreator
@@ -48,13 +50,15 @@ public final class PinotTableHandle
             @JsonProperty("schemaName") String schemaName,
             @JsonProperty("tableName") String tableName,
             @JsonProperty("isQueryShort") Optional<Boolean> isQueryShort,
-            @JsonProperty("pql") Optional<PinotQueryGenerator.GeneratedPql> pql)
+            @JsonProperty("pql") Optional<PinotQueryGenerator.GeneratedPql> pql,
+            @JsonProperty("muttleyConfig") PinotMuttleyConfig config)
     {
         this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.schemaName = requireNonNull(schemaName, "schemaName is null");
         this.tableName = requireNonNull(tableName, "tableName is null");
         this.isQueryShort = requireNonNull(isQueryShort, "safe to execute is null");
         this.pql = requireNonNull(pql, "broker pql is null");
+        this.muttleyConfig = requireNonNull(config, "config is null");
     }
 
     @JsonProperty
@@ -87,6 +91,12 @@ public final class PinotTableHandle
         return isQueryShort;
     }
 
+    @JsonProperty
+    public PinotMuttleyConfig getMuttleyConfig()
+    {
+        return muttleyConfig;
+    }
+
     public SchemaTableName toSchemaTableName()
     {
         return new SchemaTableName(schemaName, tableName);
@@ -106,13 +116,14 @@ public final class PinotTableHandle
                 Objects.equals(schemaName, that.schemaName) &&
                 Objects.equals(tableName, that.tableName) &&
                 Objects.equals(isQueryShort, that.isQueryShort) &&
-                Objects.equals(pql, that.pql);
+                Objects.equals(pql, that.pql) &&
+                Objects.equals(muttleyConfig, that.muttleyConfig);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(connectorId, schemaName, tableName, isQueryShort, pql);
+        return Objects.hash(connectorId, schemaName, tableName, isQueryShort, pql, muttleyConfig);
     }
 
     @Override
@@ -124,6 +135,7 @@ public final class PinotTableHandle
                 .add("tableName", tableName)
                 .add("isQueryShort", isQueryShort)
                 .add("pql", pql)
+                .add("muttleyConfig", muttleyConfig)
                 .toString();
     }
 }

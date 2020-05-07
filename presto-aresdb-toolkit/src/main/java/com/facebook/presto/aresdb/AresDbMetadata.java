@@ -68,7 +68,7 @@ public class AresDbMetadata
     @Override
     public ConnectorTableHandle getTableHandle(ConnectorSession session, SchemaTableName tableName)
     {
-        return new AresDbTableHandle(connectorId, tableName.getTableName(), aresDbConnection.getTimeColumn(tableName.getTableName()), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+        return new AresDbTableHandle(connectorId, tableName.getTableName(), aresDbConnection.getTimeColumn(tableName.getTableName()), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), new AresDbMuttleyConfig("", ImmutableMap.of()));
     }
 
     @Override

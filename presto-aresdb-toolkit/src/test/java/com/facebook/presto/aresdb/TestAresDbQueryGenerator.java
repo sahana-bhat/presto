@@ -61,7 +61,7 @@ public class TestAresDbQueryGenerator
         extends TestAresDbQueryBase
 {
     // Test table and related info
-    private static AresDbTableHandle aresdbTable = new AresDbTableHandle("connId", "tbl", Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+    private static AresDbTableHandle aresdbTable = new AresDbTableHandle("connId", "tbl", Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), new AresDbMuttleyConfig("", ImmutableMap.of()));
     //private static AresDbTableHandle joinTable = new AresDbTableHandle(new AresDbConnectorId("connId"), "dim", Optional.empty(), Optional.empty(), Optional.empty());
 
     private void testAQL(PlanNode planNode, String expectedAQL, ConnectorSession connectorSession)
@@ -228,7 +228,7 @@ public class TestAresDbQueryGenerator
         long currentTime = System.currentTimeMillis() + 100; // 100 to make sure it is not aligned to second boundary;
         ConnectorSession session = new TestingConnectorSession("user", Optional.of("test"), Optional.empty(), UTC_KEY, ENGLISH, currentTime, new AresDbSessionProperties(aresDbConfig).getSessionProperties(), ImmutableMap.of(), new FeaturesConfig().isLegacyTimestamp(), Optional.empty());
         Duration retention = new Duration(2, TimeUnit.DAYS);
-        AresDbTableHandle tableWithRetention = new AresDbTableHandle("connId", "tbl", Optional.of("secondsSinceEpoch"), Optional.of(BIGINT), Optional.of(retention), Optional.empty(), Optional.empty());
+        AresDbTableHandle tableWithRetention = new AresDbTableHandle("connId", "tbl", Optional.of("secondsSinceEpoch"), Optional.of(BIGINT), Optional.of(retention), Optional.empty(), Optional.empty(), new AresDbMuttleyConfig("", ImmutableMap.of()));
         long retentionTime = currentTime - retention.toMillis();
         long highSecondsExpected = (currentTime + 999) / 1000;
         long lowSecondsExpected = retentionTime / 1000;

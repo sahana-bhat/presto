@@ -16,32 +16,22 @@ package com.facebook.presto.rta;
 import com.facebook.presto.rta.schema.RTADeployment;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Splitter;
 
-import java.util.List;
 import java.util.Objects;
 
 public class RtaStorageKey
 {
-    private final String environment;
     private final RtaStorageType type;
 
     @JsonCreator
-    public RtaStorageKey(@JsonProperty("environment") String environment, @JsonProperty("type") RtaStorageType type)
+    public RtaStorageKey(@JsonProperty("type") RtaStorageType type)
     {
-        this.environment = environment;
         this.type = type;
     }
 
     public static RtaStorageKey fromDeployment(RTADeployment deployment)
     {
-        return new RtaStorageKey(deployment.getDescriptor(), deployment.getStorageType());
-    }
-
-    @JsonProperty
-    public String getEnvironment()
-    {
-        return environment;
+        return new RtaStorageKey(deployment.getStorageType());
     }
 
     @JsonProperty
@@ -60,24 +50,18 @@ public class RtaStorageKey
             return false;
         }
         RtaStorageKey that = (RtaStorageKey) o;
-        return Objects.equals(environment, that.environment) && type == that.type;
-    }
-
-    public String getDataCenter()
-    {
-        List<String> strings = Splitter.on("-").omitEmptyStrings().trimResults().limit(2).splitToList(environment);
-        return strings.get(0);
+        return type == that.type;
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(environment, type);
+        return Objects.hash(type);
     }
 
     @Override
     public String toString()
     {
-        return String.format("%s-%s", type, environment);
+        return String.format("%s", type);
     }
 }

@@ -40,7 +40,7 @@ public class PinotConfig
     public static final int DEFAULT_NON_AGGREGATE_LIMIT_FOR_BROKER_QUERIES = 25_000;
 
     // There is a perf penalty of having a large topN since the structures are allocated to this size
-    // So size this judiciously
+    // So size this judiciously public String getControllerRestService()
     public static final int DEFAULT_TOPN_LARGE = 10_000;
 
     private static final Duration DEFAULT_IDLE_TIMEOUT = new Duration(5, TimeUnit.MINUTES);

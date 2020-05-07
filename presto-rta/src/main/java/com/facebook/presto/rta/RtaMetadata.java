@@ -15,9 +15,12 @@ package com.facebook.presto.rta;
 
 import com.facebook.airlift.log.Logger;
 import com.facebook.presto.aresdb.AresDbColumnHandle;
+import com.facebook.presto.aresdb.AresDbMuttleyConfig;
 import com.facebook.presto.aresdb.AresDbTableHandle;
 import com.facebook.presto.pinot.PinotColumnHandle;
+import com.facebook.presto.pinot.PinotMuttleyConfig;
 import com.facebook.presto.pinot.PinotTableHandle;
+import com.facebook.presto.rta.schema.RTACluster;
 import com.facebook.presto.rta.schema.RTASchemaHandler;
 import com.facebook.presto.rta.schema.RTATableEntity;
 import com.facebook.presto.spi.ColumnHandle;
@@ -92,14 +95,26 @@ public class RtaMetadata
         return propertyManager.getDeployment(entity, hint).flatMap(deployment -> {
             RtaStorageKey key = RtaStorageKey.fromDeployment(deployment);
             String storageTableName = entity.getDefinition().getName();
+            RTACluster rtaCluster = deployment.getRtaCluster();
             ConnectorTableHandle underlyingHandle;
             switch (key.getType()) {
                 case PINOT:
-                    underlyingHandle = new PinotTableHandle(connectorId.getId(), storageTableName, storageTableName);
+                    underlyingHandle = new PinotTableHandle(connectorId.getId(), storageTableName, storageTableName,
+                            Optional.empty(), Optional.empty(),
+                            new PinotMuttleyConfig(
+                                    rtaCluster.getMuttleyRoService(),
+                                    rtaCluster.getMuttleyRwService(),
+                                    propertyManager.getExtraHttpHeaders(deployment)));
                     break;
                 case ARESDB:
                     Optional<String> timestampField = entity.getTimestampField();
-                    underlyingHandle = new AresDbTableHandle(connectorId.getId(), storageTableName, timestampField, entity.getTimestampType(), timestampField.isPresent() ? entity.getRetention() : Optional.empty(), Optional.empty(), Optional.empty());
+                    underlyingHandle = new AresDbTableHandle(connectorId.getId(), storageTableName,
+                            timestampField, entity.getTimestampType(),
+                            timestampField.isPresent() ? entity.getRetention() : Optional.empty(),
+                            Optional.empty(), Optional.empty(),
+                            new AresDbMuttleyConfig(
+                                    rtaCluster.getMuttleyRoService(),
+                                    propertyManager.getExtraHttpHeaders(deployment)));
                     break;
                 default:
                     return Optional.empty();

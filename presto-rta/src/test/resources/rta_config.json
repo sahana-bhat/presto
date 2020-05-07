@@ -4,74 +4,24 @@
   "types": {
     "aresdb": {
       "config": {
-        "service-url": "localhost:5436",
+        "aresdb.service-url": "localhost:5436",
         "fetch-timeout": "15s",
         "max-limit-without-aggregates": 1000,
         "single-split-limit": "1d",
         "cache-duration": "2d",
         "unsafe-to-cache-interval": "36h",
-        "max-cache-size": "100MB",
-        "aresdb.http-client.min-threads": 1,
-        "aresdb.http-client.max-threads": 4
-      },
-      "environments": {
-        "phx2-staginga": {
-          "config": {
-            "service-name": "gforcedb-staginga"
-          }
-        },
-        "phx2-stagingb": {
-          "config": {
-            "service-name": "gforcedb-stagingb"
-          }
-        },
-        "phx2-prodi": {
-          "config": {
-            "service-name": "gforcedb-prodi"
-          }
-        },
-        "dca1-prodi": {
-          "config": {
-            "service-name": "gforcedb-prodi"
-          }
-        },
-        "phx2-prodh": {
-          "config": {
-            "service-name": "gforcedb-prodh"
-          }
-        },
-        "dca1-prodh": {
-          "config": {
-            "service-name": "gforcedb-prodh"
-          }
-        },
-        "phx2-prodj": {
-          "config": {
-            "service-name": "gforcedb-prodj"
-          }
-        },
-        "dca1-prodj": {
-          "config": {
-            "service-name": "gforcedb-prodj"
-          }
-        }
+        "max-cache-size": "100MB"
       }
     },
     "pinot": {
       "config": {
-        "controller-url": "localhost:5436",
-        "scan-parallelism-enabled": "false",
-        "allow-multiple-aggregations": "true",
+        "controller-urls": "localhost:5436",
+        "scan-parallelism-enabled": false,
+        "allow-multiple-aggregations": true,
         "pinot.http-client.min-threads": 1,
         "pinot.http-client.max-threads": 4,
         "controller-rest-service": "streaming-pinot-controller-prod",
-        "rest-proxy-service-for-query": "upinot-rest-proxy-prod2",
-        "scan-parallelism-enabled": false,
-        "allow-multiple-aggregations": true
-      },
-      "environments": {
-        "dca1": {},
-        "phx2": {}
+        "rest-proxy-service-for-query": "upinot-rest-proxy-prod2"
       }
     }
   }

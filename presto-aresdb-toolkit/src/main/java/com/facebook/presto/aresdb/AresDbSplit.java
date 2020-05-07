@@ -28,7 +28,7 @@ import static java.util.Objects.requireNonNull;
 public class AresDbSplit
         implements ConnectorSplit
 {
-    private final String connectorId;
+    private final AresDbTableHandle tableHandle;
     private final List<AQLExpression> expressions;
     private final List<AresQL> aqls;
     private final int index;
@@ -89,21 +89,21 @@ public class AresDbSplit
 
     @JsonCreator
     public AresDbSplit(
-            @JsonProperty("connectorId") String connectorId,
+            @JsonProperty("tableHandle") AresDbTableHandle tableHandle,
             @JsonProperty("expressions") List<AQLExpression> expressions,
             @JsonProperty("aqls") List<AresQL> aqls,
             @JsonProperty("index") int index)
     {
-        this.connectorId = requireNonNull(connectorId, "connector id is null");
+        this.tableHandle = requireNonNull(tableHandle, "tableHandle is null");
         this.expressions = requireNonNull(expressions, "expressions is null");
         this.aqls = requireNonNull(aqls, "aqls is null");
         this.index = index;
     }
 
     @JsonProperty
-    public String getConnectorId()
+    public AresDbTableHandle getTableHandle()
     {
-        return connectorId;
+        return tableHandle;
     }
 
     @Override
@@ -146,7 +146,7 @@ public class AresDbSplit
     public String toString()
     {
         return toStringHelper(this)
-                .add("connectorId", connectorId)
+                .add("tableHandle", tableHandle)
                 .add("expressions", expressions)
                 .add("aqls", aqls)
                 .add("index", index)

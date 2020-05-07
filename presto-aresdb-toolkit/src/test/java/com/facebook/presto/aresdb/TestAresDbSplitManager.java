@@ -76,7 +76,8 @@ public class TestAresDbSplitManager
                 aresDbTableHandle.getTimeStampType(),
                 aresDbTableHandle.getRetention(),
                 Optional.of(generateResult.isQueryShort()),
-                Optional.of(generateResult));
+                Optional.of(generateResult),
+                aresDbTableHandle.getMuttleyConfig());
         return getSplits(newTableHandle, ImmutableMap.of("max_number_of_splits", maxNumOfSplits, "single_split_limit", singleSplitLimit, "unsafe_to_cache_interval", "0d"));
     }
 
@@ -129,7 +130,8 @@ public class TestAresDbSplitManager
                 aresDbTableHandle.getTimeStampType(),
                 aresDbTableHandle.getRetention(),
                 Optional.of(generateResult.isQueryShort()),
-                Optional.of(generateResult));
+                Optional.of(generateResult),
+                aresDbTableHandle.getMuttleyConfig());
         List<AresDbSplit> splits = getSplits(newTableHandle, ImmutableMap.of("max_number_of_splits", 100, "single_split_limit", "1d", "unsafe_to_cache_interval", "0d"));
         assertEquals(splits.size(), 1, "Non aggregate query shouldn't be split");
         List<AresDbSplit.AresQL> aqls = splits.get(0).getAqls();

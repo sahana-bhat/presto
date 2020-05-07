@@ -172,7 +172,7 @@ public class PinotConnectorPlanOptimizer
             boolean isQueryShort = pql.get().getGeneratedPql().isQueryShort();
             TableHandle newTableHandle = new TableHandle(
                     oldTableHandle.getConnectorId(),
-                    new PinotTableHandle(pinotTableHandle.getConnectorId(), pinotTableHandle.getSchemaName(), pinotTableHandle.getTableName(), Optional.of(isQueryShort), Optional.of(pql.get().getGeneratedPql())),
+                    new PinotTableHandle(pinotTableHandle.getConnectorId(), pinotTableHandle.getSchemaName(), pinotTableHandle.getTableName(), Optional.of(isQueryShort), Optional.of(pql.get().getGeneratedPql()), pinotTableHandle.getMuttleyConfig()),
                     oldTableHandle.getTransaction(),
                     oldTableHandle.getLayout());
             return Optional.of(

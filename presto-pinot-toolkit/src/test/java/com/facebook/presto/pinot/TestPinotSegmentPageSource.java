@@ -339,7 +339,7 @@ public class TestPinotSegmentPageSource
                 pinotConfig.getMinConnectionsPerServer(),
                 pinotConfig.getMaxBacklogPerServer(),
                 pinotConfig.getMaxConnectionsPerServer()), dataTables);
-        PinotSplit mockPinotSplit = new PinotSplit(pinotConnectorId.toString(), PinotSplit.SplitType.SEGMENT, Optional.empty(), Optional.of("blah"), ImmutableList.of("seg"), Optional.of("host"));
+        PinotSplit mockPinotSplit = new PinotSplit(realtimeOnlyTable, PinotSplit.SplitType.SEGMENT, Optional.empty(), Optional.of("blah"), ImmutableList.of("seg"), Optional.of("host"));
         List<PinotColumnHandle> pinotColumnHandles = createPinotColumnHandlesWithAllTypes();
         PinotSegmentPageSource pinotSegmentPageSource = new PinotSegmentPageSource(session, pinotConfig, mockPinotQueryClient, mockPinotSplit, pinotColumnHandles);
 

@@ -48,9 +48,10 @@ public class MockPinotClusterInfoFetcher
     }
 
     @Override
-    public Map<String, Map<String, List<String>>> getRoutingTableForTable(String tableName)
+    public Map<String, Map<String, List<String>>> getRoutingTableForTable(PinotTableHandle tableHandle)
     {
         ImmutableMap.Builder<String, Map<String, List<String>>> routingTable = ImmutableMap.builder();
+        String tableName = tableHandle.getTableName();
 
         if (TestPinotSplitManager.realtimeOnlyTable.getTableName().equalsIgnoreCase(tableName) || TestPinotSplitManager.hybridTable.getTableName().equalsIgnoreCase(tableName)) {
             routingTable.put(tableName + "_REALTIME", ImmutableMap.of(
@@ -409,9 +410,9 @@ public class MockPinotClusterInfoFetcher
     }
 
     @Override
-    public TimeBoundary getTimeBoundaryForTable(String table)
+    public TimeBoundary getTimeBoundaryForTable(PinotTableHandle tableHandle)
     {
-        if (TestPinotSplitManager.hybridTable.getTableName().equalsIgnoreCase(table)) {
+        if (TestPinotSplitManager.hybridTable.getTableName().equalsIgnoreCase(tableHandle.getTableName())) {
             return new TimeBoundary("secondsSinceEpoch", "4562345");
         }
 

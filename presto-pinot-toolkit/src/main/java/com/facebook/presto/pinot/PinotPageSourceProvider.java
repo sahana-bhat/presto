@@ -70,7 +70,7 @@ public class PinotPageSourceProvider
         requireNonNull(split, "split is null");
 
         PinotSplit pinotSplit = (PinotSplit) split;
-        checkArgument(pinotSplit.getConnectorId().equals(connectorId), "split is not for this connector");
+        checkArgument(pinotSplit.getTableHandle().getConnectorId().equals(connectorId), "split is not for this connector");
 
         List<PinotColumnHandle> handles = new ArrayList<>();
         for (ColumnHandle handle : columns) {
@@ -92,7 +92,8 @@ public class PinotPageSourceProvider
                         pinotSplit.getBrokerPql().get(),
                         handles,
                         clusterInfoFetcher,
-                        objectMapper);
+                        objectMapper,
+                        pinotSplit.getTableHandle());
             default:
                 throw new UnsupportedOperationException("Unknown Pinot split type: " + pinotSplit.getSplitType());
         }

@@ -24,16 +24,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -133,47 +130,22 @@ public class RtaPropertyManager
         }
     }
 
-    public static class PerEnvironmentSpec
-    {
-        private final Optional<String> baseConfigFile;
-        private final Map<String, String> configs;
-
-        @JsonCreator
-        public PerEnvironmentSpec(@JsonProperty("baseConfigFile") @Nullable String baseConfigFile, @JsonProperty("config") @Nullable Map<String, String> configs)
-        {
-            this.baseConfigFile = Optional.ofNullable(baseConfigFile);
-            this.configs = configs == null ? ImmutableMap.of() : ImmutableMap.copyOf(configs);
-        }
-
-        public Map<String, String> getResolvedConfigs(Map<String, String> configsForEnvironment)
-                throws IOException
-        {
-            Map<String, String> properties = new HashMap<>();
-            if (baseConfigFile.isPresent()) {
-                properties.putAll(RtaUtil.loadProperties(new File(baseConfigFile.get())));
-            }
-            properties.putAll(configsForEnvironment);
-            properties.putAll(configs);
-            properties.remove("connector.name");
-            return properties;
-        }
-    }
-
     public static class PerTypeSpec
     {
         private final Map<String, String> config;
-        private final Map<String, PerEnvironmentSpec> environments;
 
         @JsonCreator
-        public PerTypeSpec(@JsonProperty("config") @Nullable Map<String, String> config, @JsonProperty("environments") Map<String, PerEnvironmentSpec> environments)
+        public PerTypeSpec(@JsonProperty("config") @Nullable Map<String, String> config)
         {
             this.config = config == null ? ImmutableMap.of() : ImmutableMap.copyOf(config);
-            this.environments = environments == null ? ImmutableMap.of() : ImmutableMap.copyOf(environments);
         }
 
-        public Map<String, PerEnvironmentSpec> getEnvironments()
+        public Map<String, String> getConfig()
         {
-            return environments;
+            Map<String, String> configProperties = new HashMap<>();
+            configProperties.putAll(config);
+            configProperties.remove("connector.name");
+            return configProperties;
         }
     }
 
@@ -192,32 +164,16 @@ public class RtaPropertyManager
             this.types = types == null ? ImmutableMap.of() : ImmutableMap.copyOf(types);
         }
 
-        public Map<RtaStorageKey, Map<String, String>> build(Optional<DataCenterSpec> dataCenter)
-                throws IOException
+        public Map<RtaStorageKey, Map<String, String>> build()
         {
             ImmutableMap.Builder<RtaStorageKey, Map<String, String>> ret = ImmutableMap.builder();
             for (Map.Entry<String, PerTypeSpec> type : types.entrySet()) {
                 String typeStr = type.getKey();
                 PerTypeSpec spec = type.getValue();
+
                 Map<String, String> configsForType = new HashMap<>(config);
                 configsForType.putAll(spec.config);
-                RtaStorageType rtaType = RtaStorageType.valueOf(typeStr.toUpperCase(ENGLISH));
-                for (Map.Entry<String, PerEnvironmentSpec> env : spec.getEnvironments().entrySet()) {
-                    String environment = env.getKey();
-                    RtaStorageKey rtaStorageKey = new RtaStorageKey(environment, rtaType);
-                    PerEnvironmentSpec perEnvironmentSpec = env.getValue();
-                    Map<String, String> configsForEnvironment = new HashMap<>(configsForType);
-                    HashMap<String, String> configsBuilder = new HashMap<>(perEnvironmentSpec.getResolvedConfigs(configsForEnvironment));
-                    if (dataCenter.isPresent() && !rtaStorageKey.getDataCenter().equalsIgnoreCase(dataCenter.get().getFullDcNameWithNumber())) {
-                        configsBuilder.compute(typeStr.toLowerCase(ENGLISH) + ".extra-http-headers", (ignored, existingHeaders) -> {
-                            HashMap<String, String> existingHeadersParsed = new HashMap<>(existingHeaders == null ? ImmutableMap.of() : Splitter.on(",").trimResults().omitEmptyStrings().withKeyValueSeparator(":").split(existingHeaders));
-                            existingHeadersParsed.put("Rpc-Routing-Zone", rtaStorageKey.getDataCenter());
-                            existingHeadersParsed.put("Rpc-Routing-Delegate", "crosszone");
-                            return Joiner.on(",").withKeyValueSeparator(":").join(existingHeadersParsed);
-                        });
-                    }
-                    ret.put(rtaStorageKey, ImmutableMap.copyOf(configsBuilder));
-                }
+                ret.put(new RtaStorageKey(RtaStorageType.valueOf(typeStr.toUpperCase())), configsForType);
             }
             return ret.build();
         }
@@ -260,7 +216,7 @@ public class RtaPropertyManager
         else {
             propertySpec = new PropertySpec(ImmutableMap.of(), ImmutableMap.of());
         }
-        properties.set(propertySpec.build(dataCenter));
+        properties.set(propertySpec.build());
     }
 
     private static Optional<String> getUberDataCenterName(RtaConfig config)
@@ -312,23 +268,23 @@ public class RtaPropertyManager
 
     private Optional<RTADeployment> getDefaultDeployment(RTATableEntity entity)
     {
-        Map<RtaStorageKey, Map<String, String>> properties = getProperties();
-        List<RTADeployment> candidateDeployments;
-        candidateDeployments = new ArrayList<>();
-        for (RTADeployment deployment : entity.getDeployments()) {
-            RtaStorageKey thisDeploymentKey = RtaStorageKey.fromDeployment(deployment);
-            if (properties.containsKey(thisDeploymentKey)) {
-                candidateDeployments.add(deployment);
-            }
-        }
-        List<RTADeployment> candidates = winningDeployment(candidateDeployments);
+        List<RTADeployment> candidates = winningDeployment(entity.getDeployments());
         return candidates.isEmpty() ? Optional.empty() : Optional.of(candidates.get(ThreadLocalRandom.current().nextInt(candidates.size())));
     }
 
     private Optional<RTADeployment> getDeploymentInGivenLocation(RTATableEntity entity, RtaStorageKey hintLocation)
     {
-        Map<RtaStorageKey, Map<String, String>> properties = getProperties();
-        return entity.getDeployments().stream().filter(deployment -> properties.containsKey(hintLocation) && hintLocation.equals(RtaStorageKey.fromDeployment(deployment))).findFirst();
+        return entity.getDeployments().stream().filter(deployment -> hintLocation.getType().equals(deployment.getRtaCluster().getStorageType())).findFirst();
+    }
+
+    public Map<String, String> getExtraHttpHeaders(RTADeployment deployment)
+    {
+        Map<String, String> headers = new HashMap<>();
+        if (!dataCenter.get().getFullDcNameWithNumber().equalsIgnoreCase(deployment.getDataCenter())) {
+            headers.put("Rpc-Routing-Zone", deployment.getDataCenter());
+            headers.put("Rpc-Routing-Delegate", "crosszone");
+        }
+        return headers.isEmpty() ? ImmutableMap.of() : ImmutableMap.copyOf(headers);
     }
 
     public Optional<RTADeployment> getDeployment(RTATableEntity entity, Optional<RtaStorageKey> hintLocation)

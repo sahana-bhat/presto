@@ -77,6 +77,7 @@ public class PinotBrokerPageSource
     private final PinotClusterInfoFetcher clusterInfoFetcher;
     private final ConnectorSession session;
     private final ObjectMapper objectMapper;
+    private final PinotTableHandle tableHandle;
 
     private boolean finished;
     private long readTimeNanos;
@@ -88,7 +89,8 @@ public class PinotBrokerPageSource
             GeneratedPql brokerPql,
             List<PinotColumnHandle> columnHandles,
             PinotClusterInfoFetcher clusterInfoFetcher,
-            ObjectMapper objectMapper)
+            ObjectMapper objectMapper,
+            PinotTableHandle tableHandle)
     {
         this.pinotConfig = requireNonNull(pinotConfig, "pinot config is null");
         this.brokerPql = requireNonNull(brokerPql, "broker is null");
@@ -96,6 +98,7 @@ public class PinotBrokerPageSource
         this.columnHandles = ImmutableList.copyOf(columnHandles);
         this.session = requireNonNull(session, "session is null");
         this.objectMapper = requireNonNull(objectMapper, "object mapper is null");
+        this.tableHandle = requireNonNull(tableHandle, "tableHandle is null");
     }
 
     private static Double parseDouble(String value)
@@ -255,19 +258,21 @@ public class PinotBrokerPageSource
         return doWithRetries(PinotSessionProperties.getPinotRetryCount(session), (retryNumber) -> {
             String queryHost;
             Optional<String> rpcService;
+            PinotMuttleyConfig muttleyConfig = tableHandle.getMuttleyConfig();
             if (pinotConfig.getRestProxyUrl() != null) {
+                String restProxyServiceForQuery = muttleyConfig.getMuttleyRoService();
                 queryHost = pinotConfig.getRestProxyUrl();
-                rpcService = Optional.ofNullable(pinotConfig.getRestProxyServiceForQuery());
+                rpcService = !restProxyServiceForQuery.isEmpty() ? Optional.of(restProxyServiceForQuery) :
+                        Optional.ofNullable(pinotConfig.getRestProxyServiceForQuery());
             }
             else {
-                queryHost = clusterInfoFetcher.getBrokerHost(table);
+                queryHost = clusterInfoFetcher.getBrokerHost(tableHandle);
                 rpcService = Optional.empty();
             }
             Request.Builder builder = Request.Builder
                     .preparePost()
                     .setUri(URI.create(String.format(QUERY_URL_TEMPLATE, queryHost)));
-            String body = clusterInfoFetcher.doHttpActionWithHeaders(builder, Optional.of(String.format(REQUEST_PAYLOAD_TEMPLATE, pql)), rpcService);
-
+            String body = clusterInfoFetcher.doHttpActionWithHeaders(builder, Optional.of(String.format(REQUEST_PAYLOAD_TEMPLATE, pql)), rpcService, Optional.of(muttleyConfig.getExtraHeaders()));
             session.getSessionLogger().log(() -> "Pql Issue End");
 
             int rowCount = populateFromPqlResults(pql, numGroupByClause, blockBuilders, types, body);

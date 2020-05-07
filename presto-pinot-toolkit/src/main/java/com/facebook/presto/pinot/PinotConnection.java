@@ -66,8 +66,6 @@ public class PinotConnection
                                 return PinotColumnUtils.getPinotColumnsForPinotSchema(tablePinotSchema);
                             }
                         }, executor));
-
-        executor.execute(() -> this.allTablesCache.refresh(ALL_TABLES_CACHE_KEY));
     }
 
     private static <K, V> V getFromCache(LoadingCache<K, V> cache, K key)
@@ -100,13 +98,13 @@ public class PinotConnection
         return getFromCache(pinotTableColumnCache, tableName);
     }
 
-    public Map<String, Map<String, List<String>>> getRoutingTable(String tableName)
+    public Map<String, Map<String, List<String>>> getRoutingTable(PinotTableHandle tableHandle)
     {
-        return pinotClusterInfoFetcher.getRoutingTableForTable(tableName);
+        return pinotClusterInfoFetcher.getRoutingTableForTable(tableHandle);
     }
 
-    public TimeBoundary getTimeBoundary(String tableName)
+    public TimeBoundary getTimeBoundary(PinotTableHandle tableHandle)
     {
-        return pinotClusterInfoFetcher.getTimeBoundaryForTable(tableName);
+        return pinotClusterInfoFetcher.getTimeBoundaryForTable(tableHandle);
     }
 }

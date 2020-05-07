@@ -76,7 +76,7 @@ public class PinotClusterInfoFetcher
 
     private final Ticker ticker = Ticker.systemTicker();
 
-    private final LoadingCache<String, List<String>> brokersForTableCache;
+    private final LoadingCache<PinotTableHandle, List<String>> brokersForTableCache;
 
     private final JsonCodec<GetTables> tablesJsonCodec;
     private final JsonCodec<BrokersForTable> brokersForTableJsonCodec;
@@ -121,7 +121,8 @@ public class PinotClusterInfoFetcher
     public String doHttpActionWithHeaders(
             Request.Builder requestBuilder,
             Optional<String> requestBody,
-            Optional<String> rpcService)
+            Optional<String> rpcService,
+            Optional<Map<String, String>> headers)
     {
         requestBuilder = requestBuilder
                 .setHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
@@ -135,6 +136,12 @@ public class PinotClusterInfoFetcher
             requestBuilder.setBodyGenerator(StaticBodyGenerator.createStaticBodyGenerator(requestBody.get(), StandardCharsets.UTF_8));
         }
         pinotConfig.getExtraHttpHeaders().forEach(requestBuilder::setHeader);
+
+        // Set additional headers passed by caller, if any.
+        if (headers.isPresent()) {
+            headers.get().forEach(requestBuilder::setHeader);
+        }
+
         Request request = requestBuilder.build();
 
         long startTime = ticker.read();
@@ -165,20 +172,42 @@ public class PinotClusterInfoFetcher
         }
     }
 
+    // Don't break existing cache APIs to getTables and getTableSchemas.
     private String sendHttpGetToController(String path)
     {
+        return sendHttpGetToController(Optional.empty(), path);
+    }
+
+    private String sendHttpGetToController(Optional<PinotTableHandle> tableHandle, String path)
+    {
+        String controllerService = pinotConfig.getControllerRestService();
+        Optional<Map<String, String>> headers = Optional.empty();
+        if (tableHandle.isPresent()) {
+            PinotMuttleyConfig config = tableHandle.get().getMuttleyConfig();
+            if (config != null) {
+                if (!config.getMuttleyRwService().isEmpty()) {
+                    controllerService = config.getMuttleyRwService();
+                }
+                if (!config.getExtraHeaders().isEmpty()) {
+                    headers = Optional.ofNullable(config.getExtraHeaders());
+                }
+            }
+        }
+
         return doHttpActionWithHeaders(
                 Request.builder().prepareGet().setUri(URI.create(String.format("http://%s/%s", getControllerUrl(), path))),
                 Optional.empty(),
-                Optional.ofNullable(pinotConfig.getControllerRestService()));
+                Optional.ofNullable(controllerService),
+                headers);
     }
 
-    private String sendHttpGetToBroker(String table, String path)
+    private String sendHttpGetToBroker(PinotTableHandle tableHandle, String path)
     {
         return doHttpActionWithHeaders(
-                Request.builder().prepareGet().setUri(URI.create(String.format("http://%s/%s", getBrokerHost(table), path))),
+                Request.builder().prepareGet().setUri(URI.create(String.format("http://%s/%s", getBrokerHost(tableHandle), path))),
                 Optional.empty(),
-                Optional.empty());
+                Optional.empty(),
+                Optional.ofNullable(tableHandle.getMuttleyConfig().getExtraHeaders()));
     }
 
     private String getControllerUrl()
@@ -253,9 +282,10 @@ public class PinotClusterInfoFetcher
     }
 
     @VisibleForTesting
-    List<String> getAllBrokersForTable(String table)
+    List<String> getAllBrokersForTable(PinotTableHandle tableHandle)
     {
-        String responseBody = sendHttpGetToController(String.format(TABLE_INSTANCES_API_TEMPLATE, table));
+        String table = tableHandle.getTableName();
+        String responseBody = sendHttpGetToController(Optional.ofNullable(tableHandle), String.format(TABLE_INSTANCES_API_TEMPLATE, table));
         ArrayList<String> brokers = brokersForTableJsonCodec
                 .fromJson(responseBody)
                 .getBrokers()
@@ -279,12 +309,12 @@ public class PinotClusterInfoFetcher
         return ImmutableList.copyOf(brokers);
     }
 
-    public String getBrokerHost(String table)
+    public String getBrokerHost(PinotTableHandle tableHandle)
     {
         try {
-            List<String> brokers = brokersForTableCache.get(table);
+            List<String> brokers = brokersForTableCache.get(tableHandle);
             if (brokers.isEmpty()) {
-                throw new PinotException(PINOT_UNABLE_TO_FIND_BROKER, Optional.empty(), "No valid brokers found for " + table);
+                throw new PinotException(PINOT_UNABLE_TO_FIND_BROKER, Optional.empty(), "No valid brokers found for " + tableHandle.getTableName());
             }
             return brokers.get(ThreadLocalRandom.current().nextInt(brokers.size()));
         }
@@ -294,7 +324,7 @@ public class PinotClusterInfoFetcher
                 throw (PinotException) throwable;
             }
             else {
-                throw new PinotException(PINOT_UNABLE_TO_FIND_BROKER, Optional.empty(), "Error when getting brokers for table " + table, throwable);
+                throw new PinotException(PINOT_UNABLE_TO_FIND_BROKER, Optional.empty(), "Error when getting brokers for table " + tableHandle.getTableName(), throwable);
             }
         }
     }
@@ -342,11 +372,12 @@ public class PinotClusterInfoFetcher
         }
     }
 
-    public Map<String, Map<String, List<String>>> getRoutingTableForTable(String tableName)
+    public Map<String, Map<String, List<String>>> getRoutingTableForTable(PinotTableHandle tableHandle)
     {
+        String tableName = tableHandle.getTableName();
         ImmutableMap.Builder<String, Map<String, List<String>>> routingTableMap = ImmutableMap.builder();
         log.debug("Trying to get routingTable for %s from broker", tableName);
-        String responseBody = sendHttpGetToBroker(tableName, String.format(ROUTING_TABLE_API_TEMPLATE, tableName));
+        String responseBody = sendHttpGetToBroker(tableHandle, String.format(ROUTING_TABLE_API_TEMPLATE, tableName));
         routingTablesJsonCodec.fromJson(responseBody).getRoutingTableSnapshot().forEach(snapshot -> {
             String tableNameWithType = snapshot.getTableName();
             // Response could contain info for tableName that matches the original table by prefix.
@@ -422,9 +453,9 @@ public class PinotClusterInfoFetcher
         }
     }
 
-    public TimeBoundary getTimeBoundaryForTable(String table)
+    public TimeBoundary getTimeBoundaryForTable(PinotTableHandle tableHandle)
     {
-        String responseBody = sendHttpGetToBroker(table, String.format(TIME_BOUNDARY_API_TEMPLATE, table));
+        String responseBody = sendHttpGetToBroker(tableHandle, String.format(TIME_BOUNDARY_API_TEMPLATE, tableHandle.getTableName()));
         return timeBoundaryJsonCodec.fromJson(responseBody);
     }
 }

@@ -195,7 +195,7 @@ public class AresDbSplitManager
         int splitIndex = 0;
         while (aqlIdx < aqls.size()) {
             int newAqlIdx = Math.min(aqlIdx + numAqlsPerSplit, aqls.size());
-            splitBuilder.add(new AresDbSplit(connectorId, fullRequest.getExpressions(),
+            splitBuilder.add(new AresDbSplit(aresDbTableHandle, fullRequest.getExpressions(),
                     ImmutableList.copyOf(aqls.subList(aqlIdx, newAqlIdx)), splitIndex));
             aqlIdx = newAqlIdx;
             ++splitIndex;

@@ -160,7 +160,8 @@ public class AresDbConnectorPlanOptimizer
                             aresDbTableHandle.getTimeStampType(),
                             aresDbTableHandle.getRetention(),
                             Optional.of(aql.get().isQueryShort()),
-                            aql),
+                            aql,
+                            aresDbTableHandle.getMuttleyConfig()),
                     oldTableHandle.getTransaction(),
                     oldTableHandle.getLayout());
             return Optional.of(

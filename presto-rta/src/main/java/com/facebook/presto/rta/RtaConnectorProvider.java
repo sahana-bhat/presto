@@ -49,7 +49,7 @@ public class RtaConnectorProvider
     private static Connector createConnector(RtaStorageKey rtaStorageKey, RtaConnectorId connectorId, Map<String, String> properties, ConnectorContext connectorContext)
     {
         return createConnectFactory(rtaStorageKey.getType()).create(
-                connectorId.getId() + "-" + rtaStorageKey.getEnvironment(),
+                connectorId.getId(),
                 properties,
                 connectorContext);
     }

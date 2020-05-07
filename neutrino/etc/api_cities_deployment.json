@@ -9,7 +9,11 @@
     "config": "{}",
     "deleted": false,
     "cluster": "prodh",
-    "rtaCluster": {}
+    "rtaCluster": {
+      "region": "dca1",
+      "storageType": "ARESDB",
+      "muttleyRoService": "gforcedb-prodh"
+    }
   },
   {
     "storageType": "ARESDB",
@@ -21,7 +25,11 @@
     "config": "{}",
     "deleted": false,
     "cluster": "prodh",
-    "rtaCluster": {}
+    "rtaCluster": {
+      "region": "phx2",
+      "storageType": "ARESDB",
+      "muttleyRoService": "gforcedb-prodh"
+    }
   },
   {
     "storageType": "ARESDB",
@@ -33,7 +41,11 @@
     "config": "{}",
     "deleted": false,
     "cluster": "prodj",
-    "rtaCluster": {}
+    "rtaCluster": {
+      "region": "dca1",
+      "storageType": "ARESDB",
+      "muttleyRoService": "gforcedb-prodj"
+    }
   },
   {
     "storageType": "ARESDB",
@@ -45,7 +57,11 @@
     "config": "{}",
     "deleted": false,
     "cluster": "prodj",
-    "rtaCluster": {}
+    "rtaCluster": {
+      "region": "phx2",
+      "storageType": "ARESDB",
+      "muttleyRoService": "gforcedb-prodj"
+    }
   },
   {
     "storageType": "ARESDB",
@@ -57,7 +73,11 @@
     "config": "{}",
     "deleted": false,
     "cluster": "stagingb",
-    "rtaCluster": {}
+    "rtaCluster": {
+      "region": "phx2",
+      "storageType": "ARESDB",
+      "muttleyRoService": "gforcedb-stagingb"
+    }
   },
   {
     "storageType": "ARESDB",
@@ -69,6 +89,10 @@
     "config": "{}",
     "deleted": false,
     "cluster": "staginga",
-    "rtaCluster": {}
+    "rtaCluster": {
+      "region": "phx2",
+      "storageType": "ARESDB",
+      "muttleyRoService": "gforcedb-staginga"
+    }
   }
 ]

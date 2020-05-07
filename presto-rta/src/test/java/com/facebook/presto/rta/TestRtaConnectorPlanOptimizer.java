@@ -59,7 +59,7 @@ public class TestRtaConnectorPlanOptimizer
             new FunctionResolution(functionMetadataManager),
             functionMetadataManager);
     private final PinotTableHandle pinotTable = TestPinotSplitManager.hybridTable;
-    private final RtaStorageKey pinotStorageKey = new RtaStorageKey("dca1", RtaStorageType.PINOT);
+    private final RtaStorageKey pinotStorageKey = new RtaStorageKey(RtaStorageType.PINOT);
     private final RtaTableHandle rtaTableHandle = new RtaTableHandle(new RtaConnectorId("rta"), pinotStorageKey, new SchemaTableName("rta", "test"), pinotTable);
 
     @Test

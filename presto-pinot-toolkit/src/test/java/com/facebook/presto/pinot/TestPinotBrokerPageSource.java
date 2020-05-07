@@ -200,6 +200,6 @@ public class TestPinotBrokerPageSource
         List<PinotColumnHandle> pinotColumnHandles = ImmutableList.of(regionId, fare, city, fare, secondsSinceEpoch);
         PinotConfig pinotConfig = new PinotConfig();
         PinotQueryGenerator.GeneratedPql generatedPql = new PinotQueryGenerator.GeneratedPql(pinotTable.getTableName(), String.format("SELECT %s, %s FROM %s LIMIT %d", city.getColumnName(), regionId.getColumnName(), pinotTable.getTableName(), pinotConfig.getLimitLargeForSegment()), ImmutableList.of(0, 1), 0, false, true);
-        return new PinotBrokerPageSource(pinotConfig, new TestingConnectorSession(ImmutableList.of()), generatedPql, pinotColumnHandles, new MockPinotClusterInfoFetcher(pinotConfig), objectMapper);
+        return new PinotBrokerPageSource(pinotConfig, new TestingConnectorSession(ImmutableList.of()), generatedPql, pinotColumnHandles, new MockPinotClusterInfoFetcher(pinotConfig), objectMapper, pinotTable);
     }
 }

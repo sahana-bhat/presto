@@ -35,7 +35,7 @@ public class TestAresdbSplit
     {
         TestingConnectorSession session = new TestingConnectorSession(ImmutableList.of());
         AresDbSplit expected = new AresDbSplit(
-                "nothing",
+                new AresDbTableHandle("connid", "tbl", Optional.of("secondsSinceEpoch"), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), new AresDbMuttleyConfig("prod", null)),
                 ImmutableList.of(new AQLExpression("foo", Optional.of(new TimeSpec("bar",
                         session.getTimeZoneKey())), false)),
                 ImmutableList.of(new AresQL("{}", false)),
@@ -44,7 +44,8 @@ public class TestAresdbSplit
         String json = codec.toJson(expected);
         AresDbSplit actual = codec.fromJson(json);
 
-        assertEquals(actual.getConnectorId(), expected.getConnectorId());
+        assertEquals(actual.getTableHandle().getConnectorId(), expected.getTableHandle().getConnectorId());
+        assertEquals(actual.getTableHandle().getMuttleyConfig(), expected.getTableHandle().getMuttleyConfig());
         assertEquals(actual.getExpressions(), expected.getExpressions());
         assertEquals(actual.getExpressions().get(0).isHidden(), expected.getExpressions().get(0).isHidden());
         assertEquals(actual.getAddresses(), expected.getAddresses());

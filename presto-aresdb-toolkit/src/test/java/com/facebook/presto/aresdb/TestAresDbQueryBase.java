@@ -112,7 +112,7 @@ public class TestAresDbQueryBase
     protected static AresDbColumnHandle cityZipCode = new AresDbColumnHandle("zip", BIGINT, REGULAR);
     protected static AresDbColumnHandle cityPopulation = new AresDbColumnHandle("population", BIGINT, REGULAR);
     protected static AresDbColumnHandle secondsSinceEpoch = new AresDbColumnHandle("secondsSinceEpoch", BIGINT, REGULAR);
-    protected static AresDbTableHandle aresDbTableHandle = new AresDbTableHandle(aresDbConnectorId.getCatalogName(), "tbl", Optional.of("secondsSinceEpoch"), Optional.of(BIGINT), Optional.of(new Duration(90, TimeUnit.DAYS)), Optional.empty(), Optional.empty());
+    protected static AresDbTableHandle aresDbTableHandle = new AresDbTableHandle(aresDbConnectorId.getCatalogName(), "tbl", Optional.of("secondsSinceEpoch"), Optional.of(BIGINT), Optional.of(new Duration(90, TimeUnit.DAYS)), Optional.empty(), Optional.empty(), new AresDbMuttleyConfig("prod", null));
 
     protected static final Metadata metadata = MetadataManager.createTestMetadataManager();
     protected static final DomainTranslator domainTranslator = new RowExpressionDomainTranslator(metadata);

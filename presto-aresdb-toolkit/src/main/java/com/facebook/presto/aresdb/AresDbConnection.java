@@ -139,19 +139,29 @@ public class AresDbConnection
         }
     }
 
-    public FluentFuture<String> queryAndGetResultsAsync(String aql, int aqlIndex, int splitIndex, ConnectorSession session)
+    public FluentFuture<String> queryAndGetResultsAsync(AresDbSplit aresDbSplit, String aql, int aqlIndex, int splitIndex, ConnectorSession session)
     {
         Builder requestBuilder = Request.builder()
                 .prepareGet()
                 .setUri(URI.create("http://" + aresDbConfig.getServiceUrl() + "/query/aql"));
 
         requestBuilder = requestBuilder.setBodyGenerator(createStaticBodyGenerator(aql, StandardCharsets.UTF_8));
+
+        AresDbMuttleyConfig config = aresDbSplit.getTableHandle().getMuttleyConfig();
+        String rpcService = !config.getMuttleyRoService().isEmpty() ? config.getMuttleyRoService() : aresDbConfig.getServiceName();
+
         requestBuilder.setHeader(HttpHeaders.CONTENT_TYPE, "application/json")
                 .setHeader(aresDbConfig.getCallerHeaderParam(), aresDbConfig.getCallerHeaderValue())
-                .setHeader(aresDbConfig.getServiceHeaderParam(), aresDbConfig.getServiceName());
+                .setHeader(aresDbConfig.getServiceHeaderParam(), rpcService);
         for (Map.Entry<String, String> entry : aresDbConfig.getExtraHttpHeaders().entrySet()) {
             requestBuilder.setHeader(entry.getKey(), entry.getValue());
         }
+
+        // Set additional headers, if any.
+        for (Map.Entry<String, String> entry : config.getExtraHeaders().entrySet()) {
+            requestBuilder.setHeader(entry.getKey(), entry.getValue());
+        }
+
         Request request = requestBuilder.build();
         long startTime = ticker.read();
         session.getSessionLogger().log(() -> String.format("Aql Issue Start %d of split %d", aqlIndex, splitIndex));

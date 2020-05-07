@@ -11,45 +11,16 @@
                "aresdb.cache-duration" : "2d",
                "aresdb.unsafe-to-cache-interval" : "36h",
                "aresdb.max-cache-size" : "100MB"
-           },
-           "environments" : {
-               "phx2-staginga" : {
-                   "config" : {
-                       "aresdb.service-name" : "gforcedb-staginga"
-                   }
-               },
-               "phx2-stagingb" : {
-                   "config" : {
-                       "aresdb.service-name" : "gforcedb-stagingb"
-                   }
-               },
-               "phx2-prodj" : {
-                   "config" : {
-                       "aresdb.service-name" : "gforcedb-prodj"
-                   }
-               },
-               "dca1-prodj" : {
-                   "config" : {
-                       "aresdb.service-name" : "gforcedb-prodj"
-                   }
-               }
            }
         },
         "pinot" : {
             "config" : {
                 "pinot.controller-urls" : "localhost:5436",
-                "pinot.allow-multiple-aggregations" : "true",
+                "pinot.allow-multiple-aggregations" : true,
+                "pinot.forbid-segment-queries" : true,
                 "pinot.http-client.min-threads" : 1,
                 "pinot.http-client.max-threads" : 4,
                 "pinot.extra-http-headers": ""
-            },
-            "environments" : {
-                "dca1": {
-                    "baseConfigFile":"etc/catalog/pinotprod.properties"
-                },
-                "phx2": {
-                    "baseConfigFile":"etc/catalog/pinotprod.properties"
-                }
             }
         }
     }
