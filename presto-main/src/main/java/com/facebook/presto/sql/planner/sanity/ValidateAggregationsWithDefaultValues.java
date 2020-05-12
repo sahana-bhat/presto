@@ -14,10 +14,12 @@
 package com.facebook.presto.sql.planner.sanity;
 
 import com.facebook.presto.Session;
+import com.facebook.presto.SystemSessionProperties;
 import com.facebook.presto.execution.warnings.WarningCollector;
 import com.facebook.presto.metadata.Metadata;
 import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.PlanNode;
+import com.facebook.presto.spi.plan.TableScanNode;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.planner.TypeProvider;
 import com.facebook.presto.sql.planner.optimizations.ActualProperties;
@@ -115,7 +117,7 @@ public class ValidateAggregationsWithDefaultValues
             // No remote repartition exchange between final and partial aggregation.
             // Make sure that final aggregation operators are executed on a single node.
             ActualProperties globalProperties = PropertyDerivations.derivePropertiesRecursively(node, metadata, session, types, parser);
-            checkArgument(forceSingleNode || globalProperties.isSingleNode(),
+            checkArgument(forceSingleNode || globalProperties.isSingleNode() || SystemSessionProperties.isForceSingleNodePlan(session),
                     "Final aggregation with default value not separated from partial aggregation by remote hash exchange");
 
             if (!seenExchanges.localRepartitionExchange) {
@@ -148,6 +150,12 @@ public class ValidateAggregationsWithDefaultValues
             }
 
             return Optional.of(new SeenExchanges(true, seenExchanges.remoteRepartitionExchange));
+        }
+
+        @Override
+        public Optional<SeenExchanges> visitTableScan(TableScanNode node, Void context)
+        {
+            return Optional.of(new SeenExchanges(false, false));
         }
 
         private Optional<SeenExchanges> aggregatedSeenExchanges(List<PlanNode> nodes)

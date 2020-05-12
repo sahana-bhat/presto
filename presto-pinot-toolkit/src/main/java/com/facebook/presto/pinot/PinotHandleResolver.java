@@ -18,7 +18,6 @@ import com.facebook.presto.spi.ConnectorHandleResolver;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
-import com.facebook.presto.spi.connector.ConnectorPartitioningHandle;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 
 public class PinotHandleResolver
@@ -46,12 +45,6 @@ public class PinotHandleResolver
     public Class<? extends ConnectorSplit> getSplitClass()
     {
         return PinotSplit.class;
-    }
-
-    @Override
-    public Class<? extends ConnectorPartitioningHandle> getPartitioningHandleClass()
-    {
-        return PinotPartitioningHandle.class;
     }
 
     @Override

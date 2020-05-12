@@ -64,7 +64,7 @@ public class PinotConnector
         this.pageSourceProvider = requireNonNull(pageSourceProvider, "pageSourceProvider is null");
         this.sessionProperties = ImmutableList.copyOf(requireNonNull(pinotSessionProperties, "sessionProperties is null").getSessionProperties());
         this.planOptimizer = requireNonNull(planOptimizer, "plan optimizer is null");
-        this.partitioningProvider = pinotConfig.isForceSingleNodePlan() ? requireNonNull(partitioningProvider, "partitioningProvider is null") : null;
+        this.partitioningProvider = requireNonNull(partitioningProvider, "partitioningProvider is null");
     }
 
     @Override

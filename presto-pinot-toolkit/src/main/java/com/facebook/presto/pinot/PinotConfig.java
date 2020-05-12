@@ -81,7 +81,6 @@ public class PinotConfig
     private int fetchRetryCount = 2;
     private boolean useDateTrunc;
     private int nonAggregateLimitForBrokerQueries = DEFAULT_NON_AGGREGATE_LIMIT_FOR_BROKER_QUERIES;
-    private boolean forceSingleNodePlan;
 
     @NotNull
     public Map<String, String> getExtraHttpHeaders()
@@ -415,18 +414,6 @@ public class PinotConfig
     public PinotConfig setNonAggregateLimitForBrokerQueries(int nonAggregateLimitForBrokerQueries)
     {
         this.nonAggregateLimitForBrokerQueries = nonAggregateLimitForBrokerQueries;
-        return this;
-    }
-
-    public boolean isForceSingleNodePlan()
-    {
-        return forceSingleNodePlan;
-    }
-
-    @Config("force-single-node-plan")
-    public PinotConfig setForceSingleNodePlan(boolean forceSingleNodePlan)
-    {
-        this.forceSingleNodePlan = forceSingleNodePlan;
         return this;
     }
 }

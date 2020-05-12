@@ -54,8 +54,7 @@ public class TestPinotConfig
                         .setUseDateTrunc(false)
                         .setForbidSegmentQueries(false)
                         .setNonAggregateLimitForBrokerQueries(PinotConfig.DEFAULT_NON_AGGREGATE_LIMIT_FOR_BROKER_QUERIES)
-                        .setUseDateTrunc(false)
-                        .setForceSingleNodePlan(false));
+                        .setUseDateTrunc(false));
     }
 
     @Test
@@ -88,7 +87,6 @@ public class TestPinotConfig
                 .put("pinot.use-date-trunc", "true")
                 .put("pinot.limit-large-for-segment", "100")
                 .put("pinot.forbid-segment-queries", "true")
-                .put("force-single-node-plan", "true")
                 .build();
 
         PinotConfig expected = new PinotConfig()
@@ -118,8 +116,7 @@ public class TestPinotConfig
                 .setNonAggregateLimitForBrokerQueries(10)
                 .setLimitLargeForSegment(100)
                 .setForbidSegmentQueries(true)
-                .setUseDateTrunc(true)
-                .setForceSingleNodePlan(true);
+                .setUseDateTrunc(true);
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }
