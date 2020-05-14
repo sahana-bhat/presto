@@ -127,7 +127,8 @@ public class TestHiveClientConfig
                 .setHdfsObserverReadEnabled(false)
                 .setParquetColumnDecryptionEnabled(true)
                 .setOptimizedParquetReaderEnabled(false)
-                .setParquetVerificationEnabled(false));
+                .setParquetVerificationEnabled(false)
+                .setPartialAggregationPushdownEnabled(false));
     }
 
     @Test
@@ -220,6 +221,7 @@ public class TestHiveClientConfig
                 .put("hive.enable-parquet-column-decryption", "false")
                 .put("hive.enable-optimized-parquet-reader", "true")
                 .put("hive.enable-parquet-verification", "true")
+                .put("hive.enable_partial_aggregation_pushdown", "true")
                 .build();
 
         HiveClientConfig expected = new HiveClientConfig()
@@ -309,7 +311,8 @@ public class TestHiveClientConfig
                 .setHdfsObserverReadEnabled(true)
                 .setParquetColumnDecryptionEnabled(false)
                 .setOptimizedParquetReaderEnabled(true)
-                .setParquetVerificationEnabled(true);
+                .setParquetVerificationEnabled(true)
+                .setPartialAggregationPushdownEnabled(true);
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }

@@ -20,6 +20,7 @@ import com.facebook.presto.metadata.Metadata;
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.facebook.presto.spi.Subfield;
+import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.TableScanNode;
 import com.facebook.presto.spi.predicate.Domain;
@@ -31,6 +32,7 @@ import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.facebook.presto.spi.type.ArrayType;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
 import com.facebook.presto.sql.planner.Plan;
+import com.facebook.presto.sql.planner.assertions.ExpectedValueProvider;
 import com.facebook.presto.sql.planner.assertions.MatchResult;
 import com.facebook.presto.sql.planner.assertions.Matcher;
 import com.facebook.presto.sql.planner.assertions.PlanMatchPattern;
@@ -38,6 +40,7 @@ import com.facebook.presto.sql.planner.assertions.SymbolAliases;
 import com.facebook.presto.sql.planner.plan.JoinNode;
 import com.facebook.presto.sql.planner.plan.SemiJoinNode;
 import com.facebook.presto.sql.relational.FunctionResolution;
+import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.testing.QueryRunner;
 import com.facebook.presto.tests.AbstractTestQueryFramework;
 import com.facebook.presto.tests.DistributedQueryRunner;
@@ -61,6 +64,7 @@ import static com.facebook.presto.expressions.LogicalRowExpressions.TRUE_CONSTAN
 import static com.facebook.presto.hive.HiveQueryRunner.HIVE_CATALOG;
 import static com.facebook.presto.hive.HiveQueryRunner.createQueryRunner;
 import static com.facebook.presto.hive.HiveSessionProperties.COLLECT_COLUMN_STATISTICS_ON_WRITE;
+import static com.facebook.presto.hive.HiveSessionProperties.ENABLE_PARTIAL_AGGREGATION_PUSHDOWN;
 import static com.facebook.presto.hive.HiveSessionProperties.PUSHDOWN_FILTER_ENABLED;
 import static com.facebook.presto.hive.HiveSessionProperties.RANGE_FILTERS_ON_SUBSCRIPTS_ENABLED;
 import static com.facebook.presto.hive.TestHiveIntegrationSmokeTest.assertRemoteExchangesCount;
@@ -76,16 +80,20 @@ import static com.facebook.presto.spi.type.VarcharType.createVarcharType;
 import static com.facebook.presto.sql.analyzer.TypeSignatureProvider.fromTypes;
 import static com.facebook.presto.sql.planner.assertions.MatchResult.NO_MATCH;
 import static com.facebook.presto.sql.planner.assertions.MatchResult.match;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.aggregation;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.anySymbol;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.anyTree;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.equiJoinClause;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.exchange;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.filter;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.globalAggregation;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.join;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.node;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.output;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.project;
 import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.strictTableScan;
 import static com.facebook.presto.sql.planner.optimizations.PlanNodeSearcher.searchFrom;
+import static com.facebook.presto.sql.planner.plan.ExchangeNode.Scope.LOCAL;
 import static com.facebook.presto.sql.planner.plan.ExchangeNode.Scope.REMOTE_STREAMING;
 import static com.facebook.presto.sql.planner.plan.ExchangeNode.Type.GATHER;
 import static com.facebook.presto.sql.planner.plan.JoinNode.Type.INNER;
@@ -290,15 +298,15 @@ public class TestHiveLogicalPlanner
     public void testPushdownFilterOnSubfields()
     {
         assertUpdate("CREATE TABLE test_pushdown_filter_on_subfields(" +
-                         "id bigint, " +
-                         "a array(bigint), " +
-                         "b map(varchar, bigint), " +
-                         "c row(" +
-                             "a bigint, " +
-                             "b row(x bigint), " +
-                             "c array(bigint), " +
-                             "d map(bigint, bigint), " +
-                             "e map(varchar, bigint)))");
+                              "id bigint, " +
+                              "a array(bigint), " +
+                              "b map(varchar, bigint), " +
+                              "c row(" +
+                                  "a bigint, " +
+                                  "b row(x bigint), " +
+                                  "c array(bigint), " +
+                                  "d map(bigint, bigint), " +
+                                  "e map(varchar, bigint)))");
 
         assertPushdownFilterOnSubfields("SELECT * FROM test_pushdown_filter_on_subfields WHERE a[1] = 1",
                         ImmutableMap.of(new Subfield("a[1]"), singleValue(BIGINT, 1L)));
@@ -331,7 +339,7 @@ public class TestHiveLogicalPlanner
                         ImmutableMap.of(new Subfield("c.e[\"foo\"]"), singleValue(BIGINT, 1L)));
 
         assertPushdownFilterOnSubfields("SELECT * FROM test_pushdown_filter_on_subfields WHERE c.a IS NOT NULL AND c.c IS NOT NULL",
-                ImmutableMap.of(new Subfield("c.a"), notNull(BIGINT), new Subfield("c.c"), notNull(new ArrayType(BIGINT))));
+                        ImmutableMap.of(new Subfield("c.a"), notNull(BIGINT), new Subfield("c.c"), notNull(new ArrayType(BIGINT))));
 
         assertUpdate("DROP TABLE test_pushdown_filter_on_subfields");
     }
@@ -909,6 +917,76 @@ public class TestHiveLogicalPlanner
         }
     }
 
+    @Test
+    public void testPartialAggregatePushdown()
+    {
+        QueryRunner queryRunner = getQueryRunner();
+        try {
+            queryRunner.execute("CREATE TABLE orders_partitioned_parquet WITH (partitioned_by = ARRAY['ds'], format='PARQUET') AS " +
+                    "SELECT orderkey, orderpriority, '2019-11-01' as ds FROM orders WHERE orderkey < 1000 " +
+                    "UNION ALL " +
+                    "SELECT orderkey, orderpriority, '2019-11-02' as ds FROM orders WHERE orderkey < 1000");
+
+            Map<Optional<String>, ExpectedValueProvider<FunctionCall>> aggregations = ImmutableMap.of(Optional.of("count"),
+                    PlanMatchPattern.functionCall("count", false, ImmutableList.of(anySymbol())));
+            List<String> groupByKey = ImmutableList.of("count_star");
+            assertPlan(partialAggregatePushdownEnabled(),
+                    "select count(*) from orders_partitioned_parquet",
+                    anyTree(aggregation(globalAggregation(), aggregations, ImmutableMap.of(), Optional.empty(), AggregationNode.Step.FINAL,
+                            exchange(LOCAL, GATHER,
+                                    new PlanMatchPattern[] {exchange(REMOTE_STREAMING, GATHER,
+                                            new PlanMatchPattern[] {tableScan("orders_partitioned_parquet", ImmutableMap.of())})}))));
+
+            aggregations = ImmutableMap.of(
+                    Optional.of("count_1"),
+                    PlanMatchPattern.functionCall("count", false, ImmutableList.of(anySymbol())),
+                    Optional.of("max"),
+                    PlanMatchPattern.functionCall("max", false, ImmutableList.of(anySymbol())),
+                    Optional.of("min"),
+                    PlanMatchPattern.functionCall("max", false, ImmutableList.of(anySymbol())));
+
+            assertPlan(partialAggregatePushdownEnabled(),
+                    "select count(orderkey), max(orderpriority), min(ds) from orders_partitioned_parquet",
+                    anyTree(new PlanMatchPattern[] {aggregation(globalAggregation(), aggregations, ImmutableMap.of(), Optional.empty(), AggregationNode.Step.FINAL,
+                            exchange(LOCAL, GATHER,
+                                    new PlanMatchPattern[] {exchange(REMOTE_STREAMING, GATHER,
+                                            new PlanMatchPattern[] {tableScan(
+                                                    "orders_partitioned_parquet",
+                                                    ImmutableMap.of("orderkey",
+                                                            ImmutableSet.of(),
+                                                            "orderpriority",
+                                                            ImmutableSet.of(),
+                                                            "ds",
+                                                            ImmutableSet.of()))})}))}));
+
+            // Negative tests
+            assertPlan(partialAggregatePushdownEnabled(),
+                    "select count(orderkey), max(orderpriority), min(ds) from orders_partitioned_parquet where orderkey = 100",
+                    anyTree(PlanMatchPattern.tableScan("orders_partitioned_parquet")),
+                    plan -> assertNoAggregatedColumns(plan, "orders_partitioned_parquet"));
+
+            aggregations = ImmutableMap.of(
+                    Optional.of("count_1"),
+                    PlanMatchPattern.functionCall("count", false, ImmutableList.of(anySymbol())),
+                    Optional.of("arbitrary"),
+                    PlanMatchPattern.functionCall("arbitrary", false, ImmutableList.of(anySymbol())),
+                    Optional.of("min"),
+                    PlanMatchPattern.functionCall("max", false, ImmutableList.of(anySymbol())));
+            assertPlan(partialAggregatePushdownEnabled(),
+                    "select count(orderkey), arbitrary(orderpriority), min(ds) from orders_partitioned_parquet",
+                    anyTree(PlanMatchPattern.tableScan("orders_partitioned_parquet")),
+                    plan -> assertNoAggregatedColumns(plan, "orders_partitioned_parquet"));
+
+            assertPlan(partialAggregatePushdownEnabled(),
+                    "select count(orderkey), max(orderpriority), min(ds) from orders_partitioned_parquet where ds = '2019-11-01' and orderkey = 100",
+                    anyTree(PlanMatchPattern.tableScan("orders_partitioned_parquet")),
+                    plan -> assertNoAggregatedColumns(plan, "orders_partitioned_parquet"));
+        }
+        finally {
+            queryRunner.execute("DROP TABLE IF EXISTS orders_partitioned_parquet");
+        }
+    }
+
     private static Set<Subfield> toSubfields(String... subfieldPaths)
     {
         return Arrays.stream(subfieldPaths)
@@ -964,12 +1042,19 @@ public class TestHiveLogicalPlanner
                 .build();
     }
 
+    private Session partialAggregatePushdownEnabled()
+    {
+        return Session.builder(getQueryRunner().getDefaultSession())
+                .setCatalogSessionProperty(HIVE_CATALOG, ENABLE_PARTIAL_AGGREGATION_PUSHDOWN, "true")
+                .build();
+    }
+
     private RowExpression constant(long value)
     {
         return new ConstantExpression(value, BIGINT);
     }
 
-    private static Map<String, String> identityMap(String...values)
+    private static Map<String, String> identityMap(String... values)
     {
         return Arrays.stream(values).collect(toImmutableMap(Functions.identity(), Functions.identity()));
     }
@@ -1017,9 +1102,24 @@ public class TestHiveLogicalPlanner
         assertFalse(layoutHandle.getBucketFilter().isPresent());
     }
 
+    private void assertNoAggregatedColumns(Plan plan, String tableName)
+    {
+        TableScanNode tableScan = searchFrom(plan.getRoot())
+                .where(node -> isTableScanNode(node, tableName))
+                .findOnlyElement();
+
+        for (ColumnHandle columnHandle : tableScan.getAssignments().values()) {
+            assertTrue(columnHandle instanceof HiveColumnHandle);
+            HiveColumnHandle hiveColumnHandle = (HiveColumnHandle) columnHandle;
+            assertFalse(hiveColumnHandle.getColumnType() == HiveColumnHandle.ColumnType.AGGREGATED);
+            assertFalse(hiveColumnHandle.getPartialAggregation().isPresent());
+        }
+    }
+
     private static PlanMatchPattern tableScan(String tableName, TupleDomain<String> domainPredicate, RowExpression remainingPredicate, Set<String> predicateColumnNames)
     {
-        return PlanMatchPattern.tableScan(tableName).with(new Matcher() {
+        return PlanMatchPattern.tableScan(tableName).with(new Matcher()
+        {
             @Override
             public boolean shapeMatches(PlanNode node)
             {

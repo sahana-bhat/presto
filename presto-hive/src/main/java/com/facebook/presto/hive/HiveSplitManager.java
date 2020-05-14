@@ -229,7 +229,8 @@ public class HiveSplitManager
                 executor,
                 splitLoaderConcurrency,
                 recursiveDfsWalkerEnabled,
-                splitSchedulingContext.schedulerUsesHostAddresses());
+                splitSchedulingContext.schedulerUsesHostAddresses(),
+                layout.isPartialAggregationsPushedDown());
 
         HiveSplitSource splitSource;
         switch (splitSchedulingContext.getSplitSchedulingStrategy()) {

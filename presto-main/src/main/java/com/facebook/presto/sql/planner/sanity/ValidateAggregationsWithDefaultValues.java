@@ -106,6 +106,16 @@ public class ValidateAggregationsWithDefaultValues
                 return Optional.empty();
             }
 
+            // TODO Vivek - hack to allow partial aggregation pushdown
+            if (node.getStep().equals(FINAL)) {
+                if (node.getSource() instanceof ExchangeNode
+                        && node.getSource().getSources().get(0) instanceof ExchangeNode) {
+                    if (node.getSource().getSources().get(0).getSources().get(0) instanceof TableScanNode) {
+                        return Optional.empty();
+                    }
+                }
+            }
+
             checkState(seenExchangesOptional.isPresent(), "No partial aggregation below final aggregation");
             SeenExchanges seenExchanges = seenExchangesOptional.get();
 

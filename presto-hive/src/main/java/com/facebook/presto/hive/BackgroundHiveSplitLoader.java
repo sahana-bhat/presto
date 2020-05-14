@@ -134,6 +134,7 @@ public class BackgroundHiveSplitLoader
     private final boolean schedulerUsesHostAddresses;
     private HoodieTableMetaClient hoodieTableMetaClient;
     private HoodieTimeline hoodieTimeline;
+    private final boolean partialAggregationsPushedDown;
 
     // Purpose of this lock:
     // * Write lock: when you need a consistent view across partitions, fileIterators, and hiveSplitSource.
@@ -167,7 +168,8 @@ public class BackgroundHiveSplitLoader
             Executor executor,
             int loaderConcurrency,
             boolean recursiveDirWalkerEnabled,
-            boolean schedulerUsesHostAddresses)
+            boolean schedulerUsesHostAddresses,
+            boolean partialAggregationsPushedDown)
     {
         this.table = requireNonNull(table, "table is null");
         this.pathDomain = requireNonNull(pathDomain, "pathDomain is null");
@@ -182,6 +184,7 @@ public class BackgroundHiveSplitLoader
         this.partitions = new ConcurrentLazyQueue<>(requireNonNull(partitions, "partitions is null"));
         this.hdfsContext = new HdfsContext(session, table.getDatabaseName(), table.getTableName());
         this.schedulerUsesHostAddresses = schedulerUsesHostAddresses;
+        this.partialAggregationsPushedDown = partialAggregationsPushedDown;
         initHoodieMetadataAndTimeLineAsNeeded();
     }
 
@@ -449,9 +452,10 @@ public class BackgroundHiveSplitLoader
         }
         PathFilter pathFilter = path1 -> true;
         // S3 Select pushdown works at the granularity of individual S3 objects,
-        // therefore we must not split files when it is enabled.
+        // Partial Aggregation pushdown works at the granularity of the entire Parquet/ORC file
+        // therefore we must not split files when either flag is enabled.
         Properties schema = getHiveSchema(storage.getSerdeParameters(), table.getParameters());
-        boolean splittable = getHeaderCount(schema) == 0 && getFooterCount(schema) == 0 && !s3SelectPushdownEnabled;
+        boolean splittable = getHeaderCount(schema) == 0 && getFooterCount(schema) == 0 && !s3SelectPushdownEnabled && !partialAggregationsPushedDown;
 
         // Bucketed partitions are fully loaded immediately since all files must be loaded to determine the file to bucket mapping
         if (tableBucketInfo.isPresent()) {

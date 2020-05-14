@@ -95,6 +95,7 @@ public final class HiveSessionProperties
     private static final String ENABLE_PARQUET_COLUMN_DECRYPTION = "enable_parquet_column_decryption";
     private static final String ENABLE_OPTIMIZED_PARQUET_READER = "enable_parquet_optimized_reader";
     private static final String ENABLE_PARQUET_VERIFICATION = "enable_parquet_verification";
+    public static final String ENABLE_PARTIAL_AGGREGATION_PUSHDOWN = "enable_partial_aggregation_pushdown";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -427,6 +428,11 @@ public final class HiveSessionProperties
                         ENABLE_PARQUET_VERIFICATION,
                         "Is parquet reader results verification enabled",
                         hiveClientConfig.isParquetVerificationEnabled(),
+                        false),
+                booleanProperty(
+                        ENABLE_PARTIAL_AGGREGATION_PUSHDOWN,
+                        "Is partial aggregation pushdown enabled for Hive file formats",
+                        hiveClientConfig.isPartialAggregationPushdownEnabled(),
                         false));
     }
 
@@ -724,6 +730,11 @@ public final class HiveSessionProperties
     public static boolean isParquetVerificationEnabled(ConnectorSession session)
     {
         return session.getProperty(ENABLE_PARQUET_VERIFICATION, Boolean.class);
+    }
+
+    public static boolean isPartialAggregationPushdownEnabled(ConnectorSession session)
+    {
+        return session.getProperty(ENABLE_PARTIAL_AGGREGATION_PUSHDOWN, Boolean.class);
     }
 
     public static PropertyMetadata<DataSize> dataSizeSessionProperty(String name, String description, DataSize defaultValue, boolean hidden)

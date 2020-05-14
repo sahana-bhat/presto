@@ -50,6 +50,7 @@ public final class HiveTableLayoutHandle
     private final Optional<HiveBucketFilter> bucketFilter;
     private final boolean pushdownFilterEnabled;
     private final String layoutString;
+    private final boolean partialAggregationsPushedDown;
 
     // coordinator-only properties
     @Nullable
@@ -68,7 +69,8 @@ public final class HiveTableLayoutHandle
             @JsonProperty("bucketHandle") Optional<HiveBucketHandle> bucketHandle,
             @JsonProperty("bucketFilter") Optional<HiveBucketFilter> bucketFilter,
             @JsonProperty("pushdownFilterEnabled") boolean pushdownFilterEnabled,
-            @JsonProperty("layoutString") String layoutString)
+            @JsonProperty("layoutString") String layoutString,
+            @JsonProperty("partialAggregationsPushedDown") boolean partialAggregationsPushedDown)
     {
         this.schemaTableName = requireNonNull(schemaTableName, "table is null");
         this.partitionColumns = ImmutableList.copyOf(requireNonNull(partitionColumns, "partitionColumns is null"));
@@ -83,6 +85,7 @@ public final class HiveTableLayoutHandle
         this.bucketFilter = requireNonNull(bucketFilter, "bucketFilter is null");
         this.pushdownFilterEnabled = pushdownFilterEnabled;
         this.layoutString = requireNonNull(layoutString, "layoutString is null");
+        this.partialAggregationsPushedDown = partialAggregationsPushedDown;
     }
 
     public HiveTableLayoutHandle(
@@ -98,7 +101,8 @@ public final class HiveTableLayoutHandle
             Optional<HiveBucketHandle> bucketHandle,
             Optional<HiveBucketFilter> bucketFilter,
             boolean pushdownFilterEnabled,
-            String layoutString)
+            String layoutString,
+            boolean partialAggregationsPushedDown)
     {
         this.schemaTableName = requireNonNull(schemaTableName, "table is null");
         this.partitionColumns = ImmutableList.copyOf(requireNonNull(partitionColumns, "partitionColumns is null"));
@@ -113,6 +117,7 @@ public final class HiveTableLayoutHandle
         this.bucketFilter = requireNonNull(bucketFilter, "bucketFilter is null");
         this.pushdownFilterEnabled = pushdownFilterEnabled;
         this.layoutString = requireNonNull(layoutString, "layoutString is null");
+        this.partialAggregationsPushedDown = partialAggregationsPushedDown;
     }
 
     @JsonProperty
@@ -202,5 +207,11 @@ public final class HiveTableLayoutHandle
     public String toString()
     {
         return layoutString;
+    }
+
+    @JsonProperty
+    public boolean isPartialAggregationsPushedDown()
+    {
+        return partialAggregationsPushedDown;
     }
 }

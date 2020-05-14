@@ -161,6 +161,8 @@ public class HiveClientConfig
     private boolean isOptimizedParquetReaderEnabled;
     private boolean isParquetVerificationEnabled;
 
+    private boolean isPartialAggregationPushdownEnabled;
+
     public int getMaxInitialSplits()
     {
         return maxInitialSplits;
@@ -1322,5 +1324,18 @@ public class HiveClientConfig
     public boolean isParquetVerificationEnabled()
     {
         return this.isParquetVerificationEnabled;
+    }
+
+    @Config("hive.enable_partial_aggregation_pushdown")
+    @ConfigDescription("enabled partial aggregation pushdown")
+    public HiveClientConfig setPartialAggregationPushdownEnabled(boolean partialAggregationPushdownEnabled)
+    {
+        this.isPartialAggregationPushdownEnabled = partialAggregationPushdownEnabled;
+        return this;
+    }
+
+    public boolean isPartialAggregationPushdownEnabled()
+    {
+        return this.isPartialAggregationPushdownEnabled;
     }
 }

@@ -161,6 +161,8 @@ public class HivePageSource
                     case INTERIM:
                         // interim columns don't show up in output
                         break;
+                    case AGGREGATED:
+                        break;
                     default:
                         throw new UnsupportedOperationException();
                 }

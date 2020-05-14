@@ -32,6 +32,7 @@ import com.facebook.presto.spi.ConnectorPageSource;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.Subfield;
+import com.facebook.presto.spi.function.StandardFunctionResolution;
 import com.facebook.presto.spi.predicate.Domain;
 import com.facebook.presto.spi.predicate.TupleDomain;
 import com.facebook.presto.spi.type.RowType;
@@ -72,6 +73,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.facebook.presto.hive.HiveColumnHandle.ColumnType.AGGREGATED;
 import static com.facebook.presto.hive.HiveColumnHandle.ColumnType.REGULAR;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_BAD_DATA;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_CANNOT_OPEN_SPLIT;
@@ -121,14 +123,16 @@ public class ParquetPageSourceFactory
     private static final FileEncDecryptorRetriever fileEncDecryptorRetriever = new CryptoMetadataRetriever();
 
     private final TypeManager typeManager;
+    private final StandardFunctionResolution functionResolution;
     private final HdfsEnvironment hdfsEnvironment;
     private final FileFormatDataSourceStats stats;
     private final FileOpener fileOpener;
 
     @Inject
-    public ParquetPageSourceFactory(TypeManager typeManager, HdfsEnvironment hdfsEnvironment, FileFormatDataSourceStats stats, FileOpener fileOpener)
+    public ParquetPageSourceFactory(TypeManager typeManager, StandardFunctionResolution functionResolution, HdfsEnvironment hdfsEnvironment, FileFormatDataSourceStats stats, FileOpener fileOpener)
     {
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
+        this.functionResolution = requireNonNull(functionResolution, "functionResolution is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.stats = requireNonNull(stats, "stats is null");
         this.fileOpener = requireNonNull(fileOpener, "fileOpener is null");
@@ -169,6 +173,7 @@ public class ParquetPageSourceFactory
                     isParquetVerificationEnabled(session),
                     getParquetMaxReadBlockSize(session),
                     typeManager,
+                    functionResolution,
                     effectivePredicate,
                     stats,
                     extraFileInfo,
@@ -190,6 +195,7 @@ public class ParquetPageSourceFactory
                     isParquetVerificationEnabled(session),
                     getParquetMaxReadBlockSize(session),
                     typeManager,
+                    functionResolution,
                     effectivePredicate,
                     stats,
                     extraFileInfo,
@@ -197,7 +203,7 @@ public class ParquetPageSourceFactory
         }
     }
 
-    public static ParquetPageSource createParquetPageSource(
+    public static ConnectorPageSource createParquetPageSource(
             HdfsEnvironment hdfsEnvironment,
             ConnectorSession session,
             Configuration configuration,
@@ -212,6 +218,7 @@ public class ParquetPageSourceFactory
             boolean parquetVerificationEnabled,
             DataSize maxReadBlockSize,
             TypeManager typeManager,
+            StandardFunctionResolution functionResolution,
             TupleDomain<HiveColumnHandle> effectivePredicate,
             FileFormatDataSourceStats stats,
             Optional<byte[]> extraFileInfo,
@@ -225,6 +232,10 @@ public class ParquetPageSourceFactory
             FileSystem fileSystem = hdfsEnvironment.getFileSystem(hdfsContext, path, configuration);
             FSDataInputStream inputStream = fileOpener.open(fileSystem, path, extraFileInfo);
             ParquetMetadata parquetMetadata = MetadataReader.readFooter(inputStream, path, fileSize);
+            if (!columns.isEmpty() && columns.get(0).getColumnType() == AGGREGATED) {
+                return new AggregatedParquetPageSource(columns, parquetMetadata, typeManager, functionResolution);
+            }
+
             FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
             MessageType fileSchema = fileMetaData.getSchema();
             dataSource = buildHdfsParquetDataSource(inputStream, path, stats);
@@ -306,7 +317,7 @@ public class ParquetPageSourceFactory
      *
      * TODO: This method will replace createParquetPageSource() later once decryption code is baked well.
      */
-    public static ParquetPageSource createCryptoParquetPageSource(
+    public static ConnectorPageSource createCryptoParquetPageSource(
             HdfsEnvironment hdfsEnvironment,
             ConnectorSession session,
             Configuration configuration,
@@ -321,6 +332,7 @@ public class ParquetPageSourceFactory
             boolean parquetVerificationEnabled,
             DataSize maxReadBlockSize,
             TypeManager typeManager,
+            StandardFunctionResolution functionResolution,
             TupleDomain<HiveColumnHandle> effectivePredicate,
             FileFormatDataSourceStats stats,
             Optional<byte[]> extraFileInfo,
@@ -340,6 +352,9 @@ public class ParquetPageSourceFactory
                         return ParquetMetaDataUtils.getParquetMetadata(fileDecryptionProperties,
                             fileDecryptor, configuration, path, fileSize, inputStream);
                     });
+            if (!columns.isEmpty() && columns.get(0).getColumnType() == AGGREGATED) {
+                return new AggregatedParquetPageSource(columns, parquetMetadata, typeManager, functionResolution);
+            }
             FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
             MessageType fileSchema = fileMetaData.getSchema();
             dataSource = buildHdfsParquetDataSource(inputStream, path, stats);

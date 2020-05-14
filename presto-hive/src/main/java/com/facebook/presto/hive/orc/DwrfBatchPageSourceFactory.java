@@ -27,6 +27,7 @@ import com.facebook.presto.orc.cache.OrcFileTailSource;
 import com.facebook.presto.spi.ConnectorPageSource;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.PrestoException;
+import com.facebook.presto.spi.function.StandardFunctionResolution;
 import com.facebook.presto.spi.predicate.TupleDomain;
 import com.facebook.presto.spi.type.TypeManager;
 import org.apache.hadoop.conf.Configuration;
@@ -55,6 +56,7 @@ public class DwrfBatchPageSourceFactory
         implements HiveBatchPageSourceFactory
 {
     private final TypeManager typeManager;
+    StandardFunctionResolution functionResolution;
     private final HdfsEnvironment hdfsEnvironment;
     private final FileFormatDataSourceStats stats;
     private final int domainCompactionThreshold;
@@ -65,6 +67,7 @@ public class DwrfBatchPageSourceFactory
     @Inject
     public DwrfBatchPageSourceFactory(
             TypeManager typeManager,
+            StandardFunctionResolution functionResolution,
             HiveClientConfig config,
             HdfsEnvironment hdfsEnvironment,
             FileFormatDataSourceStats stats,
@@ -73,6 +76,7 @@ public class DwrfBatchPageSourceFactory
             FileOpener fileOpener)
     {
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
+        this.functionResolution = requireNonNull(functionResolution, "functionResolution is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.stats = requireNonNull(stats, "stats is null");
         this.domainCompactionThreshold = requireNonNull(config, "config is null").getDomainCompactionThreshold();
@@ -117,6 +121,7 @@ public class DwrfBatchPageSourceFactory
                 effectivePredicate,
                 hiveStorageTimeZone,
                 typeManager,
+                functionResolution,
                 getOrcMaxBufferSize(session),
                 getOrcStreamBufferSize(session),
                 getOrcLazyReadSmallRanges(session),
