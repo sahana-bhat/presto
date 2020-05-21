@@ -688,15 +688,17 @@ public final class ExpressionDomainTranslator
             InListExpression valueList = (InListExpression) node.getValueList();
             checkState(!valueList.getValues().isEmpty(), "InListExpression should never be empty");
 
+            ExtractionResult extractionResult;
             if (valueList.getValues().size() >= getTupleDomainLimitForInPredicate(session)) {
-                return new ExtractionResult(TupleDomain.all(), node);
+                extractionResult = new ExtractionResult(TupleDomain.all(), node);
             }
-
-            ImmutableList.Builder<Expression> disjuncts = ImmutableList.builder();
-            for (Expression expression : valueList.getValues()) {
-                disjuncts.add(new ComparisonExpression(EQUAL, node.getValue(), expression));
+            else {
+                ImmutableList.Builder<Expression> disjuncts = ImmutableList.builder();
+                for (Expression expression : valueList.getValues()) {
+                    disjuncts.add(new ComparisonExpression(EQUAL, node.getValue(), expression));
+                }
+                extractionResult = process(or(disjuncts.build()), complement);
             }
-            ExtractionResult extractionResult = process(or(disjuncts.build()), complement);
 
             // preserve original IN predicate as remaining predicate
             if (extractionResult.tupleDomain.isAll()) {

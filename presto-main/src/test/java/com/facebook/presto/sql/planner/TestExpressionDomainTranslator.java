@@ -851,6 +851,12 @@ public class TestExpressionDomainTranslator
                         new SystemSessionProperties(new QueryManagerConfig(), new TaskManagerConfig(),
                                 new MemoryManagerConfig(), new FeaturesConfig().setTupleDomainLimitForInPredicate(1)))).build());
 
+        assertUnsupportedPredicate(
+                not(in(C_BIGINT, ImmutableList.of(1L, 2L))),
+                testSessionBuilder(new SessionPropertyManager(
+                        new SystemSessionProperties(new QueryManagerConfig(), new TaskManagerConfig(),
+                                new MemoryManagerConfig(), new FeaturesConfig().setTupleDomainLimitForInPredicate(1)))).build());
+
         assertPredicateTranslates(
                 in(C_COLOR, ImmutableList.of(colorLiteral(COLOR_VALUE_1), colorLiteral(COLOR_VALUE_2))),
                 withColumnDomains(ImmutableMap.of(C_COLOR, Domain.create(ValueSet.of(COLOR, COLOR_VALUE_1, COLOR_VALUE_2), false))));
