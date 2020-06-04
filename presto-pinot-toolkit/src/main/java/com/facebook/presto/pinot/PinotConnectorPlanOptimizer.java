@@ -170,11 +170,18 @@ public class PinotConnectorPlanOptimizer
             TableHandle oldTableHandle = tableScanNode.getTable();
             LinkedHashMap<VariableReferenceExpression, PinotColumnHandle> assignments = context.getAssignments();
             boolean isQueryShort = pql.get().getGeneratedPql().isQueryShort();
+            PinotTableHandle newConnectorTableHandle = new PinotTableHandle(
+                    pinotTableHandle.getConnectorId(),
+                    pinotTableHandle.getSchemaName(),
+                    pinotTableHandle.getTableName(),
+                    Optional.of(isQueryShort),
+                    Optional.of(pql.get().getGeneratedPql()),
+                    pinotTableHandle.getMuttleyConfig());
             TableHandle newTableHandle = new TableHandle(
                     oldTableHandle.getConnectorId(),
-                    new PinotTableHandle(pinotTableHandle.getConnectorId(), pinotTableHandle.getSchemaName(), pinotTableHandle.getTableName(), Optional.of(isQueryShort), Optional.of(pql.get().getGeneratedPql()), pinotTableHandle.getMuttleyConfig()),
+                    newConnectorTableHandle,
                     oldTableHandle.getTransaction(),
-                    oldTableHandle.getLayout());
+                    Optional.of(new PinotTableLayoutHandle(newConnectorTableHandle)));
             return Optional.of(
                     new TableScanNode(
                             idAllocator.getNextId(),
