@@ -29,6 +29,7 @@ import com.facebook.presto.spi.relation.RowExpression;
 import com.facebook.presto.spi.relation.RowExpressionVisitor;
 import com.facebook.presto.spi.relation.SpecialFormExpression;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
+import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.TypeManager;
 import com.google.common.collect.ImmutableSet;
@@ -183,6 +184,10 @@ public class PinotFilterExpressionConverter
     @Override
     public PinotExpression visitConstant(ConstantExpression literal, Function<VariableReferenceExpression, Selection> context)
     {
+        if (literal.getType() instanceof BooleanType) {
+            return new PinotExpression("'" + getLiteralAsString(literal) + "'", Origin.LITERAL);
+        }
+
         return new PinotExpression(getLiteralAsString(literal), Origin.LITERAL);
     }
 

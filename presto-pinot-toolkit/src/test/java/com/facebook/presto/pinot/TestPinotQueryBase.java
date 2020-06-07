@@ -71,6 +71,7 @@ import static com.facebook.presto.pinot.query.PinotQueryGeneratorContext.Origin.
 import static com.facebook.presto.pinot.query.PinotQueryGeneratorContext.Origin.TABLE_COLUMN;
 import static com.facebook.presto.spi.plan.LimitNode.Step.FINAL;
 import static com.facebook.presto.spi.type.BigintType.BIGINT;
+import static com.facebook.presto.spi.type.BooleanType.BOOLEAN;
 import static com.facebook.presto.spi.type.DoubleType.DOUBLE;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 import static com.facebook.presto.sql.analyzer.ExpressionAnalyzer.getExpressionTypes;
@@ -98,12 +99,14 @@ public class TestPinotQueryBase
 
     protected final PinotConfig pinotConfig = new PinotConfig();
 
-    protected static final Map<VariableReferenceExpression, PinotQueryGeneratorContext.Selection> testInput = ImmutableMap.of(
-            new VariableReferenceExpression("regionid", BIGINT), new PinotQueryGeneratorContext.Selection("regionId", TABLE_COLUMN), // direct column reference
-            new VariableReferenceExpression("city", VARCHAR), new PinotQueryGeneratorContext.Selection("city", TABLE_COLUMN), // direct column reference
-            new VariableReferenceExpression("fare", DOUBLE), new PinotQueryGeneratorContext.Selection("fare", TABLE_COLUMN), // direct column reference
-            new VariableReferenceExpression("totalfare", DOUBLE), new PinotQueryGeneratorContext.Selection("(fare + trip)", DERIVED), // derived column
-            new VariableReferenceExpression("secondssinceepoch", BIGINT), new PinotQueryGeneratorContext.Selection("secondsSinceEpoch", TABLE_COLUMN)); // column for datetime functions
+    protected static final Map<VariableReferenceExpression, PinotQueryGeneratorContext.Selection> testInput = new ImmutableMap.Builder<VariableReferenceExpression, PinotQueryGeneratorContext.Selection>()
+            .put(new VariableReferenceExpression("regionid", BIGINT), new PinotQueryGeneratorContext.Selection("regionId", TABLE_COLUMN)) // direct column reference
+            .put(new VariableReferenceExpression("city", VARCHAR), new PinotQueryGeneratorContext.Selection("city", TABLE_COLUMN)) // direct column reference
+            .put(new VariableReferenceExpression("fare", DOUBLE), new PinotQueryGeneratorContext.Selection("fare", TABLE_COLUMN)) // direct column reference
+            .put(new VariableReferenceExpression("totalfare", DOUBLE), new PinotQueryGeneratorContext.Selection("(fare + trip)", DERIVED)) // derived column
+            .put(new VariableReferenceExpression("secondssinceepoch", BIGINT), new PinotQueryGeneratorContext.Selection("secondsSinceEpoch", TABLE_COLUMN)) // column for datetime functions
+            .put(new VariableReferenceExpression("isValid", BOOLEAN), new PinotQueryGeneratorContext.Selection("isValid", TABLE_COLUMN)) // column for boolean comparision
+            .build();
 
     protected final TypeProvider typeProvider = TypeProvider.fromVariables(testInput.keySet());
 
