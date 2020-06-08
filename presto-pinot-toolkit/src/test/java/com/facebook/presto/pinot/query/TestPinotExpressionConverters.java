@@ -79,10 +79,10 @@ public class TestPinotExpressionConverters
     {
         SessionHolder sessionHolder = new SessionHolder(true);
         testAggregationProject("date_trunc('hour', from_unixtime(secondssinceepoch + 2))",
-                "dateTrunc(ADD(secondsSinceEpoch, 2),seconds, UTC, hour)", sessionHolder);
+                "prestoDateTrunc(ADD(secondsSinceEpoch, 2),'seconds', 'UTC', 'hour')", sessionHolder);
 
         testAggregationProject("date_trunc('hour', from_unixtime(secondssinceepoch + 2, 'America/New_York'))",
-                "dateTrunc(ADD(secondsSinceEpoch, 2),seconds, America/New_York, hour)", sessionHolder);
+                "prestoDateTrunc(ADD(secondsSinceEpoch, 2),'seconds', 'America/New_York', 'hour')", sessionHolder);
     }
 
     @Test
