@@ -145,8 +145,8 @@ public enum StandardErrorCode
 
     static class Constants
     {
-        static final String url = "https://engdocs.uberinternal.com/sql-analytics-guide/presto_pages/optimization.html";
-        static final String DEFAULT_GUIDANCE = String.format("Please optimize your query with suggestions from %s.", url);
+        static final String url = "https://engwiki.uberinternal.com/display/TE0DATAINFRA/Presto+Query+Optimization";
+        static final String DEFAULT_GUIDANCE = String.format("Please optimize your query with suggestions from %s ", url);
 
         private Constants() {}
     }

@@ -64,7 +64,7 @@ public class EnforcePartitionFilter
             "Your query is missing partition column filters. Please add filters on partition "
                     + "columns ('%s') for table '%s' in the WHERE clause of your query. For example: "
                     + "WHERE DATE(%s) > CURRENT_DATE - INTERVAL '7' DAY. See more details at "
-                    + "https://engdocs.uberinternal.com/sql-analytics-guide/presto_pages/optimization.html#partition-column.";
+                    + "https://engwiki.uberinternal.com/display/TE0DATAINFRA/Presto+Query+Optimization#PrestoQueryOptimization-Filterbypartitioncolumn ";
     private static final Pattern DATE_COLUMN_NAME_PATTERN = Pattern.compile(".*(date|week|month).*");
     private final Metadata metadata;
 
