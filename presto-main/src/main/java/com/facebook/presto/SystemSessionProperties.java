@@ -140,6 +140,7 @@ public final class SystemSessionProperties
     private static final String FORCE_SINGLE_NODE_PLAN = "force_single_node_plan";
     public static final String PARTITION_FILTER = "enforce_partition_filter";
     public static final String PARTITION_FILTER_TABLES = "partition_filter_tables";
+    public static final String AUTO_SAMPLE_TABLE_REPLACE = "auto_sample_table_replace";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -693,7 +694,12 @@ public final class SystemSessionProperties
                         PARTITION_FILTER_TABLES,
                         "tables to enforce partition filtering",
                         featuresConfig.getPartitionFilteringTables(),
-                        true));
+                        true),
+                booleanProperty(
+                        AUTO_SAMPLE_TABLE_REPLACE,
+                        "Experimental: Replace original tables by sampled tables",
+                        featuresConfig.isAutoSampleTableReplace(),
+                        false));
     }
 
     public List<PropertyMetadata<?>> getSessionProperties()
@@ -1181,5 +1187,10 @@ public final class SystemSessionProperties
     public static String getPartitionFilterTables(Session session)
     {
         return session.getSystemProperty(PARTITION_FILTER_TABLES, String.class);
+    }
+
+    public static boolean isAutoSampleTableReplace(Session session)
+    {
+        return session.getSystemProperty(AUTO_SAMPLE_TABLE_REPLACE, Boolean.class);
     }
 }

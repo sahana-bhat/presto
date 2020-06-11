@@ -150,6 +150,8 @@ public class FeaturesConfig
     private boolean partitionFilteringEnforced;
     private String partitionFilteringTables = "";
 
+    private boolean autoSampleTableReplace;
+
     public enum JoinReorderingStrategy
     {
         NONE,
@@ -1166,6 +1168,19 @@ public class FeaturesConfig
     public FeaturesConfig setForceSingleNodePlan(boolean forceSingleNodePlan)
     {
         this.forceSingleNodePlan = forceSingleNodePlan;
+        return this;
+    }
+
+    public boolean isAutoSampleTableReplace()
+    {
+        return autoSampleTableReplace;
+    }
+
+    @Config("auto-sample-table-replace")
+    @ConfigDescription("Use auto sampling on the query")
+    public FeaturesConfig setAutoSampleTableReplace(boolean autoSampleTableReplace)
+    {
+        this.autoSampleTableReplace = autoSampleTableReplace;
         return this;
     }
 }

@@ -105,6 +105,7 @@ import com.facebook.presto.sql.planner.iterative.rule.TranslateExpressions;
 import com.facebook.presto.sql.planner.optimizations.AddExchanges;
 import com.facebook.presto.sql.planner.optimizations.AddLocalExchanges;
 import com.facebook.presto.sql.planner.optimizations.ApplyConnectorOptimization;
+import com.facebook.presto.sql.planner.optimizations.AutoSampleTableReplaceOptimizer;
 import com.facebook.presto.sql.planner.optimizations.CheckSubqueryNodesAreRewritten;
 import com.facebook.presto.sql.planner.optimizations.EnforcePartitionFilter;
 import com.facebook.presto.sql.planner.optimizations.HashGenerationOptimizer;
@@ -261,6 +262,7 @@ public class PlanOptimizers
         PlanOptimizer rowExpressionPredicatePushDown = new StatsRecordingPlanOptimizer(optimizerStats, new RowExpressionPredicatePushDown(metadata, sqlParser));
 
         builder.add(
+                new AutoSampleTableReplaceOptimizer(metadata),
                 // Clean up all the sugar in expressions, e.g. AtTimeZone, must be run before all the other optimizers
                 new IterativeOptimizer(
                         ruleStats,

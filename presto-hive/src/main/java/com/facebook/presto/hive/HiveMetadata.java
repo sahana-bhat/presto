@@ -14,6 +14,7 @@
 package com.facebook.presto.hive;
 
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.expressions.DefaultRowExpressionTraversalVisitor;
 import com.facebook.presto.expressions.LogicalRowExpressions;
 import com.facebook.presto.hive.HdfsEnvironment.HdfsContext;
@@ -61,6 +62,7 @@ import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.Subfield;
 import com.facebook.presto.spi.SystemTable;
 import com.facebook.presto.spi.TableNotFoundException;
+import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.ViewNotFoundException;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.connector.ConnectorOutputMetadata;
@@ -182,6 +184,7 @@ import static com.facebook.presto.hive.HiveTableProperties.EXTERNAL_LOCATION_PRO
 import static com.facebook.presto.hive.HiveTableProperties.ORC_BLOOM_FILTER_COLUMNS;
 import static com.facebook.presto.hive.HiveTableProperties.ORC_BLOOM_FILTER_FPP;
 import static com.facebook.presto.hive.HiveTableProperties.PARTITIONED_BY_PROPERTY;
+import static com.facebook.presto.hive.HiveTableProperties.SAMPLED_TABLES;
 import static com.facebook.presto.hive.HiveTableProperties.SORTED_BY_PROPERTY;
 import static com.facebook.presto.hive.HiveTableProperties.STORAGE_FORMAT_PROPERTY;
 import static com.facebook.presto.hive.HiveTableProperties.getAvroSchemaUrl;
@@ -300,6 +303,7 @@ public class HiveMetadata
     private final StagingFileCommitter stagingFileCommitter;
     private final ZeroRowFileCreator zeroRowFileCreator;
     private final PartitionObjectBuilder partitionObjectBuilder;
+    private static final Logger log = Logger.get(HiveMetadata.class);
 
     public HiveMetadata(
             SemiTransactionalHiveMetastore metastore,
@@ -554,7 +558,85 @@ public class HiveMetadata
 
         Optional<String> comment = Optional.ofNullable(table.get().getParameters().get(TABLE_COMMENT));
 
-        return new ConnectorTableMetadata(tableName, columns.build(), properties.build(), comment);
+        return new ConnectorTableMetadata(
+                tableName,
+                columns.build(),
+                properties.build(),
+                comment,
+                getSampledTables(identity, table.get()));
+    }
+
+    private boolean checkSampleTableSchemaMatch(Table parentTable, Table sampleTable)
+    {
+        String sampleTableName = sampleTable.getDatabaseName() + "." + sampleTable.getTableName();
+
+        Map<String, HiveType> samplePartitionColumnMap =
+                sampleTable.getPartitionColumns().stream().collect(Collectors.toMap(Column::getName, Column::getType));
+        for (Column partitionColumn : parentTable.getPartitionColumns()) {
+            if (!samplePartitionColumnMap.containsKey(partitionColumn.getName())) {
+                log.warn("sample table " + sampleTableName + " does not contain partition column " + partitionColumn.getName());
+                return false;
+            }
+            if (!samplePartitionColumnMap.get(partitionColumn.getName()).equals(partitionColumn.getType())) {
+                log.warn("sample table " + sampleTableName + " type "
+                        + samplePartitionColumnMap.get(partitionColumn.getName())
+                        + " for partition column " + partitionColumn.getName()
+                        + " does not match with parent " + partitionColumn.getType());
+                return false;
+            }
+        }
+
+        Map<String, HiveType> sampleDataColumnMap =
+                sampleTable.getDataColumns().stream().collect(Collectors.toMap(Column::getName, Column::getType));
+        for (Column dataColumn : parentTable.getDataColumns()) {
+            if (!sampleDataColumnMap.containsKey(dataColumn.getName())) {
+                log.warn("sample table " + sampleTableName + " does not contain data column " + dataColumn.getName());
+                return false;
+            }
+            if (!sampleDataColumnMap.get(dataColumn.getName()).equals(dataColumn.getType())) {
+                log.warn("sample table " + sampleTableName + " type "
+                        + sampleDataColumnMap.get(dataColumn.getName())
+                        + " for data column " + dataColumn.getName()
+                        + " does not match with parent " + dataColumn.getType());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private List<TableSample> getSampledTables(ConnectorIdentity identity, Table table)
+    {
+        List<TableSample> sampledList = new ArrayList<>();
+        String sampledTables = table.getParameters().get(SAMPLED_TABLES);
+        if (sampledTables != null) {
+            for (String sampleTableName : sampledTables.split(",")) {
+                String[] parts = sampleTableName.split("[.]");
+                SchemaTableName name;
+                if (parts.length == 1) {
+                    name = new SchemaTableName(table.getDatabaseName(), parts[0]);
+                }
+                else if (parts.length == 2) {
+                    name = new SchemaTableName(parts[0], parts[1]);
+                }
+                else {
+                    log.warn("Invalid sampled table name " + sampleTableName + " for table " + table.getDatabaseName() + "." + table.getTableName());
+                    continue;
+                }
+                Optional<Table> sampleTable = metastore.getTable(identity, name.getSchemaName(), name.getTableName());
+                if (!sampleTable.isPresent() || sampleTable.get().getTableType().equals(VIRTUAL_VIEW)) {
+                    log.warn("sample table " + name + " not present");
+                    continue;
+                }
+                if (checkSampleTableSchemaMatch(table, sampleTable.get())) {
+                    sampledList.add(new TableSample(name, Optional.empty(), Optional.empty()));
+                }
+                else {
+                    log.warn("Schemas for tables " + table.getTableName() + " and " + name + " do not match.");
+                }
+            }
+        }
+        return sampledList;
     }
 
     @Override
