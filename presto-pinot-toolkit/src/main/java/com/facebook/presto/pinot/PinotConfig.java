@@ -76,6 +76,7 @@ public class PinotConfig
     private boolean allowMultipleAggregations;
     private boolean preferBrokerQueries = true;
     private boolean forbidSegmentQueries;
+    private boolean markDataFetchExceptionsAsRetriable;
     private int numSegmentsPerSplit = 1;
     private boolean ignoreEmptyResponses;
     private int fetchRetryCount = 2;
@@ -414,6 +415,18 @@ public class PinotConfig
     public PinotConfig setNonAggregateLimitForBrokerQueries(int nonAggregateLimitForBrokerQueries)
     {
         this.nonAggregateLimitForBrokerQueries = nonAggregateLimitForBrokerQueries;
+        return this;
+    }
+
+    public boolean isMarkDataFetchExceptionsAsRetriable()
+    {
+        return markDataFetchExceptionsAsRetriable;
+    }
+
+    @Config("pinot.mark-data-fetch-exceptions-as-retriable")
+    public PinotConfig setMarkDataFetchExceptionsAsRetriable(boolean markDataFetchExceptionsAsRetriable)
+    {
+        this.markDataFetchExceptionsAsRetriable = markDataFetchExceptionsAsRetriable;
         return this;
     }
 }

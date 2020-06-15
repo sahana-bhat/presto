@@ -22,7 +22,8 @@
                 "pinot.http-client.max-threads": 16,
                 "pinot.extra-http-headers": "",
                 "pinot.use-date-trunc": true,
-                "pinot.non-aggregate-limit-for-broker-queries": 50001
+                "pinot.non-aggregate-limit-for-broker-queries": 50001,
+                "pinot.mark-data-fetch-exceptions-as-retriable": true
             }
         }
     }
