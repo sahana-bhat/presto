@@ -65,6 +65,7 @@
         <dep.nexus-staging-plugin.version>1.6.8</dep.nexus-staging-plugin.version>
         <dep.asm.version>6.2.1</dep.asm.version>
         <dep.gcs.version>1.9.17</dep.gcs.version>
+        <dep.hudi.version>0.5.1.4</dep.hudi.version>
 
         <!--
           America/Bahia_Banderas has:
@@ -960,7 +961,7 @@
             <dependency>
                 <groupId>org.apache.hudi</groupId>
                 <artifactId>hudi-common</artifactId>
-                <version>0.5.1-incubating-prestouber2</version>
+                <version>${dep.hudi.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>org.objenesis</groupId>
@@ -1004,7 +1005,7 @@
             <dependency>
                 <groupId>org.apache.hudi</groupId>
                 <artifactId>hudi-hadoop-mr</artifactId>
-                <version>0.5.1-incubating-prestouber2</version>
+                <version>${dep.hudi.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>org.objenesis</groupId>

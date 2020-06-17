@@ -33,7 +33,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.io.CharStreams;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.uber.hoodie.hadoop.HoodieInputFormat;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -55,6 +54,7 @@ import org.apache.hudi.common.table.TableFileSystemView;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.TableNotFoundException;
+import org.apache.hudi.hadoop.HoodieParquetInputFormat;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -116,7 +116,6 @@ public class BackgroundHiveSplitLoader
         implements HiveSplitLoader
 {
     private static final ListenableFuture<?> COMPLETED_FUTURE = immediateFuture(null);
-    private static final String HOODIE_INPUT_FORMAT = HoodieInputFormat.class.getSimpleName();
     private static final Logger log = Logger.get(BackgroundHiveSplitLoader.class);
     private static final Pattern HOODIE_BASE_FILE_PATTERN = Pattern.compile("(.*)_(.*)_(.*)\\.parquet");
 
@@ -194,14 +193,14 @@ public class BackgroundHiveSplitLoader
     {
         Properties schema = getPartitionSchema(table, Optional.empty());
         String inputFormatName = getInputFormatName(schema);
-        if (isHoodieInputFormat(inputFormatName)) {
+        String tableBasePath = getPartitionLocation(table, Optional.empty());
+        Path path = new Path(tableBasePath);
+        Configuration conf = hdfsEnvironment.getConfiguration(hdfsContext, path);
+        InputFormat<?, ?> inputFormat = getInputFormat(conf, inputFormatName, false);
+        if (isHoodieInputFormat(inputFormat)) {
             hdfsEnvironment.getHdfsAuthentication().doAs(session.getUser(), () -> {
                 String tableName = table.getDatabaseName() + "." + table.getTableName();
-                log.info("Initializing Hoodie metadata and timelines for loading splits for table: " + tableName);
-
-                String tableBasePath = getPartitionLocation(table, Optional.empty());
-                Path path = new Path(tableBasePath);
-                Configuration conf = hdfsEnvironment.getConfiguration(hdfsContext, path);
+                log.debug("Initializing Hoodie metadata and timelines for loading splits for table: " + tableName);
                 try {
                     this.hoodieTableMetaClient = new HoodieTableMetaClient(conf, tableBasePath);
                     this.hoodieTimeline = hoodieTableMetaClient.getActiveTimeline().getCommitsTimeline()
@@ -423,7 +422,7 @@ public class BackgroundHiveSplitLoader
                 if (tableBucketInfo.isPresent()) {
                     throw new PrestoException(NOT_SUPPORTED, "Presto cannot read bucketed partition in an input format with UseFileSplitsFromInputFormat annotation: " + inputFormat.getClass().getSimpleName());
                 }
-                if (isHoodieInputFormat(inputFormat.getClass().getCanonicalName())) {
+                if (isHoodieInputFormat(inputFormat)) {
                     List<HiveFileInfo> fileInfos = new ArrayList<>();
                     Iterators.addAll(fileInfos, directoryLister.list(fs, path, namenodeStats, recursiveDirWalkerEnabled ? RECURSE : IGNORED, path1 -> true));
                     List<LocatedFileStatus> hoodieFileStatusList = fileInfos.stream().map(HiveFileInfo::getLocatedFileStatus).filter(this::isHoodieBaseFile).collect(
@@ -520,9 +519,9 @@ public class BackgroundHiveSplitLoader
                 .anyMatch(name -> name.equals("UseFileSplitsFromInputFormat"));
     }
 
-    boolean isHoodieInputFormat(String inputFormatName)
+    boolean isHoodieInputFormat(InputFormat<?, ?> inputFormat)
     {
-        return inputFormatName.contains(HOODIE_INPUT_FORMAT);
+        return inputFormat instanceof HoodieParquetInputFormat;
     }
 
     private Iterator<InternalHiveSplit> createInternalHiveSplitIterator(Path path, FileSystem fileSystem, InternalHiveSplitFactory splitFactory, boolean splittable, PathFilter pathFilter)
