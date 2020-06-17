@@ -30,7 +30,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
-import com.uber.hoodie.hadoop.HoodieInputFormat;
 import io.airlift.units.DataSize;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -48,6 +47,7 @@ import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableConfig;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.util.FSUtils;
+import org.apache.hudi.hadoop.HoodieParquetInputFormat;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -128,7 +128,7 @@ public class TestBackgroundHiveSplitLoader
     private static final Table SIMPLE_TABLE = table(ImmutableList.of(), Optional.empty(), DEFAULT_STORAGE_FORMAT, DEFAULT_TABLE_LOCATION, DEFAULT_TABLE_NAME);
     private static final Table PARTITIONED_TABLE = table(PARTITION_COLUMNS, BUCKET_PROPERTY, DEFAULT_STORAGE_FORMAT, DEFAULT_TABLE_LOCATION, DEFAULT_TABLE_NAME);
     private static final String RAW_TRIPS_TABLE_NAME = "raw_trips";
-    private static final String HOODIE_INPUT_FORMAT_CANONICAL_NAME = HoodieInputFormat.class.getCanonicalName();
+    private static final String HOODIE_INPUT_FORMAT_CANONICAL_NAME = HoodieParquetInputFormat.class.getCanonicalName();
     private static final StorageFormat HOODIE_STORAGE_FORMAT = StorageFormat.create(
             "any String.",
             HOODIE_INPUT_FORMAT_CANONICAL_NAME,
