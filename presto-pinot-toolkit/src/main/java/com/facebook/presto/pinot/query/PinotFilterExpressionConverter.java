@@ -90,11 +90,14 @@ public class PinotFilterExpressionConverter
         }
         List<RowExpression> arguments = call.getArguments();
         if (arguments.size() == 2) {
-            return derived(format(
-                    "(%s %s %s)",
-                    arguments.get(0).accept(this, context).getDefinition(),
-                    operator,
-                    arguments.get(1).accept(this, context).getDefinition()));
+            PinotExpression left = arguments.get(0).accept(this, context);
+            PinotExpression right = arguments.get(1).accept(this, context);
+
+            if (right.getOrigin() != Origin.LITERAL && left.getOrigin() != Origin.LITERAL) {
+                throw new PinotException(PINOT_UNSUPPORTED_EXPRESSION, Optional.empty(), format("Comparision between two columns not allowed in expression: %s", call));
+            }
+
+            return derived(format("(%s %s %s)", left.getDefinition(), operator, right.getDefinition()));
         }
         throw new PinotException(PINOT_UNSUPPORTED_EXPRESSION, Optional.empty(), format("Unknown logical binary: '%s'", call));
     }

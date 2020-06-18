@@ -114,6 +114,12 @@ public class TestPinotExpressionConverters
 
         // boolean
         testFilter("isValid = true", "(isValid = 'true')", sessionHolder);
+
+        // column comparision
+        testFilterUnsupported("regionid <> secondssinceepoch", sessionHolder);
+
+        // literal on left
+        testFilter("20 = regionid", "(20 = regionId)", sessionHolder);
     }
 
     private void testAggregationProject(String sqlExpression, String expectedPinotExpression, SessionHolder sessionHolder)
