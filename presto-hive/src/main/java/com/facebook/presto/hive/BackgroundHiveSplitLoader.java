@@ -54,6 +54,7 @@ import org.apache.hudi.common.table.HoodieTimeline;
 import org.apache.hudi.common.table.TableFileSystemView;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
 import org.apache.hudi.exception.HoodieIOException;
+import org.apache.hudi.exception.TableNotFoundException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -79,6 +80,7 @@ import java.util.stream.Collectors;
 import static com.facebook.presto.hive.HiveBucketing.getVirtualBucketNumber;
 import static com.facebook.presto.hive.HiveColumnHandle.pathColumnHandle;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_BAD_DATA;
+import static com.facebook.presto.hive.HiveErrorCode.HIVE_FILE_NOT_FOUND;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_INVALID_BUCKET_FILES;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_PERMISSION_ERROR;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_UNKNOWN_ERROR;
@@ -204,6 +206,9 @@ public class BackgroundHiveSplitLoader
                     this.hoodieTableMetaClient = new HoodieTableMetaClient(conf, tableBasePath);
                     this.hoodieTimeline = hoodieTableMetaClient.getActiveTimeline().getCommitsTimeline()
                             .filterCompletedInstants();
+                }
+                catch (TableNotFoundException ex) {
+                    throw new PrestoException(HIVE_FILE_NOT_FOUND, ex.getMessage());
                 }
                 catch (HoodieIOException exception) {
                     if (exception.getCause() instanceof AccessControlException) {

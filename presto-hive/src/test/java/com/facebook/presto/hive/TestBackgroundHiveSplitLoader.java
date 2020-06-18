@@ -21,6 +21,7 @@ import com.facebook.presto.hive.metastore.Column;
 import com.facebook.presto.hive.metastore.StorageFormat;
 import com.facebook.presto.hive.metastore.Table;
 import com.facebook.presto.spi.ConnectorSession;
+import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.predicate.Domain;
 import com.facebook.presto.testing.TestingConnectorSession;
@@ -64,6 +65,7 @@ import java.util.stream.Collectors;
 
 import static com.facebook.airlift.concurrent.Threads.daemonThreadsNamed;
 import static com.facebook.presto.hive.BackgroundHiveSplitLoader.BucketSplitInfo.createBucketSplitInfo;
+import static com.facebook.presto.hive.HiveErrorCode.HIVE_FILE_NOT_FOUND;
 import static com.facebook.presto.hive.HiveFileInfo.createHiveFileInfo;
 import static com.facebook.presto.hive.HiveTestUtils.SESSION;
 import static com.facebook.presto.hive.HiveType.HIVE_INT;
@@ -83,6 +85,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 public class TestBackgroundHiveSplitLoader
 {
@@ -255,6 +258,20 @@ public class TestBackgroundHiveSplitLoader
     {
         BackgroundHiveSplitLoader dummySplitLoader = backgroundHiveSplitLoader(ImmutableList.of(createHiveFileInfo(locatedFileStatus(RETURNED_PATH), Optional.empty())), Optional.empty());
         assertTrue(dummySplitLoader.isHoodieInputFormat(HOODIE_INPUT_FORMAT_CANONICAL_NAME));
+    }
+
+    @Test
+    public void testHoodieFileNotFoundException()
+    {
+        Table hoodieTable = table(PARTITION_COLUMNS, Optional.empty(), HOODIE_STORAGE_FORMAT, "/random/path/that/doesn't/exist", RAW_TRIPS_TABLE_NAME);
+        try {
+            backgroundHiveSplitLoader(ImmutableList.of(), Optional.empty(), Optional.empty(), hoodieTable, Optional.empty());
+            fail("shouldn't have come here");
+        }
+        catch (PrestoException ex) {
+            assertEquals(ex.getErrorCode(), HIVE_FILE_NOT_FOUND.toErrorCode());
+            assertEquals(ex.getMessage(), "Hoodie table not found in path /random/path/that/doesn't/exist");
+        }
     }
 
     @Test
