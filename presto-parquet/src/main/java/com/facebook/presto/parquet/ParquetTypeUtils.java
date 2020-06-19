@@ -279,10 +279,12 @@ public final class ParquetTypeUtils
             if (field instanceof NestedField) {
                 NestedField nestedField = (NestedField) field;
                 org.apache.parquet.schema.Type childType = getParquetTypeByName(nestedField.getName(), parentType.asGroupType());
-                if (childType != null) {
-                    typeBuilder.add(childType);
-                    parentType = childType;
+                if (childType == null) {
+                    // the subtree is missing in the file, just return an empty message type as nothing to read
+                    return new MessageType(rootName, ImmutableList.of());
                 }
+                typeBuilder.add(childType);
+                parentType = childType;
             }
             else {
                 typeBuilder.add(parentType.asGroupType().getFields().get(0));
@@ -291,9 +293,6 @@ public final class ParquetTypeUtils
         }
 
         List<org.apache.parquet.schema.Type> subfieldTypes = typeBuilder.build();
-        if (subfieldTypes.isEmpty()) {
-            return new MessageType(rootName, ImmutableList.of());
-        }
         org.apache.parquet.schema.Type type = subfieldTypes.get(subfieldTypes.size() - 1);
         for (int i = subfieldTypes.size() - 2; i >= 0; --i) {
             GroupType groupType = subfieldTypes.get(i).asGroupType();
