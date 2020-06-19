@@ -306,6 +306,7 @@ public class HivePageSourceProvider
                     length,
                     fileSize,
                     storage,
+                    tableName,
                     tableParameters,
                     toColumnHandles(regularAndInterimColumnMappings, true),
                     effectivePredicate,
