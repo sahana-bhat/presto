@@ -56,6 +56,16 @@ public class TestPinotQueryGenerator
         testPQL(givenPinotConfig, planNode, expectedPQL, sessionHolder, outputVariables);
     }
 
+    private PinotQueryGenerator.GeneratedPql getPQL(
+            PinotConfig givenPinotConfig,
+            Function<PlanBuilder, PlanNode> planBuilderConsumer,
+            SessionHolder sessionHolder)
+    {
+        PlanNode planNode = planBuilderConsumer.apply(createPlanBuilder(sessionHolder));
+        PinotQueryGenerator.PinotQueryGeneratorResult pinotQueryGeneratorResult = new PinotQueryGenerator(givenPinotConfig, typeManager, functionMetadataManager, standardFunctionResolution).generate(planNode, sessionHolder.getConnectorSession()).get();
+        return pinotQueryGeneratorResult.getGeneratedPql();
+    }
+
     private void testPQL(
             PinotConfig givenPinotConfig,
             PlanNode planNode,
@@ -74,6 +84,12 @@ public class TestPinotQueryGenerator
     private void testPQL(Function<PlanBuilder, PlanNode> planBuilderConsumer, String expectedPQL, SessionHolder sessionHolder, Map<String, String> outputVariables)
     {
         testPQL(pinotConfig, planBuilderConsumer, expectedPQL, sessionHolder, outputVariables);
+    }
+
+    private void testPQLWithHiddenColumns(Function<PlanBuilder, PlanNode> planBuilderConsumer, SessionHolder sessionHolder, int numHiddenColumns)
+    {
+        PinotQueryGenerator.GeneratedPql generatedPql = getPQL(pinotConfig, planBuilderConsumer, sessionHolder);
+        assertEquals(generatedPql.getHiddenColumns(), numHiddenColumns);
     }
 
     private void testPQL(Function<PlanBuilder, PlanNode> planBuilderConsumer, String expectedPQL, SessionHolder sessionHolder)
@@ -163,6 +179,16 @@ public class TestPinotQueryGenerator
         PlanNode newScanWithCity = buildPlan(planBuilder -> project(planBuilder, tableScan(planBuilder, pinotTable, regionId, secondsSinceEpoch, city, fare), aggProjection, defaultSessionHolder));
         testPQL(planBuilder -> planBuilder.aggregation(aggBuilder -> aggBuilder.source(newScanWithCity).singleGroupingSet(new VariableReferenceExpression("date", TIMESTAMP), v("city")).addAggregation(planBuilder.variable("agg"), getRowExpression("count(*)", defaultSessionHolder))),
                 "SELECT count(*) FROM realtimeOnly GROUP BY dateTimeConvert(SUB(secondsSinceEpoch, 50), '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:DAYS'), city TOP 10000");
+    }
+
+    @Test
+    public void testGroupByWithoutAggregation()
+    {
+        PlanNode justScan = buildPlan(planBuilder -> tableScan(planBuilder, pinotTable, regionId, secondsSinceEpoch, city, fare));
+
+        // select regionid from realtimeOnly group by regionid;
+        // or select distinct regionid from realtimeOnly;
+        testPQLWithHiddenColumns(planBuilder -> planBuilder.aggregation(aggBuilder -> aggBuilder.source(justScan).singleGroupingSet(v("regionid"))), defaultSessionHolder, 1);
     }
 
     @Test

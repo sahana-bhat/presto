@@ -211,7 +211,8 @@ public class TestPinotBrokerPageSource
                 expectedColumnIndices,
                 pqlParsedInfo.groupByColumns,
                 false,
-                false);
+                false,
+                0);
         PinotBrokerPageSource pageSource = new PinotBrokerPageSource(
                 pinotConfig,
                 new TestingConnectorSession(ImmutableList.of()),

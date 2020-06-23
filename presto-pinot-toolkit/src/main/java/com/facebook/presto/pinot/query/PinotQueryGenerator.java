@@ -149,6 +149,7 @@ public class PinotQueryGenerator
         final int groupByClauses;
         final boolean haveFilter;
         final boolean isQueryShort;
+        final int hiddenColumns;
 
         @JsonCreator
         public GeneratedPql(
@@ -157,7 +158,8 @@ public class PinotQueryGenerator
                 @JsonProperty("expectedColumnIndices") List<Integer> expectedColumnIndices,
                 @JsonProperty("groupByClauses") int groupByClauses,
                 @JsonProperty("haveFilter") boolean haveFilter,
-                @JsonProperty("isQueryShort") boolean isQueryShort)
+                @JsonProperty("isQueryShort") boolean isQueryShort,
+                @JsonProperty("hiddenColumns") int hiddenColumns)
         {
             this.table = table;
             this.pql = pql;
@@ -165,6 +167,7 @@ public class PinotQueryGenerator
             this.groupByClauses = groupByClauses;
             this.haveFilter = haveFilter;
             this.isQueryShort = isQueryShort;
+            this.hiddenColumns = hiddenColumns;
         }
 
         @JsonProperty("pql")
@@ -203,6 +206,12 @@ public class PinotQueryGenerator
             return isQueryShort;
         }
 
+        @JsonProperty("hiddenColumns")
+        public int getHiddenColumns()
+        {
+            return hiddenColumns;
+        }
+
         @Override
         public String toString()
         {
@@ -213,6 +222,7 @@ public class PinotQueryGenerator
                     .add("groupByClauses", groupByClauses)
                     .add("haveFilter", haveFilter)
                     .add("isQueryShort", isQueryShort)
+                    .add("hiddenColumns", hiddenColumns)
                     .toString();
         }
     }

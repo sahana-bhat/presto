@@ -88,7 +88,7 @@ public class TestPinotSplitManager
     @Test
     public void testSplitsBroker()
     {
-        PinotQueryGenerator.GeneratedPql generatedPql = new PinotQueryGenerator.GeneratedPql(realtimeOnlyTable.getTableName(), String.format("SELECT %s, COUNT(1) FROM %s GROUP BY %s TOP %d", city.getColumnName(), realtimeOnlyTable.getTableName(), city.getColumnName(), pinotConfig.getTopNLarge()), ImmutableList.of(0, 1), 1, false, true);
+        PinotQueryGenerator.GeneratedPql generatedPql = new PinotQueryGenerator.GeneratedPql(realtimeOnlyTable.getTableName(), String.format("SELECT %s, COUNT(1) FROM %s GROUP BY %s TOP %d", city.getColumnName(), realtimeOnlyTable.getTableName(), city.getColumnName(), pinotConfig.getTopNLarge()), ImmutableList.of(0, 1), 1, false, true, 0);
         PinotTableHandle pinotTableHandle = new PinotTableHandle(realtimeOnlyTable.getConnectorId(), realtimeOnlyTable.getSchemaName(), realtimeOnlyTable.getTableName(), Optional.of(true), realtimeOnlyTable.getMuttleyConfig(), Optional.of(ImmutableList.of(city, derived("count"))), Optional.of(generatedPql));
         List<PinotSplit> splits = getSplitsHelper(pinotTableHandle, 1, false);
         assertSplits(splits, 1, BROKER);
@@ -97,7 +97,7 @@ public class TestPinotSplitManager
     @Test(expectedExceptions = PinotSplitManager.QueryNotAdequatelyPushedDownException.class)
     public void testBrokerNonShortQuery()
     {
-        PinotQueryGenerator.GeneratedPql generatedPql = new PinotQueryGenerator.GeneratedPql(realtimeOnlyTable.getTableName(), String.format("SELECT %s FROM %s", city.getColumnName(), realtimeOnlyTable.getTableName()), ImmutableList.of(0), 0, false, false);
+        PinotQueryGenerator.GeneratedPql generatedPql = new PinotQueryGenerator.GeneratedPql(realtimeOnlyTable.getTableName(), String.format("SELECT %s FROM %s", city.getColumnName(), realtimeOnlyTable.getTableName()), ImmutableList.of(0), 0, false, false, 0);
         PinotTableHandle pinotTableHandle = new PinotTableHandle(realtimeOnlyTable.getConnectorId(), realtimeOnlyTable.getSchemaName(), realtimeOnlyTable.getTableName(), Optional.of(false), realtimeOnlyTable.getMuttleyConfig(), Optional.of(ImmutableList.of(city)), Optional.of(generatedPql));
         List<PinotSplit> splits = getSplitsHelper(pinotTableHandle, 1, true);
         assertSplits(splits, 1, BROKER);
