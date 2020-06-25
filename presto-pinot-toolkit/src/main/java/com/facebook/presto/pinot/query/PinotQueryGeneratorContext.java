@@ -340,7 +340,7 @@ public class PinotQueryGeneratorContext
 
         LinkedHashMap<VariableReferenceExpression, PinotColumnHandle> assignments = getAssignments();
         List<Integer> indices = getIndicesMappingFromPinotSchemaToPrestoSchema(query, assignments);
-        return new PinotQueryGenerator.GeneratedPql(tableName, query, indices, groupByColumns.size(), filter.isPresent(), isQueryShort, hiddenColumnSet.size());
+        return new PinotQueryGenerator.GeneratedPql(tableName, query, indices, groupByColumns.size(), filter.isPresent(), isQueryShort);
     }
 
     private List<Integer> getIndicesMappingFromPinotSchemaToPrestoSchema(String query, Map<VariableReferenceExpression, PinotColumnHandle> assignments)
@@ -359,7 +359,7 @@ public class PinotQueryGeneratorContext
         expressionsInPinotOrder.putAll(selections);
 
         checkSupported(
-                (assignments.size() + hiddenColumnSet.size()) == expressionsInPinotOrder.keySet().stream().count(),
+                assignments.size() == expressionsInPinotOrder.keySet().stream().count(),
                 "Expected returned expressions %s to match selections %s",
                 Joiner.on(",").withKeyValueSeparator(":").join(expressionsInPinotOrder),
                 Joiner.on(",").withKeyValueSeparator("=").join(assignments));
@@ -399,7 +399,7 @@ public class PinotQueryGeneratorContext
     public LinkedHashMap<VariableReferenceExpression, PinotColumnHandle> getAssignments()
     {
         LinkedHashMap<VariableReferenceExpression, PinotColumnHandle> result = new LinkedHashMap<>();
-        selections.entrySet().stream().filter(entry -> !hiddenColumnSet.contains(entry.getKey())).forEach(entry -> {
+        selections.entrySet().stream().forEach(entry -> {
             VariableReferenceExpression variable = entry.getKey();
             Selection selection = entry.getValue();
             PinotColumnHandle handle = selection.getOrigin() == Origin.TABLE_COLUMN ? new PinotColumnHandle(selection.getDefinition(), variable.getType(), PinotColumnHandle.PinotColumnType.REGULAR) : new PinotColumnHandle(variable, PinotColumnHandle.PinotColumnType.DERIVED);

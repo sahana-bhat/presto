@@ -86,10 +86,11 @@ public class TestPinotQueryGenerator
         testPQL(pinotConfig, planBuilderConsumer, expectedPQL, sessionHolder, outputVariables);
     }
 
-    private void testPQLWithHiddenColumns(Function<PlanBuilder, PlanNode> planBuilderConsumer, SessionHolder sessionHolder, int numHiddenColumns)
+    private void testPQLWithHiddenColumns(Function<PlanBuilder, PlanNode> planBuilderConsumer, SessionHolder sessionHolder)
     {
         PinotQueryGenerator.GeneratedPql generatedPql = getPQL(pinotConfig, planBuilderConsumer, sessionHolder);
-        assertEquals(generatedPql.getHiddenColumns(), numHiddenColumns);
+        assertEquals(generatedPql.getExpectedColumnIndices().size(), 2);
+        assertEquals(generatedPql.expectedColumnIndices.stream().filter(index -> index < 0).count(), 1);
     }
 
     private void testPQL(Function<PlanBuilder, PlanNode> planBuilderConsumer, String expectedPQL, SessionHolder sessionHolder)
@@ -188,7 +189,7 @@ public class TestPinotQueryGenerator
 
         // select regionid from realtimeOnly group by regionid;
         // or select distinct regionid from realtimeOnly;
-        testPQLWithHiddenColumns(planBuilder -> planBuilder.aggregation(aggBuilder -> aggBuilder.source(justScan).singleGroupingSet(v("regionid"))), defaultSessionHolder, 1);
+        testPQLWithHiddenColumns(planBuilder -> planBuilder.aggregation(aggBuilder -> aggBuilder.source(justScan).singleGroupingSet(v("regionid"))), defaultSessionHolder);
     }
 
     @Test

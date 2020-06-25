@@ -44,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_UNCLASSIFIED_ERROR;
 import static com.facebook.presto.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
@@ -187,8 +188,8 @@ public class PinotConnectorPlanOptimizer
                     new TableScanNode(
                             idAllocator.getNextId(),
                             newTableHandle,
-                            ImmutableList.copyOf(assignments.keySet()),
-                            assignments.entrySet().stream().collect(toImmutableMap(Map.Entry::getKey, (e) -> (ColumnHandle) (e.getValue()))),
+                            ImmutableList.copyOf(assignments.keySet().stream().filter(entry -> !context.getHiddenColumnSet().contains(entry)).collect(Collectors.toList())),
+                            assignments.entrySet().stream().filter(entry -> !context.getHiddenColumnSet().contains(entry.getKey())).collect(toImmutableMap(Map.Entry::getKey, (e) -> (ColumnHandle) (e.getValue()))),
                             tableScanNode.getCurrentConstraint(),
                             tableScanNode.getEnforcedConstraint()));
         }

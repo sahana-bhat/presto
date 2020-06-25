@@ -475,7 +475,7 @@ public class PinotBrokerPageSource
                     .map(PinotColumnHandle::getDataType)
                     .collect(Collectors.toList());
             this.pageBuilder = new PageBuilder(expectedTypes);
-            checkState((brokerPql.getExpectedColumnIndices().size() + brokerPql.getHiddenColumns()) == expectedColumnHandles.size());
+            checkState(brokerPql.getExpectedColumnIndices().size() == expectedColumnHandles.size());
             checkState(expectedColumnHandles.size() >= columnHandles.size());
 
             // The expectedColumnHandles are the handles corresponding to the generated PQL
