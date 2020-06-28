@@ -216,32 +216,19 @@ public class QueryEventInfo
         private final String table;
         private final List<String> columns;
         private final Optional<Object> connectorInfo;
-        private final boolean sampleReplaced;
 
-        ColumnAccessEntry(
-                String catalog,
-                String database,
-                String table,
-                List<String> columns,
-                Optional<Object> connectorInfo,
-                boolean sampleReplaced)
+        ColumnAccessEntry(String catalog, String database, String table, List<String> columns, Optional<Object> connectorInfo)
         {
             this.catalog = catalog;
             this.database = database;
             this.table = table;
             this.columns = columns;
             this.connectorInfo = connectorInfo;
-            this.sampleReplaced = sampleReplaced;
         }
 
         public ColumnAccessEntry(QueryInputMetadata m)
         {
-            this(m.getCatalogName(),
-                    m.getSchema(),
-                    m.getTable(),
-                    m.getColumns(),
-                    m.getConnectorInfo(),
-                    m.isSampleReplaced());
+            this(m.getCatalogName(), m.getSchema(), m.getTable(), m.getColumns(), m.getConnectorInfo());
         }
 
         public Map<String, Object> toMap()
@@ -263,7 +250,6 @@ public class QueryEventInfo
             map.put("catalog", this.catalog);
             map.put("database", this.database);
             map.put("table", this.table);
-            map.put("sampleReplaced", this.sampleReplaced);
             map.put("columns", columnNames);
             connectorInfo.ifPresent(info -> map.put("connector_info", info.toString()));
             return map;

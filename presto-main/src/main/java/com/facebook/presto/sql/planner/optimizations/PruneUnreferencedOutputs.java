@@ -454,8 +454,7 @@ public class PruneUnreferencedOutputs
                     newOutputs,
                     newAssignments,
                     node.getCurrentConstraint(),
-                    node.getEnforcedConstraint(),
-                    node.isSampleReplaced());
+                    node.getEnforcedConstraint());
         }
 
         @Override

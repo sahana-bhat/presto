@@ -1243,8 +1243,7 @@ public class PlanFragmenter
                     node.getOutputVariables(),
                     node.getAssignments(),
                     node.getCurrentConstraint(),
-                    node.getEnforcedConstraint(),
-                    node.isSampleReplaced());
+                    node.getEnforcedConstraint());
         }
     }
 

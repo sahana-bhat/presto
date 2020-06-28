@@ -65,23 +65,11 @@ public class InputExtractor
         return new Column(columnMetadata.getName(), columnMetadata.getType().toString());
     }
 
-    private Input createInput(
-            TableMetadata table,
-            TableHandle tableHandle,
-            Set<Column> columns,
-            Optional<TableStatistics> statistics,
-            boolean sampleReplaced)
+    private Input createInput(TableMetadata table, TableHandle tableHandle, Set<Column> columns, Optional<TableStatistics> statistics)
     {
         SchemaTableName schemaTable = table.getTable();
         Optional<Object> inputMetadata = metadata.getInfo(session, tableHandle);
-        return new Input(
-                table.getConnectorId(),
-                schemaTable.getSchemaName(),
-                schemaTable.getTableName(),
-                inputMetadata,
-                ImmutableList.copyOf(columns),
-                statistics,
-                sampleReplaced);
+        return new Input(table.getConnectorId(), schemaTable.getSchemaName(), schemaTable.getTableName(), inputMetadata, ImmutableList.copyOf(columns), statistics);
     }
 
     private class Visitor
@@ -137,12 +125,7 @@ public class InputExtractor
                 statistics = Optional.of(metadata.getTableStatistics(session, tableHandle, desiredColumns, constraint));
             }
 
-            inputs.add(createInput(
-                    metadata.getTableMetadata(session, tableHandle),
-                    tableHandle,
-                    columns,
-                    statistics,
-                    node.isSampleReplaced()));
+            inputs.add(createInput(metadata.getTableMetadata(session, tableHandle), tableHandle, columns, statistics));
 
             return null;
         }
@@ -166,12 +149,7 @@ public class InputExtractor
                 statistics = Optional.of(metadata.getTableStatistics(session, tableHandle, desiredColumns, constraint));
             }
 
-            inputs.add(createInput(
-                    metadata.getTableMetadata(session, tableHandle),
-                    tableHandle,
-                    columns,
-                    statistics,
-                    false));
+            inputs.add(createInput(metadata.getTableMetadata(session, tableHandle), tableHandle, columns, statistics));
 
             return null;
         }

@@ -122,8 +122,7 @@ public class AutoSampleTableReplaceOptimizer
                     node.getOutputVariables(),
                     columns.build(),
                     node.getCurrentConstraint(),
-                    node.getEnforcedConstraint(),
-                    true);
+                    node.getEnforcedConstraint());
             return tableScan;
         }
     }

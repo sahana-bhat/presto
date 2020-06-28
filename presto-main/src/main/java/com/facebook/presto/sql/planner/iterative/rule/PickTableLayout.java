@@ -255,8 +255,7 @@ public class PickTableLayout
                         tableScanNode.getOutputVariables(),
                         tableScanNode.getAssignments(),
                         pushdownFilterResult.getLayout().getPredicate(),
-                        TupleDomain.all(),
-                        tableScanNode.isSampleReplaced()));
+                        TupleDomain.all()));
             }
 
             TableLayoutResult layout = metadata.getLayout(
@@ -277,8 +276,7 @@ public class PickTableLayout
                     tableScanNode.getOutputVariables(),
                     tableScanNode.getAssignments(),
                     layout.getLayout().getPredicate(),
-                    TupleDomain.all(),
-                    tableScanNode.isSampleReplaced()));
+                    TupleDomain.all()));
         }
     }
 
@@ -348,8 +346,7 @@ public class PickTableLayout
                 node.getOutputVariables(),
                 node.getAssignments(),
                 layout.getPredicate(),
-                TupleDomain.all(),
-                node.isSampleReplaced());
+                TupleDomain.all());
 
         RowExpression unenforcedFilter = pushdownFilterResult.getUnenforcedFilter();
         if (!TRUE_CONSTANT.equals(unenforcedFilter)) {
@@ -431,8 +428,7 @@ public class PickTableLayout
                 node.getOutputVariables(),
                 node.getAssignments(),
                 layout.getLayout().getPredicate(),
-                computeEnforced(newDomain, layout.getUnenforcedConstraint()),
-                node.isSampleReplaced());
+                computeEnforced(newDomain, layout.getUnenforcedConstraint()));
 
         // The order of the arguments to combineConjuncts matters:
         // * Unenforced constraints go first because they can only be simple column references,
@@ -523,8 +519,7 @@ public class PickTableLayout
                 node.getOutputVariables(),
                 node.getAssignments(),
                 layout.getLayout().getPredicate(),
-                computeEnforced(newDomain, layout.getUnenforcedConstraint()),
-                node.isSampleReplaced());
+                computeEnforced(newDomain, layout.getUnenforcedConstraint()));
 
         // The order of the arguments to combineConjuncts matters:
         // * Unenforced constraints go first because they can only be simple column references,
