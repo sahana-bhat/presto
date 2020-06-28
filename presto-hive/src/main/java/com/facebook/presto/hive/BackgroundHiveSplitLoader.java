@@ -33,6 +33,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.io.CharStreams;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.uber.hoodie.hadoop.HoodieInputFormat;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -54,7 +55,6 @@ import org.apache.hudi.common.table.TableFileSystemView;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
 import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.exception.TableNotFoundException;
-import org.apache.hudi.hadoop.HoodieParquetInputFormat;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -116,7 +116,7 @@ public class BackgroundHiveSplitLoader
         implements HiveSplitLoader
 {
     private static final ListenableFuture<?> COMPLETED_FUTURE = immediateFuture(null);
-    private static final String HOODIE_INPUT_FORMAT = HoodieParquetInputFormat.class.getSimpleName();
+    private static final String HOODIE_INPUT_FORMAT = HoodieInputFormat.class.getSimpleName();
     private static final Logger log = Logger.get(BackgroundHiveSplitLoader.class);
     private static final Pattern HOODIE_BASE_FILE_PATTERN = Pattern.compile("(.*)_(.*)_(.*)\\.parquet");
 
