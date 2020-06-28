@@ -30,17 +30,13 @@ import com.facebook.presto.execution.warnings.WarningCollector;
 import com.facebook.presto.failureDetector.FailureDetector;
 import com.facebook.presto.memory.VersionedMemoryPoolId;
 import com.facebook.presto.metadata.Metadata;
-import com.facebook.presto.metadata.QualifiedObjectName;
 import com.facebook.presto.operator.ForScheduler;
 import com.facebook.presto.security.AccessControl;
 import com.facebook.presto.server.BasicQueryInfo;
 import com.facebook.presto.spi.ConnectorId;
-import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.ErrorCode;
-import com.facebook.presto.spi.ErrorType;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.QueryId;
-import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.TableHandle;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.resourceGroups.QueryType;
@@ -65,7 +61,6 @@ import com.facebook.presto.sql.planner.optimizations.PlanOptimizer;
 import com.facebook.presto.sql.planner.plan.OutputNode;
 import com.facebook.presto.sql.tree.Explain;
 import com.facebook.presto.transaction.TransactionManager;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
@@ -76,8 +71,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -86,7 +79,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import static com.facebook.airlift.concurrent.MoreFutures.addExceptionCallback;
 import static com.facebook.airlift.concurrent.MoreFutures.addSuccessCallback;
@@ -98,7 +90,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static io.airlift.units.DataSize.succinctBytes;
-import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -559,66 +550,10 @@ public class SqlQueryExecution
         }
     }
 
-    private List<String> getTablesWithSamples()
-    {
-        List<String> tablesWithSamples = new ArrayList<>();
-
-        for (Input input : new InputExtractor(metadata, stateMachine.getSession()).extractInputs(getQueryPlan().getRoot())) {
-            QualifiedObjectName name = new QualifiedObjectName(
-                    stateMachine.getSession().getCatalog().get(),
-                    input.getSchema(),
-                    input.getTable());
-            Optional<TableHandle> tableHandle = metadata.getTableHandle(stateMachine.getSession(), name);
-            if (!tableHandle.isPresent()) {
-                continue;
-            }
-            ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(stateMachine.getSession(), tableHandle.get()).getMetadata();
-            if (!tableMetadata.getSampledTables().isEmpty()) {
-                tablesWithSamples.add(input.getSchema() + "." + input.getTable());
-            }
-        }
-        return tablesWithSamples;
-    }
-
-    @VisibleForTesting
-    private static PrestoException addSamplingUseMessage(PrestoException exp, List<String> tablesWithSamples)
-    {
-        if (tablesWithSamples.isEmpty()) {
-            return exp;
-        }
-
-        PrestoException finalExp = exp;
-        Optional<StandardErrorCode> errorCodeSupplier =
-                Arrays.stream(StandardErrorCode.values()).filter(d -> d.toErrorCode().equals(finalExp.getErrorCode())).findFirst();
-
-        if (errorCodeSupplier.isPresent()) {
-            List<String> tablesWithSampleLinks =
-                    tablesWithSamples
-                            .stream()
-                            .map(d -> format("https://databook.uberinternal.com/datasets/hive/%s/sampled-datasets", d))
-                            .collect(Collectors.toList());
-            String tables = String.join(", ", tablesWithSampleLinks);
-            String newMessage = format(
-                    "%s. You can try using sampling. There are sampled tables available for %s. More information at http://t.uber.com/datasampling",
-                    exp.getMessage(),
-                    tables);
-            exp = new PrestoException(errorCodeSupplier.get(), newMessage, exp.getCause());
-        }
-        return exp;
-    }
-
     @Override
     public void fail(Throwable cause)
     {
         requireNonNull(cause, "cause is null");
-
-        // If the query is failing because of insufficient resources and the
-        // query refers to tables that have sampled versions available, then
-        // add a message advocating the use of the sampled tables.
-        if (cause instanceof PrestoException &&
-                ((PrestoException) cause).getErrorCode().getType() == ErrorType.INSUFFICIENT_RESOURCES) {
-            cause = addSamplingUseMessage((PrestoException) cause, getTablesWithSamples());
-        }
 
         stateMachine.transitionToFailed(cause);
     }
