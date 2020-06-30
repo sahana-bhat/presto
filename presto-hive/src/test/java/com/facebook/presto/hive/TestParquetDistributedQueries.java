@@ -93,6 +93,31 @@ public class TestParquetDistributedQueries
         }
     }
 
+    @Test
+    public void testSubfieldWithSchemaChanges2()
+    {
+        getQueryRunner().execute("CREATE TABLE test_subfield_schemachanges2 AS " +
+                "SELECT " +
+                "   1 as orderkey," +
+                "   CAST(ROW('N', ROW(5, 7)) AS ROW(returnflag CHAR(1), shipdate ROW(ship_day INTEGER, ship_month INTEGER))) as info ");
+
+        // delete the struct column (info) and add a new struct column with different name (info2)
+        getQueryRunner().execute("ALTER TABLE test_subfield_schemachanges2 DROP COLUMN info");
+        getQueryRunner().execute("ALTER TABLE test_subfield_schemachanges2 ADD COLUMN " +
+                "info2 ROW(returnflag CHAR(1), shipdate ROW(ship_day INTEGER, ship_month INTEGER, ship_year INTEGER))");
+
+        getQueryRunner().execute("INSERT INTO test_subfield_schemachanges2 " +
+                "SELECT 2, cast(row('Y', ROW(5, 7, 2020)) as ROW(returnflag CHAR(1), shipdate ROW(ship_day INTEGER, ship_month INTEGER, ship_year INTEGER)))");
+
+        try {
+            assertQuery("SELECT orderkey, info2.shipdate.ship_day, info2.shipdate.ship_month, info2.shipdate.ship_year FROM test_subfield_schemachanges2",
+                    "SELECT * from (VALUES (1, null, null, null), (2, 5, 7, 2020))");
+        }
+        finally {
+            getQueryRunner().execute("DROP TABLE test_subfield_schemachanges2");
+        }
+    }
+
     @Override
     protected boolean supportsNotNullColumns()
     {
