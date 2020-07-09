@@ -221,15 +221,20 @@ public class TestHiveIntegrationSmokeTest
         computeActual(noPartitionFilterSession, "select * from partitioned_table");
         for (Session session : ImmutableList.of(partitionFilterSession, wildcardSession)) {
             assertQueryFails(session, "select * from partitioned_table",
-                             "Your query is missing partition column filters. "
-                             + "Please add filters on partition columns \\('order_status'\\) "
-                             + "for table 'tpch.partitioned_table' in the WHERE clause of your query. "
+                             "Filters need to be specified on all partition columns of a table. "
+                             + "Your query is missing filters on columns \\('order_status'\\) "
+                             + "for table 'tpch.partitioned_table'. Please add filters in the WHERE clause of your query. "
                              + "For example: WHERE DATE\\(datestr\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
             assertQueryFails(session, "select * from partitioned_table_multi_partition_key",
-                             "Your query is missing partition column filters. "
-                            + "Please add filters on partition columns \\('order_status', 'processed_date', 'ship_priority'\\) "
-                            + "for table 'tpch.partitioned_table_multi_partition_key' in the WHERE clause of your query. "
+                             "Filters need to be specified on all partition columns of a table. "
+                            + "Your query is missing filters on columns \\('ship_priority', 'order_status', 'processed_date'\\) "
+                            + "for table 'tpch.partitioned_table_multi_partition_key'. Please add filters in the WHERE clause of your query. "
                             + "For example: WHERE DATE\\(processed_date\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
+            assertQueryFails(session, "select * from partitioned_table_multi_partition_key where DATE(processed_date) > CURRENT_DATE - INTERVAL '7' DAY",
+                    "Filters need to be specified on all partition columns of a table. "
+                            + "Your query is missing filters on columns \\('ship_priority', 'order_status'\\) "
+                            + "for table 'tpch.partitioned_table_multi_partition_key'. Please add filters in the WHERE clause of your query. "
+                            + "For example: WHERE DATE\\(datestr\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
         }
 
         // Query in session with empty strict mode tables will succeeded
