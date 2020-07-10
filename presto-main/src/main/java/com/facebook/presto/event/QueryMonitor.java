@@ -369,7 +369,8 @@ public class QueryMonitor
                             .map(Column::getName).collect(Collectors.toList()),
                     input.getConnectorInfo(),
                     input.getStatistics(),
-                    input.isSampleReplaced()));
+                    input.isSampleReplaced(),
+                    input.isPartialAggregationPushedDown()));
         }
 
         Optional<QueryOutputMetadata> output = Optional.empty();

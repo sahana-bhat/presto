@@ -30,6 +30,7 @@ public class QueryInputMetadata
     private final Optional<Object> connectorInfo;
     private final Optional<TableStatistics> statistics;
     private final boolean sampleReplaced;
+    private final boolean partialAggregationPushedDown;
 
     public QueryInputMetadata(
             String catalogName,
@@ -38,7 +39,8 @@ public class QueryInputMetadata
             List<String> columns,
             Optional<Object> connectorInfo,
             Optional<TableStatistics> statistics,
-            boolean sampleReplaced)
+            boolean sampleReplaced,
+            boolean partialAggregationPushedDown)
     {
         this.catalogName = requireNonNull(catalogName, "catalogName is null");
         this.schema = requireNonNull(schema, "schema is null");
@@ -47,6 +49,7 @@ public class QueryInputMetadata
         this.connectorInfo = requireNonNull(connectorInfo, "connectorInfo is null");
         this.statistics = requireNonNull(statistics, "table statistics is null");
         this.sampleReplaced = sampleReplaced;
+        this.partialAggregationPushedDown = partialAggregationPushedDown;
     }
 
     @JsonProperty
@@ -89,5 +92,11 @@ public class QueryInputMetadata
     public boolean isSampleReplaced()
     {
         return sampleReplaced;
+    }
+
+    @JsonProperty
+    public boolean isPartialAggregationPushedDown()
+    {
+        return partialAggregationPushedDown;
     }
 }

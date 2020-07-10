@@ -239,14 +239,15 @@ public class HivePartialAggregationPushdown
                     Optional.of(newTableLayoutHandle));
 
             return Optional.of(new
-
                     TableScanNode(
                     idAllocator.getNextId(),
                     newTableHandle,
                     ImmutableList.copyOf(partialAggregationNode.getOutputVariables()),
                     ImmutableMap.copyOf(assignments),
                     oldTableScanNode.getCurrentConstraint(),
-                    oldTableScanNode.getEnforcedConstraint()));
+                    oldTableScanNode.getEnforcedConstraint(),
+                    oldTableScanNode.isSampleReplaced(),
+                    true));
         }
 
         @Override

@@ -217,6 +217,7 @@ public class QueryEventInfo
         private final List<String> columns;
         private final Optional<Object> connectorInfo;
         private final boolean sampleReplaced;
+        private final boolean partialAggregationPushedDown;
 
         ColumnAccessEntry(
                 String catalog,
@@ -224,7 +225,8 @@ public class QueryEventInfo
                 String table,
                 List<String> columns,
                 Optional<Object> connectorInfo,
-                boolean sampleReplaced)
+                boolean sampleReplaced,
+                boolean partialAggregationPushedDown)
         {
             this.catalog = catalog;
             this.database = database;
@@ -232,6 +234,7 @@ public class QueryEventInfo
             this.columns = columns;
             this.connectorInfo = connectorInfo;
             this.sampleReplaced = sampleReplaced;
+            this.partialAggregationPushedDown = partialAggregationPushedDown;
         }
 
         public ColumnAccessEntry(QueryInputMetadata m)
@@ -241,7 +244,8 @@ public class QueryEventInfo
                     m.getTable(),
                     m.getColumns(),
                     m.getConnectorInfo(),
-                    m.isSampleReplaced());
+                    m.isSampleReplaced(),
+                    m.isPartialAggregationPushedDown());
         }
 
         public Map<String, Object> toMap()
@@ -264,6 +268,7 @@ public class QueryEventInfo
             map.put("database", this.database);
             map.put("table", this.table);
             map.put("sampleReplaced", this.sampleReplaced);
+            map.put("partialAggregationPushedDown", this.partialAggregationPushedDown);
             map.put("columns", columnNames);
             connectorInfo.ifPresent(info -> map.put("connector_info", info.toString()));
             return map;

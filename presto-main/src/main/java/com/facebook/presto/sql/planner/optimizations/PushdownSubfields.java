@@ -334,7 +334,8 @@ public class PushdownSubfields
                     newAssignments.build(),
                     node.getCurrentConstraint(),
                     node.getEnforcedConstraint(),
-                    node.isSampleReplaced());
+                    node.isSampleReplaced(),
+                    node.isPartialAggregationPushedDown());
         }
 
         @Override

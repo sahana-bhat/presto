@@ -123,7 +123,8 @@ public class AutoSampleTableReplaceOptimizer
                     columns.build(),
                     node.getCurrentConstraint(),
                     node.getEnforcedConstraint(),
-                    true);
+                    true,
+                    node.isPartialAggregationPushedDown());
             return tableScan;
         }
     }

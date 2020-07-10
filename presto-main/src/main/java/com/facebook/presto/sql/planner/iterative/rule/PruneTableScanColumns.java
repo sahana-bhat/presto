@@ -45,6 +45,7 @@ public class PruneTableScanColumns
                         filterKeys(tableScanNode.getAssignments(), referencedOutputs::contains),
                         tableScanNode.getCurrentConstraint(),
                         tableScanNode.getEnforcedConstraint(),
-                        tableScanNode.isSampleReplaced()));
+                        tableScanNode.isSampleReplaced(),
+                        tableScanNode.isPartialAggregationPushedDown()));
     }
 }

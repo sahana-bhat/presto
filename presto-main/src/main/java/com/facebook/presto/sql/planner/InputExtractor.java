@@ -70,7 +70,8 @@ public class InputExtractor
             TableHandle tableHandle,
             Set<Column> columns,
             Optional<TableStatistics> statistics,
-            boolean sampleReplaced)
+            boolean sampleReplaced,
+            boolean partialAggregationPushedDown)
     {
         SchemaTableName schemaTable = table.getTable();
         Optional<Object> inputMetadata = metadata.getInfo(session, tableHandle);
@@ -81,7 +82,8 @@ public class InputExtractor
                 inputMetadata,
                 ImmutableList.copyOf(columns),
                 statistics,
-                sampleReplaced);
+                sampleReplaced,
+                partialAggregationPushedDown);
     }
 
     private class Visitor
@@ -142,7 +144,8 @@ public class InputExtractor
                     tableHandle,
                     columns,
                     statistics,
-                    node.isSampleReplaced()));
+                    node.isSampleReplaced(),
+                    node.isPartialAggregationPushedDown()));
 
             return null;
         }
@@ -171,6 +174,7 @@ public class InputExtractor
                     tableHandle,
                     columns,
                     statistics,
+                    false,
                     false));
 
             return null;

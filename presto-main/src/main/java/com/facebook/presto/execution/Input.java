@@ -38,6 +38,7 @@ public final class Input
     private final Optional<Object> connectorInfo;
     private final Optional<TableStatistics> statistics;
     private final boolean sampleReplaced;
+    private final boolean partialAggregationPushedDown;
 
     @JsonCreator
     public Input(
@@ -47,7 +48,8 @@ public final class Input
             @JsonProperty("connectorInfo") Optional<Object> connectorInfo,
             @JsonProperty("columns") List<Column> columns,
             @JsonProperty("statistics") Optional<TableStatistics> statistics,
-            @JsonProperty("sampleReplaced") boolean sampleReplaced)
+            @JsonProperty("sampleReplaced") boolean sampleReplaced,
+            @JsonProperty("partialAggregationPushedDown") boolean partialAggregationPushedDown)
     {
         this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.schema = requireNonNull(schema, "schema is null");
@@ -56,6 +58,7 @@ public final class Input
         this.columns = ImmutableList.copyOf(requireNonNull(columns, "columns is null"));
         this.statistics = requireNonNull(statistics, "table statistics is null");
         this.sampleReplaced = sampleReplaced;
+        this.partialAggregationPushedDown = partialAggregationPushedDown;
     }
 
     @JsonProperty
@@ -100,6 +103,12 @@ public final class Input
         return sampleReplaced;
     }
 
+    @JsonProperty
+    public boolean isPartialAggregationPushedDown()
+    {
+        return partialAggregationPushedDown;
+    }
+
     @Override
     public boolean equals(Object o)
     {
@@ -116,13 +125,14 @@ public final class Input
                 Objects.equals(columns, input.columns) &&
                 Objects.equals(connectorInfo, input.connectorInfo) &&
                 Objects.equals(statistics, input.statistics) &&
-                Objects.equals(sampleReplaced, input.sampleReplaced);
+                Objects.equals(sampleReplaced, input.sampleReplaced) &&
+                Objects.equals(partialAggregationPushedDown, this.partialAggregationPushedDown);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(connectorId, schema, table, columns, connectorInfo, statistics, sampleReplaced);
+        return Objects.hash(connectorId, schema, table, columns, connectorInfo, statistics, sampleReplaced, partialAggregationPushedDown);
     }
 
     @Override
@@ -135,6 +145,7 @@ public final class Input
                 .addValue(columns)
                 .addValue(statistics)
                 .addValue(sampleReplaced)
+                .addValue(partialAggregationPushedDown)
                 .toString();
     }
 }

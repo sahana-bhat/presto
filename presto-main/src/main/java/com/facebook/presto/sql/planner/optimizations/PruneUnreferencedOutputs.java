@@ -455,7 +455,8 @@ public class PruneUnreferencedOutputs
                     newAssignments,
                     node.getCurrentConstraint(),
                     node.getEnforcedConstraint(),
-                    node.isSampleReplaced());
+                    node.isSampleReplaced(),
+                    node.isPartialAggregationPushedDown());
         }
 
         @Override
