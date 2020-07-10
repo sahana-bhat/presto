@@ -18,7 +18,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SplitOperatorInfo
         implements Mergeable<SplitOperatorInfo>, OperatorInfo
@@ -45,6 +50,46 @@ public class SplitOperatorInfo
         return splitInfo;
     }
 
+    private String mergePartitionName(String partitionName1, String partitionName2)
+    {
+        if (partitionName1 == null) {
+            return partitionName2;
+        }
+
+        if (partitionName2 == null) {
+            return partitionName1;
+        }
+
+        if (partitionName1 == partitionName2) {
+            return partitionName1;  // should take care of the <UNPARTITIONED> case
+        }
+
+        Map<String, Set<String>> partitionMap = new HashMap<String, Set<String>>();
+        extractPartitions(partitionName1, partitionMap);
+        extractPartitions(partitionName2, partitionMap);
+
+        List<String> partitions = partitionMap.keySet()
+                .stream()
+                .map(k -> k + "=" + String.join(",", partitionMap.get(k)))
+                .collect(Collectors.toList());
+        return String.join("/", partitions);
+    }
+
+    // Assumes that the strings are of the format "name1=val1,val2,val3;name2=val4,val5"
+    private void extractPartitions(String partitionName, Map<String, Set<String>> partitionMap)
+    {
+        for (String name : partitionName.split("/")) {
+            int equalIndex = name.indexOf('=');
+            String pName = name.substring(0, equalIndex);
+            if (!partitionMap.containsKey(pName)) {
+                partitionMap.put(pName, new HashSet<String>());
+            }
+            for (String pVal : name.substring(equalIndex + 1).split(",")) {
+                partitionMap.get(pName).add(pVal);
+            }
+        }
+    }
+
     @Override
     public SplitOperatorInfo mergeWith(SplitOperatorInfo other)
     {
@@ -53,7 +98,27 @@ public class SplitOperatorInfo
             Map otherSplitInfoMap = (Map) other.splitInfo;
 
             if (checkEqual(splitInfoMap, otherSplitInfoMap, "database") && checkEqual(splitInfoMap, otherSplitInfoMap, "table")) {
-                return new SplitOperatorInfo(ImmutableMap.of("database", splitInfoMap.get("database"), "table", splitInfoMap.get("table")));
+                String partitionName = null;
+                try {
+                    partitionName = mergePartitionName(
+                            (String) splitInfoMap.get("partitionName"),
+                            (String) otherSplitInfoMap.get("partitionName"));
+                }
+                finally {
+                    if (partitionName == null) {
+                        return new SplitOperatorInfo(
+                                ImmutableMap.of(
+                                        "database", splitInfoMap.get("database"),
+                                        "table", splitInfoMap.get("table")));
+                    }
+                    else {
+                        return new SplitOperatorInfo(
+                                ImmutableMap.of(
+                                        "database", splitInfoMap.get("database"),
+                                        "table", splitInfoMap.get("table"),
+                                        "partitionName", partitionName));
+                    }
+                }
             }
         }
         return null;
