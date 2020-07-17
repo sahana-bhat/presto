@@ -39,6 +39,10 @@
     {
       "catalog": "rtadev_staging",
       "allow": true
+    },
+    {
+      "catalog": "pinotcanary",
+      "allow": true
     }
   ]
 }
