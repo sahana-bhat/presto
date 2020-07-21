@@ -20,7 +20,10 @@ import com.facebook.presto.execution.warnings.WarningCollector;
 import com.facebook.presto.metadata.Metadata;
 import com.facebook.presto.metadata.QualifiedObjectName;
 import com.facebook.presto.spi.ColumnHandle;
+import com.facebook.presto.spi.ColumnMetadata;
 import com.facebook.presto.spi.ConnectorTableMetadata;
+import com.facebook.presto.spi.PrestoException;
+import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.TableHandle;
 import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.plan.PlanNode;
@@ -102,18 +105,21 @@ public class AutoSampleTableReplaceOptimizer
                     sampleTable.getTableName().getTableName());
             Optional<TableHandle> tableHandle = metadata.getTableHandle(session, name);
             if (!tableHandle.isPresent()) {
-                log.warn("Could not create table handle for " + sampleTable);
-                return node;
+                throw new PrestoException(
+                        StandardErrorCode.UNSUPPORTED_SAMPLE_AUTO_SCALING,
+                        "Could not create table handle for " + sampleTable);
             }
 
             Map<String, ColumnHandle> sampleColumnHandles = metadata.getColumnHandles(session, tableHandle.get());
             ImmutableMap.Builder<VariableReferenceExpression, ColumnHandle> columns = ImmutableMap.builder();
             for (VariableReferenceExpression vre : node.getAssignments().keySet()) {
-                if (!sampleColumnHandles.containsKey(vre.getName())) {
-                    log.warn("sample table " + sampleTable + " does not contain column " + vre.getName());
-                    return node;
+                ColumnMetadata cm = metadata.getColumnMetadata(session, oldTableHandle, node.getAssignments().get(vre));
+                if (!sampleColumnHandles.containsKey(cm.getName())) {
+                    throw new PrestoException(
+                            StandardErrorCode.UNSUPPORTED_SAMPLE_AUTO_SCALING,
+                            "Sample Table " + sampleTable.getTableName() + " does not contain column " + cm.getName());
                 }
-                columns.put(vre, sampleColumnHandles.get(vre.getName()));
+                columns.put(vre, sampleColumnHandles.get(cm.getName()));
             }
 
             PlanNode tableScan = new TableScanNode(

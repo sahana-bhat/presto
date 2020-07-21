@@ -13,9 +13,12 @@
  */
 package com.facebook.presto.spi;
 
+import javax.annotation.concurrent.Immutable;
+
 import java.util.Objects;
 import java.util.Optional;
 
+@Immutable
 public class TableSample
 {
     private final SchemaTableName tableName;
@@ -68,7 +71,7 @@ public class TableSample
     @Override
     public int hashCode()
     {
-        return Objects.hash(tableName);
+        return Objects.hash(this.toString());
     }
 
     @Override
@@ -81,6 +84,6 @@ public class TableSample
             return false;
         }
         TableSample other = (TableSample) obj;
-        return Objects.equals(this.tableName, other.tableName);
+        return Objects.equals(this.toString(), other.toString());
     }
 }
