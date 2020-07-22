@@ -51,6 +51,8 @@ public class HiveTableProperties
     public static final String ORC_BLOOM_FILTER_FPP = "orc_bloom_filter_fpp";
     public static final String AVRO_SCHEMA_URL = "avro_schema_url";
     public static final String SAMPLED_TABLES = "datasampling_sampled_tables";
+    public static final String SAMPLING_PCT = "datasampling_sampling_pct";
+    public static final String SAMPLING_COLUMN = "datasampling_sampling_column";
 
     private final List<PropertyMetadata<?>> tableProperties;
 

@@ -187,6 +187,8 @@ import static com.facebook.presto.hive.HiveTableProperties.ORC_BLOOM_FILTER_COLU
 import static com.facebook.presto.hive.HiveTableProperties.ORC_BLOOM_FILTER_FPP;
 import static com.facebook.presto.hive.HiveTableProperties.PARTITIONED_BY_PROPERTY;
 import static com.facebook.presto.hive.HiveTableProperties.SAMPLED_TABLES;
+import static com.facebook.presto.hive.HiveTableProperties.SAMPLING_COLUMN;
+import static com.facebook.presto.hive.HiveTableProperties.SAMPLING_PCT;
 import static com.facebook.presto.hive.HiveTableProperties.SORTED_BY_PROPERTY;
 import static com.facebook.presto.hive.HiveTableProperties.STORAGE_FORMAT_PROPERTY;
 import static com.facebook.presto.hive.HiveTableProperties.getAvroSchemaUrl;
@@ -632,7 +634,25 @@ public class HiveMetadata
                     continue;
                 }
                 if (checkSampleTableSchemaMatch(table, sampleTable.get())) {
-                    sampledList.add(new TableSample(name, Optional.empty(), Optional.empty()));
+                    Optional<Integer> samplingPct = Optional.empty();
+                    try {
+                        if (sampleTable.get().getParameters().containsKey(SAMPLING_PCT)) {
+                            samplingPct = Optional.of(Integer.valueOf(Integer.parseInt(sampleTable.get().getParameters().get(SAMPLING_PCT))));
+                        }
+                    }
+                    catch (NumberFormatException e) {
+                        log.warn("Invalid sampling percentage on " + name);
+                    }
+                    Optional<String> samplingColumn = Optional.empty();
+                    try {
+                        if (sampleTable.get().getParameters().containsKey(SAMPLING_COLUMN)) {
+                            samplingColumn = Optional.of(sampleTable.get().getParameters().get(SAMPLING_COLUMN));
+                        }
+                    }
+                    catch (Exception e) {
+                        log.warn("Invalid sampling column on " + name);
+                    }
+                    sampledList.add(new TableSample(name, samplingPct, samplingColumn));
                 }
                 else {
                     log.warn("Schemas for tables " + table.getTableName() + " and " + name + " do not match.");
