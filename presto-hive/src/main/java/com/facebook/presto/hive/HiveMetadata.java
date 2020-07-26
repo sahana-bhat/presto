@@ -277,6 +277,7 @@ import static java.util.stream.Collectors.toSet;
 public class HiveMetadata
         implements TransactionalMetadata
 {
+    private static final Logger log = Logger.get(HiveMetadata.class);
     public static final String PRESTO_VERSION_NAME = "presto_version";
     public static final String TABLE_COMMENT = "comment";
     public static final Set<String> RESERVED_ROLES = ImmutableSet.of("all", "default", "none");
@@ -308,7 +309,6 @@ public class HiveMetadata
     private final StagingFileCommitter stagingFileCommitter;
     private final ZeroRowFileCreator zeroRowFileCreator;
     private final PartitionObjectBuilder partitionObjectBuilder;
-    private static final Logger log = Logger.get(HiveMetadata.class);
 
     public HiveMetadata(
             SemiTransactionalHiveMetastore metastore,
@@ -1686,18 +1686,37 @@ public class HiveMetadata
         for (PartitionUpdate partitionUpdate : partitionUpdates) {
             if (partitionUpdate.getName().isEmpty()) {
                 // insert into unpartitioned table
+                if (!table.get().getStorage().getStorageFormat().getInputFormat().equals(
+                        handle.getPartitionStorageFormat().getInputFormat()) && isRespectTableFormat(session)) {
+                    throw new PrestoException(HIVE_CONCURRENT_MODIFICATION_DETECTED, "Table format changed during insert");
+                }
+
                 PartitionStatistics partitionStatistics = createPartitionStatistics(
                         session,
                         partitionUpdate.getStatistics(),
                         columnTypes,
                         getColumnStatistics(partitionComputedStatistics, ImmutableList.of()));
-                metastore.finishInsertIntoExistingTable(
-                        session,
-                        handle.getSchemaName(),
-                        handle.getTableName(),
-                        partitionUpdate.getWritePath(),
-                        getTargetFileNames(partitionUpdate.getFileWriteInfos()),
-                        partitionStatistics);
+
+                if (partitionUpdate.getUpdateMode() == OVERWRITE) {
+                    PrincipalPrivileges principalPrivileges = getTablePrincipalPrivileges(session.getIdentity(),
+                            handle.getSchemaName(), handle.getTableName(), new PrestoPrincipal(USER, session.getUser()));
+                    // first drop it
+                    metastore.dropTable(session, handle.getSchemaName(), handle.getTableName());
+
+                    // create the table with the new location
+                    metastore.createTable(session, table.get(), principalPrivileges,
+                            Optional.of(partitionUpdate.getWritePath()), false, partitionStatistics);
+                }
+                else {
+                    // insert into unpartitioned table
+                    metastore.finishInsertIntoExistingTable(
+                            session,
+                            handle.getSchemaName(),
+                            handle.getTableName(),
+                            partitionUpdate.getWritePath(),
+                            getTargetFileNames(partitionUpdate.getFileWriteInfos()),
+                            partitionStatistics);
+                }
             }
             else if (partitionUpdate.getUpdateMode() == APPEND) {
                 // insert into existing partition
@@ -1742,6 +1761,11 @@ public class HiveMetadata
                         .map(PartitionUpdate::getName)
                         .map(name -> name.isEmpty() ? UNPARTITIONED_ID : name)
                         .collect(Collectors.toList())));
+    }
+
+    private PrincipalPrivileges getTablePrincipalPrivileges(ConnectorIdentity identity, String databaseName, String tableName, PrestoPrincipal principal)
+    {
+        return PrincipalPrivileges.fromHivePrivilegeInfos(metastore.listTablePrivileges(identity, databaseName, tableName, principal));
     }
 
     private static boolean isTempPathRequired(ConnectorSession session, Optional<HiveBucketProperty> bucketProperty)

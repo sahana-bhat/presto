@@ -221,12 +221,12 @@ public class TestHiveIntegrationSmokeTest
         computeActual(noPartitionFilterSession, "select * from partitioned_table");
         for (Session session : ImmutableList.of(partitionFilterSession, wildcardSession)) {
             assertQueryFails(session, "select * from partitioned_table",
-                             "Filters need to be specified on all partition columns of a table. "
-                             + "Your query is missing filters on columns \\('order_status'\\) "
-                             + "for table 'tpch.partitioned_table'. Please add filters in the WHERE clause of your query. "
-                             + "For example: WHERE DATE\\(datestr\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
+                    "Filters need to be specified on all partition columns of a table. "
+                            + "Your query is missing filters on columns \\('order_status'\\) "
+                            + "for table 'tpch.partitioned_table'. Please add filters in the WHERE clause of your query. "
+                            + "For example: WHERE DATE\\(datestr\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
             assertQueryFails(session, "select * from partitioned_table_multi_partition_key",
-                             "Filters need to be specified on all partition columns of a table. "
+                    "Filters need to be specified on all partition columns of a table. "
                             + "Your query is missing filters on columns \\('ship_priority', 'order_status', 'processed_date'\\) "
                             + "for table 'tpch.partitioned_table_multi_partition_key'. Please add filters in the WHERE clause of your query. "
                             + "For example: WHERE DATE\\(processed_date\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
@@ -4684,23 +4684,23 @@ public class TestHiveIntegrationSmokeTest
                 ")", 1);
 
         assertUpdate(session, "INSERT INTO test_parquet_table VALUES (" +
-                        "false" +
-                        ", cast(10 as tinyint)" +
-                        ", cast(20 as smallint)" +
-                        ", 30" +
-                        ", 40" +
-                        ", 10.25" +
-                        ", 25.334" +
-                        ", 465.523" +
-                        ", 88888888555555.91" +
-                        ", 'foo'" +
-                        ", 'bar'" +
-                        ", 'b'" +
-                        ", 'baz'" +
-                        ", cast('qux' as varbinary)" +
-                        ", cast('2020-06-02' as date)" +
-                        ", cast('2020-05-01 18:34:23.88' as timestamp)" +
-                        ")", 1);
+                "false" +
+                ", cast(10 as tinyint)" +
+                ", cast(20 as smallint)" +
+                ", 30" +
+                ", 40" +
+                ", 10.25" +
+                ", 25.334" +
+                ", 465.523" +
+                ", 88888888555555.91" +
+                ", 'foo'" +
+                ", 'bar'" +
+                ", 'b'" +
+                ", 'baz'" +
+                ", cast('qux' as varbinary)" +
+                ", cast('2020-06-02' as date)" +
+                ", cast('2020-05-01 18:34:23.88' as timestamp)" +
+                ")", 1);
         String rowCount = "SELECT 2";
 
         assertQuery(session, "SELECT COUNT(*) FROM test_parquet_table", rowCount);
@@ -4749,6 +4749,63 @@ public class TestHiveIntegrationSmokeTest
         assertUpdate(session, "DROP TABLE test_parquet_table");
 
         assertFalse(getQueryRunner().tableExists(session, "test_parquet_table"));
+    }
+
+    @Test
+    public void testOverwriteUnPartitionedTable()
+    {
+        @Language("SQL") String createTable = "" +
+                "CREATE TABLE test_unpartitoned_table (" +
+                " EmpName VARCHAR(10)" +
+                ",EmpNo INTEGER" +
+                ")" +
+                "WITH (format = 'parquet')";
+
+        //By default append
+        Session session = Session.builder(getSession())
+                .setCatalogSessionProperty(catalog, "enable_table_overwrite", "false")
+                .build();
+        assertUpdate(session, createTable);
+
+        TableMetadata tableMetadata = getTableMetadata(catalog, TPCH_SCHEMA, "test_unpartitoned_table");
+        assertEquals(tableMetadata.getMetadata().getProperties().get(STORAGE_FORMAT_PROPERTY), HiveStorageFormat.PARQUET);
+
+        assertUpdate(session, "INSERT INTO test_unpartitoned_table VALUES (" +
+                "'foo'" +
+                ", 1" +
+                ")", 1);
+
+        assertUpdate(session, "INSERT INTO test_unpartitoned_table VALUES (" +
+                "'bar'" +
+                ", 2" +
+                ")", 1);
+
+        String rowCount = "SELECT 2";
+
+        assertQuery(session, "SELECT COUNT(*) FROM test_unpartitoned_table", rowCount);
+
+        //Enable full table overwrite
+        session = Session.builder(getSession())
+                .setCatalogSessionProperty(catalog, "enable_table_overwrite", "true")
+                .build();
+
+        assertUpdate(session, "INSERT INTO test_unpartitoned_table VALUES (" +
+                "'foo'" +
+                ", 1" +
+                ")", 1);
+
+        assertUpdate(session, "INSERT INTO test_unpartitoned_table VALUES (" +
+                "'bar'" +
+                ", 2" +
+                ")", 1);
+
+        rowCount = "SELECT 1";
+
+        assertQuery(session, "SELECT COUNT(*) FROM test_unpartitoned_table", rowCount);
+
+        assertUpdate(session, "DROP TABLE test_unpartitoned_table");
+
+        assertFalse(getQueryRunner().tableExists(session, "test_unpartitoned_table"));
     }
 
     private static Consumer<Plan> assertTableWriterMergeNodeIsPresent()

@@ -129,6 +129,7 @@ public class TestHiveClientConfig
                 .setOptimizedParquetReaderEnabled(false)
                 .setParquetVerificationEnabled(false)
                 .setPartialAggregationPushdownEnabled(false)
+                .setTableOverwriteEnabled(false)
                 .setHoodieGloballyConsistentReadEnabled(false));
     }
 
@@ -223,6 +224,7 @@ public class TestHiveClientConfig
                 .put("hive.enable-optimized-parquet-reader", "true")
                 .put("hive.enable-parquet-verification", "true")
                 .put("hive.enable_partial_aggregation_pushdown", "true")
+                .put("hive.enable-table-overwrite", "true")
                 .put("hive.hoodie-enable-globally-consistent-reads", "true")
                 .build();
 
@@ -315,6 +317,7 @@ public class TestHiveClientConfig
                 .setOptimizedParquetReaderEnabled(true)
                 .setParquetVerificationEnabled(true)
                 .setPartialAggregationPushdownEnabled(true)
+                .setTableOverwriteEnabled(true)
                 .setHoodieGloballyConsistentReadEnabled(true);
 
         ConfigAssertions.assertFullMapping(properties, expected);

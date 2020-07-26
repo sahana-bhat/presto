@@ -134,6 +134,7 @@ public class HiveWriterFactory
     private final HiveWriterStats hiveWriterStats;
 
     private final boolean partitionCommitRequired;
+    private final boolean isTableOverwriteEnabled;
 
     public HiveWriterFactory(
             Set<HiveFileWriterFactory> fileWriterFactories,
@@ -289,6 +290,7 @@ public class HiveWriterFactory
         this.hiveWriterStats = requireNonNull(hiveWriterStats, "hiveWriterStats is null");
 
         this.partitionCommitRequired = partitionCommitRequired;
+        this.isTableOverwriteEnabled = HiveSessionProperties.isTableOverwriteEnabled(session);
     }
 
     public HiveWriter createWriter(Page partitionColumns, int position, OptionalInt bucketNumber)
@@ -338,7 +340,7 @@ public class HiveWriterFactory
 
                 if (!partitionName.isPresent()) {
                     // new unpartitioned table
-                    writeInfo = locationService.getTableWriteInfo(locationHandle);
+                    writeInfo = locationService.getTableWriteInfo(locationHandle, false);
                 }
                 else {
                     // a new partition in a new partitioned table
@@ -369,7 +371,7 @@ public class HiveWriterFactory
                 else if (table.getTableType().equals(TEMPORARY_TABLE)) {
                     // Note: temporary table is always empty at this step
                     updateMode = UpdateMode.APPEND;
-                    writeInfo = locationService.getTableWriteInfo(locationHandle);
+                    writeInfo = locationService.getTableWriteInfo(locationHandle, false);
                 }
                 else {
                     if (bucketNumber.isPresent()) {
@@ -378,8 +380,14 @@ public class HiveWriterFactory
                     if (immutablePartitions) {
                         throw new PrestoException(HIVE_PARTITION_READ_ONLY, "Unpartitioned Hive tables are immutable");
                     }
-                    updateMode = UpdateMode.APPEND;
-                    writeInfo = locationService.getTableWriteInfo(locationHandle);
+                    if (isTableOverwriteEnabled) {
+                        updateMode = UpdateMode.OVERWRITE;
+                        writeInfo = locationService.getTableWriteInfo(locationHandle, true);
+                    }
+                    else {
+                        updateMode = UpdateMode.APPEND;
+                        writeInfo = locationService.getTableWriteInfo(locationHandle, false);
+                    }
                 }
 
                 schema = getHiveSchema(table);

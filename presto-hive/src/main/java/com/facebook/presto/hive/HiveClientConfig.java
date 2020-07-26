@@ -162,6 +162,7 @@ public class HiveClientConfig
     private boolean isParquetVerificationEnabled;
 
     private boolean isPartialAggregationPushdownEnabled;
+    private boolean isTableOverwriteEnabled;
 
     private boolean isHoodieGloballyConsistentReadEnabled;
 
@@ -1352,5 +1353,18 @@ public class HiveClientConfig
     public boolean isHoodieGloballyConsistentReadEnabled()
     {
         return this.isHoodieGloballyConsistentReadEnabled;
+    }
+
+    @Config("hive.enable-table-overwrite")
+    @ConfigDescription("enabled table overwrites")
+    public HiveClientConfig setTableOverwriteEnabled(boolean tableOverwriteEnabled)
+    {
+        this.isTableOverwriteEnabled = tableOverwriteEnabled;
+        return this;
+    }
+
+    public boolean isTableOverwriteEnabled()
+    {
+        return this.isTableOverwriteEnabled;
     }
 }

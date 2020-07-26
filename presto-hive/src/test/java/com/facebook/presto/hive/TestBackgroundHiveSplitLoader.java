@@ -706,7 +706,7 @@ public class TestBackgroundHiveSplitLoader
         }
     }
 
-    private static class TestingHdfsEnvironment
+    public static class TestingHdfsEnvironment
             extends HdfsEnvironment
     {
         public TestingHdfsEnvironment()

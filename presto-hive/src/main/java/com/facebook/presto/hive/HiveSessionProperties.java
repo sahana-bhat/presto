@@ -97,6 +97,7 @@ public final class HiveSessionProperties
     private static final String ENABLE_PARQUET_VERIFICATION = "enable_parquet_verification";
     public static final String ENABLE_PARTIAL_AGGREGATION_PUSHDOWN = "enable_partial_aggregation_pushdown";
     private static final String ENABLE_HOODIE_GLOBALLY_CONSISTENT_READS = "hoodie_enable_globally_consistent_reads";
+    public static final String ENABLE_TABLE_OVERWRITE = "enable_table_overwrite";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -439,6 +440,11 @@ public final class HiveSessionProperties
                         ENABLE_HOODIE_GLOBALLY_CONSISTENT_READS,
                         "Is hoodie globally consistent reads enabled",
                         hiveClientConfig.isHoodieGloballyConsistentReadEnabled(),
+                        false),
+                booleanProperty(
+                        ENABLE_TABLE_OVERWRITE,
+                        "Is table overwrite enabled",
+                        hiveClientConfig.isTableOverwriteEnabled(),
                         false));
     }
 
@@ -746,6 +752,11 @@ public final class HiveSessionProperties
     public static boolean isHoodieGloballyConsistentReadEnabled(ConnectorSession session)
     {
         return session.getProperty(ENABLE_HOODIE_GLOBALLY_CONSISTENT_READS, Boolean.class);
+    }
+
+    public static boolean isTableOverwriteEnabled(ConnectorSession session)
+    {
+        return session.getProperty(ENABLE_TABLE_OVERWRITE, Boolean.class);
     }
 
     public static PropertyMetadata<DataSize> dataSizeSessionProperty(String name, String description, DataSize defaultValue, boolean hidden)

@@ -352,6 +352,7 @@ public class HivePageSink
             if (bucketBlock != null) {
                 bucketNumber = OptionalInt.of(bucketBlock.getInt(position));
             }
+
             HiveWriter writer = writerFactory.createWriter(partitionColumns, position, bucketNumber);
             writers.set(writerIndex, writer);
         }
