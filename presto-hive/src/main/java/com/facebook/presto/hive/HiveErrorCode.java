@@ -110,7 +110,7 @@ public enum HiveErrorCode
         static final String DATA_ARCHIVED_ERROR_MESSAGE = "Please check http://t.uber.com/data-archived for more information.";
         static final String DEFAULT_ERROR_MESSAGE = "Please find table owner through https://databook.uberinternal.com/ and report the issue.";
         static final String UACCESS_ERROR_MESSAGE = "Please follow the FAQ http://t.uber.com/uaccess_getting_started to get access to this dataset. "
-                + "If unresolved, please ask in https://uchat.uberinternal.com/uber/channels/data-security-community.";
+                + "If unresolved, please ask in slack channel #data-security-community.";
 
         private Constants() {}
     }

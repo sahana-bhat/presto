@@ -64,7 +64,7 @@ public class EnforcePartitionFilter
             "Filters need to be specified on all partition columns of a table. Your query is missing filters on "
                     + "columns ('%s') for table '%s'. Please add filters in the WHERE clause of your query. For example: "
                     + "WHERE DATE(%s) > CURRENT_DATE - INTERVAL '7' DAY. See more details at "
-                    + "https://engwiki.uberinternal.com/display/TE0DATAINFRA/Presto+Query+Optimization#PrestoQueryOptimization-Filterbypartitioncolumn ";
+                    + "https://engwiki.uberinternal.com/display/TE0PRESTO/Query+Optimization#QueryOptimization-Filterbypartitioncolumn ";
     private static final Pattern DATE_COLUMN_NAME_PATTERN = Pattern.compile(".*(date|week|month).*");
     private final Metadata metadata;
 

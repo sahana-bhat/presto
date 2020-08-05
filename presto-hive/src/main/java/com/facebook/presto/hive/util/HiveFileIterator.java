@@ -173,7 +173,7 @@ public class HiveFileIterator
             else if (exception instanceof AccessControlException) {
                 throw new PrestoException(HIVE_PERMISSION_ERROR, "Seems like a security problem, " +
                         "please try to follow the FAQ http://t.uber.com/uaccess_getting_started to resolve the issue first. " +
-                        "If it persists, please ask in https://uchat.uberinternal.com/uber/channels/data-security-community." + exception.getMessage());
+                        "If it persists, please ask in slack channel #data-security-community." + exception.getMessage());
             }
 
             return new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed to list directory: " + path +
