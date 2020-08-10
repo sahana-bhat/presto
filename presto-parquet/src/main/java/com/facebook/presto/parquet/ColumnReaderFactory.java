@@ -23,17 +23,21 @@ import com.facebook.presto.parquet.reader.LongColumnReader;
 import com.facebook.presto.parquet.reader.LongDecimalColumnReader;
 import com.facebook.presto.parquet.reader.ShortDecimalColumnReader;
 import com.facebook.presto.parquet.reader.TimestampColumnReader;
+import com.facebook.presto.parquet.reader.TimestampMicrosColumnReader;
 import com.facebook.presto.parquet.readerv2.BinaryNestedColumnReaderV2;
 import com.facebook.presto.parquet.readerv2.BinarySimpleColumnReaderV2;
 import com.facebook.presto.parquet.readerv2.Int32ColumnReader;
 import com.facebook.presto.parquet.readerv2.Int64ColumnReader;
+import com.facebook.presto.parquet.readerv2.Int64TimestampMicrosColumnReader;
 import com.facebook.presto.parquet.readerv2.NestedBooleanColumnReader;
 import com.facebook.presto.parquet.readerv2.NestedInt32ColumnReader;
 import com.facebook.presto.parquet.readerv2.NestedInt64ColumnReader;
+import com.facebook.presto.parquet.readerv2.NestedInt64TimestampMicrosColumnReader;
 import com.facebook.presto.parquet.readerv2.NestedTimestampColumnReader;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.type.DecimalType;
 import com.facebook.presto.spi.type.Type;
+import org.apache.parquet.schema.OriginalType;
 
 import java.util.Optional;
 
@@ -57,6 +61,9 @@ public class ColumnReaderFactory
                 case FLOAT:
                     return isNested ? new NestedInt32ColumnReader(descriptor) : new Int32ColumnReader(descriptor);
                 case INT64:
+                    if (OriginalType.TIMESTAMP_MICROS.equals(descriptor.getPrimitiveType().getOriginalType())) {
+                        return isNested ? new NestedInt64TimestampMicrosColumnReader(descriptor) : new Int64TimestampMicrosColumnReader(descriptor);
+                    }
                 case DOUBLE:
                     return isNested ? new NestedInt64ColumnReader(descriptor) : new Int64ColumnReader(descriptor);
                 case INT96:
@@ -72,6 +79,9 @@ public class ColumnReaderFactory
             case INT32:
                 return createDecimalColumnReader(descriptor).orElse(new IntColumnReader(descriptor));
             case INT64:
+                if (OriginalType.TIMESTAMP_MICROS.equals(descriptor.getPrimitiveType().getOriginalType())) {
+                    return new TimestampMicrosColumnReader(descriptor);
+                }
                 return createDecimalColumnReader(descriptor).orElse(new LongColumnReader(descriptor));
             case INT96:
                 return new TimestampColumnReader(descriptor);

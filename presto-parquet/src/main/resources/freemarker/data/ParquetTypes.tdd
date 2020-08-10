@@ -23,6 +23,13 @@
             blockType: "ByteArrayBlock",
             valuesDecoder: "BooleanValuesDecoder",
             primitiveType: "byte"
+        },
+        {
+            className: "Int64TimestampMicrosColumnReader",
+            blockType: "LongArrayBlock",
+            valuesDecoder: "Int64TimestampMicrosValuesDecoder",
+            primitiveType: "long"
         }
+       
     ]
 }

@@ -32,6 +32,7 @@ import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.JavaHiveDecimalObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.DecimalTypeInfo;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.joda.time.DateTimeZone;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -71,6 +72,7 @@ import static com.facebook.presto.spi.type.DoubleType.DOUBLE;
 import static com.facebook.presto.spi.type.IntegerType.INTEGER;
 import static com.facebook.presto.spi.type.RealType.REAL;
 import static com.facebook.presto.spi.type.RowType.field;
+import static com.facebook.presto.spi.type.TimeZoneKey.UTC_KEY;
 import static com.facebook.presto.spi.type.TimestampType.TIMESTAMP;
 import static com.facebook.presto.spi.type.VarbinaryType.VARBINARY;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
@@ -843,6 +845,33 @@ public abstract class AbstractTestParquetReader
             }
             tester.testRoundTrip(javaIntObjectInspector, intValues, expectedValues.build(), createDecimalType(precision, scale), Optional.of(parquetSchema));
         }
+    }
+
+    @Test
+    public void testTimestampMicrosBackedByINT64()
+            throws Exception
+    {
+        org.apache.parquet.schema.MessageType parquetSchema =
+                MessageTypeParser.parseMessageType("message ts_micros { optional INT64 test (TIMESTAMP_MICROS); }");
+        ContiguousSet<Long> longValues = longsBetween(1_000_000, 1_001_000);
+        ImmutableList.Builder<SqlTimestamp> expectedValues = new ImmutableList.Builder<>();
+        for (Long value : longValues) {
+            expectedValues.add(new SqlTimestamp(value / 1000L, UTC_KEY));
+        }
+        tester.testRoundTrip(javaTimestampObjectInspector, longValues, expectedValues.build(), TIMESTAMP, parquetSchema);
+    }
+
+    @Test
+    public void testTimestampMillisBackedByINT64()
+            throws Exception
+    {
+        MessageType parquetSchema = parseMessageType("message ts_millis { optional INT64 test (TIMESTAMP_MILLIS); }");
+        ContiguousSet<Long> longValues = longsBetween(1_000_000, 1_001_000);
+        ImmutableList.Builder<SqlTimestamp> expectedValues = new ImmutableList.Builder<>();
+        for (Long value : longValues) {
+            expectedValues.add(new SqlTimestamp(value, UTC_KEY));
+        }
+        tester.testRoundTrip(javaLongObjectInspector, longValues, expectedValues.build(), TIMESTAMP, Optional.of(parquetSchema));
     }
 
     @Test

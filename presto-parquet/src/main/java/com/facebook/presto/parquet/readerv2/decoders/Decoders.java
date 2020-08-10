@@ -21,11 +21,13 @@ import com.facebook.presto.parquet.readerv2.decoders.plain.BinaryPlainValuesDeco
 import com.facebook.presto.parquet.readerv2.decoders.plain.BooleanPlainValuesDecoder;
 import com.facebook.presto.parquet.readerv2.decoders.plain.Int32PlainValuesDecoder;
 import com.facebook.presto.parquet.readerv2.decoders.plain.Int64PlainValuesDecoder;
+import com.facebook.presto.parquet.readerv2.decoders.plain.Int64TimestampMicrosPlainValuesDecoder;
 import com.facebook.presto.parquet.readerv2.decoders.plain.TimestampPlainValuesDecoder;
 import com.facebook.presto.parquet.readerv2.decoders.rle.BinaryRLEDictionaryValuesDecoder;
 import com.facebook.presto.parquet.readerv2.decoders.rle.BooleanRLEValuesDecoder;
 import com.facebook.presto.parquet.readerv2.decoders.rle.Int32RLEDictionaryValuesDecoder;
 import com.facebook.presto.parquet.readerv2.decoders.rle.Int64RLEDictionaryValuesDecoder;
+import com.facebook.presto.parquet.readerv2.decoders.rle.Int64TimestampMicrosRLEDictionaryValuesDecoder;
 import com.facebook.presto.parquet.readerv2.decoders.rle.TimestampRLEDictionaryValuesDecoder;
 import com.facebook.presto.parquet.readerv2.dictionary.BinaryDictionaryV2;
 import com.facebook.presto.parquet.readerv2.dictionary.TimestampDictionary;
@@ -33,6 +35,7 @@ import com.facebook.presto.spi.PrestoException;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import java.io.IOException;
@@ -50,6 +53,7 @@ import static java.lang.String.format;
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndianOnOneByte;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 public class Decoders
 {
@@ -113,6 +117,9 @@ public class Decoders
                 case FLOAT:
                     return new Int32PlainValuesDecoder(buffer, offset, length);
                 case INT64:
+                    if (OriginalType.TIMESTAMP_MICROS.equals(columnDescriptor.getPrimitiveType().getOriginalType())) {
+                        return new Int64TimestampMicrosPlainValuesDecoder(buffer, offset, length);
+                    }
                 case DOUBLE:
                     return new Int64PlainValuesDecoder(buffer, offset, length);
                 case INT96:
@@ -137,7 +144,14 @@ public class Decoders
                     int bitWidth = readIntLittleEndianOnOneByte(valuesBufferInputStream);
                     return new Int32RLEDictionaryValuesDecoder(bitWidth, valuesBufferInputStream, (IntegerDictionary) dictionary);
                 }
-                case INT64:
+                case INT64: {
+                    if (OriginalType.TIMESTAMP_MICROS.equals(columnDescriptor.getPrimitiveType().getOriginalType())) {
+                        InputStream valuesBufferInputStream = ByteBufferInputStream.wrap(ByteBuffer.wrap(buffer, offset, length));
+                        int bitWidth = readIntLittleEndianOnOneByte(valuesBufferInputStream);
+                        return new Int64TimestampMicrosRLEDictionaryValuesDecoder(bitWidth,
+                                valuesBufferInputStream, (LongDictionary) dictionary);
+                    }
+                }
                 case DOUBLE: {
                     InputStream valuesBufferInputStream = ByteBufferInputStream.wrap(ByteBuffer.wrap(buffer, offset, length));
                     int bitWidth = readIntLittleEndianOnOneByte(valuesBufferInputStream);
