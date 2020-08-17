@@ -289,8 +289,17 @@ public class PinotBrokerPageSource
 
     private static String asText(JsonNode node)
     {
-        checkState(node.isValueNode());
-        return node.isNull() ? null : node.asText();
+        // TODO Fix this Array handling properly while adding support for multivalued columns
+        checkState(node.isValueNode() || node.isArray());
+
+        if (node.isNull()) {
+            return null;
+        }
+        else if (node.isValueNode()) {
+            return node.asText();
+        }
+
+        return node.toString();
     }
 
     @VisibleForTesting
