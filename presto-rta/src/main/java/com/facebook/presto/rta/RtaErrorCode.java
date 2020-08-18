@@ -23,7 +23,8 @@ import static com.facebook.presto.spi.ErrorType.EXTERNAL;
 public enum RtaErrorCode
         implements ErrorCodeSupplier
 {
-    RTAMS_ERROR(0, EXTERNAL);
+    RTAMS_ERROR(0, EXTERNAL),
+    NOT_SUPPORTED_ERROR(1, EXTERNAL);
 
     /**
      * Connectors can use error codes starting at the range 0x0100_0000

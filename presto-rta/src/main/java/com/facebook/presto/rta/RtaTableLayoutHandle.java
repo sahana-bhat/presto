@@ -13,16 +13,16 @@
  */
 package com.facebook.presto.rta;
 
-import com.facebook.presto.aresdb.AresDbTableHandle;
-import com.facebook.presto.aresdb.AresDbTableLayoutHandle;
 import com.facebook.presto.pinot.PinotTableHandle;
 import com.facebook.presto.pinot.PinotTableLayoutHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
+import com.facebook.presto.spi.PrestoException;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Objects;
 
+import static com.facebook.presto.rta.RtaErrorCode.NOT_SUPPORTED_ERROR;
 import static java.util.Objects.requireNonNull;
 
 public class RtaTableLayoutHandle
@@ -76,7 +76,7 @@ public class RtaTableLayoutHandle
             case PINOT:
                 return new PinotTableLayoutHandle((PinotTableHandle) table.getHandle());
             case ARESDB:
-                return new AresDbTableLayoutHandle((AresDbTableHandle) table.getHandle());
+                throw new PrestoException(NOT_SUPPORTED_ERROR, "AresDb support is deprecated. Please follow this wiki for more information: https://engwiki.uberinternal.com/display/RTA/Neutrino+Version+Upgrade");
             default:
                 throw new IllegalStateException("Unknown connector type " + table.getKey().getType());
         }

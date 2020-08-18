@@ -15,8 +15,6 @@ package com.facebook.presto.rta;
 
 import com.facebook.airlift.log.Logger;
 import com.facebook.presto.aresdb.AresDbColumnHandle;
-import com.facebook.presto.aresdb.AresDbMuttleyConfig;
-import com.facebook.presto.aresdb.AresDbTableHandle;
 import com.facebook.presto.pinot.PinotColumnHandle;
 import com.facebook.presto.pinot.PinotMuttleyConfig;
 import com.facebook.presto.pinot.PinotTableHandle;
@@ -33,6 +31,7 @@ import com.facebook.presto.spi.ConnectorTableLayoutResult;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.ConnectorTablePartitioning;
 import com.facebook.presto.spi.Constraint;
+import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.TableNotFoundException;
@@ -49,6 +48,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static com.facebook.presto.rta.RtaErrorCode.NOT_SUPPORTED_ERROR;
 import static com.facebook.presto.rta.RtaUtil.checkType;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -112,15 +112,7 @@ public class RtaMetadata
                             Optional.empty());
                     break;
                 case ARESDB:
-                    Optional<String> timestampField = entity.getTimestampField();
-                    underlyingHandle = new AresDbTableHandle(connectorId.getId(), storageTableName,
-                            timestampField, entity.getTimestampType(),
-                            timestampField.isPresent() ? entity.getRetention() : Optional.empty(),
-                            Optional.empty(), Optional.empty(),
-                            new AresDbMuttleyConfig(
-                                    rtaCluster.getMuttleyRoService(),
-                                    propertyManager.getExtraHttpHeaders(deployment)));
-                    break;
+                    throw new PrestoException(NOT_SUPPORTED_ERROR, "AresDb support is deprecated. Please follow this wiki for more information: https://engwiki.uberinternal.com/display/RTA/Neutrino+Version+Upgrade");
                 default:
                     return Optional.empty();
             }
@@ -202,7 +194,7 @@ public class RtaMetadata
             case PINOT:
                 return new PinotColumnHandle(name, type, PinotColumnHandle.PinotColumnType.REGULAR);
             case ARESDB:
-                return new AresDbColumnHandle(name, type, AresDbColumnHandle.AresDbColumnType.REGULAR);
+                throw new PrestoException(NOT_SUPPORTED_ERROR, "AresDb support is deprecated. Please follow this wiki for more information: https://engwiki.uberinternal.com/display/RTA/Neutrino+Version+Upgrade");
             default:
                 throw new IllegalStateException("Invalid underlying handle of type " + storageType);
         }
