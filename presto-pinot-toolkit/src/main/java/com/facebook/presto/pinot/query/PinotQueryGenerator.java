@@ -40,7 +40,9 @@ import com.facebook.presto.spi.relation.ConstantExpression;
 import com.facebook.presto.spi.relation.RowExpression;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.facebook.presto.spi.type.BigintType;
+import com.facebook.presto.spi.type.FixedWidthType;
 import com.facebook.presto.spi.type.TypeManager;
+import com.facebook.presto.spi.type.VarcharType;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
@@ -67,6 +69,7 @@ import static com.facebook.presto.pinot.query.PinotQueryGeneratorContext.Origin.
 import static com.facebook.presto.pinot.query.PinotQueryGeneratorContext.Origin.TABLE_COLUMN;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -376,6 +379,7 @@ public class PinotQueryGenerator
                     case GROUP_BY: {
                         GroupByColumnNode groupByColumn = (GroupByColumnNode) expression;
                         VariableReferenceExpression groupByInputColumn = getVariableReference(groupByColumn.getInputColumn());
+                        checkState(groupByInputColumn.getType() instanceof FixedWidthType || groupByInputColumn.getType() instanceof VarcharType);
                         variablesInAggregation.add(groupByInputColumn);
                         break;
                     }

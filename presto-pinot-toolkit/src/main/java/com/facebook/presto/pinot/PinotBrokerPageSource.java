@@ -20,6 +20,7 @@ import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.PageBuilder;
 import com.facebook.presto.spi.block.BlockBuilder;
+import com.facebook.presto.spi.type.ArrayType;
 import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.DecimalType;
@@ -33,6 +34,7 @@ import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.VarcharType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
@@ -124,9 +126,33 @@ public class PinotBrokerPageSource
         }
     }
 
+    protected void setValue(Type type, BlockBuilder blockBuilder, JsonNode value)
+    {
+        if (blockBuilder == null) {
+            return;
+        }
+        if (value == null) {
+            blockBuilder.appendNull();
+            return;
+        }
+        if (type instanceof ArrayType) {
+            checkState(value.isArray());
+
+            BlockBuilder childBuilder = blockBuilder.beginBlockEntry();
+            ArrayNode arrayNode = (ArrayNode) value;
+            for (int i = 0; i < arrayNode.size(); i++) {
+                setValue(((ArrayType) type).getElementType(), childBuilder, asText(arrayNode.get(i)));
+            }
+            blockBuilder.closeEntry();
+        }
+        else {
+            setValue(type, blockBuilder, asText(value));
+        }
+    }
+
     private void setValue(Type type, BlockBuilder blockBuilder, String value)
     {
-        if (type == null || blockBuilder == null) {
+        if (blockBuilder == null) {
             return;
         }
         if (value == null) {
@@ -187,7 +213,7 @@ public class PinotBrokerPageSource
                         group.size(),
                         values.length));
         for (int i = 0; i < group.size(); i++) {
-            setValue(types.get(i), blockBuilders.get(i), asText(group.get(i)));
+            setValue(types.get(i), blockBuilders.get(i), group.get(i));
         }
         for (int i = 0; i < values.length; i++) {
             int metricColumnIndex = i + numGroupByClause;
@@ -396,7 +422,7 @@ public class PinotBrokerPageSource
                     // simple aggregation
                     // TODO: Validate that this is expected semantically
                     checkState(numGroupByClause == 0, "Expected no group by columns in pinot");
-                    setValue(types.get(aggregationIndex), blockBuilders.get(aggregationIndex), asText(result.get("value")));
+                    setValue(types.get(aggregationIndex), blockBuilders.get(aggregationIndex), result.get("value"));
                     rowCount = 1;
                 }
             }
@@ -425,7 +451,7 @@ public class PinotBrokerPageSource
                             String.format("Expected row of %d columns", blockBuilders.size()));
                 }
                 for (int columnNumber = 0; columnNumber < blockBuilders.size(); columnNumber++) {
-                    setValue(types.get(columnNumber), blockBuilders.get(columnNumber), asText(result.get(columnNumber)));
+                    setValue(types.get(columnNumber), blockBuilders.get(columnNumber), result.get(columnNumber));
                 }
             }
             rowCount = results.size();
