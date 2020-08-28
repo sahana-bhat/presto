@@ -48,6 +48,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.AccessControlException;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.crypto.CryptoMetadataRetriever;
 import org.apache.parquet.crypto.FileDecryptionProperties;
@@ -94,6 +95,7 @@ import static com.facebook.presto.parquet.ParquetTypeUtils.getNestedColumnType;
 import static com.facebook.presto.parquet.ParquetTypeUtils.getParquetTypeByName;
 import static com.facebook.presto.parquet.predicate.PredicateUtils.buildPredicate;
 import static com.facebook.presto.parquet.predicate.PredicateUtils.predicateMatches;
+import static com.facebook.presto.spi.StandardErrorCode.PERMISSION_DENIED;
 import static com.facebook.presto.spi.type.StandardTypes.ARRAY;
 import static com.facebook.presto.spi.type.StandardTypes.BIGINT;
 import static com.facebook.presto.spi.type.StandardTypes.CHAR;
@@ -307,6 +309,9 @@ public class ParquetPageSourceFactory
             if (e instanceof ParquetCorruptionException) {
                 throw new PrestoException(HIVE_BAD_DATA, e);
             }
+            if (e instanceof AccessControlException) {
+                throw new PrestoException(PERMISSION_DENIED, e.getMessage(), e);
+            }
             if (nullToEmpty(e.getMessage()).trim().equals("Filesystem closed") ||
                     e instanceof FileNotFoundException) {
                 throw new PrestoException(HIVE_CANNOT_OPEN_SPLIT, e);
@@ -431,6 +436,9 @@ public class ParquetPageSourceFactory
             }
             if (e instanceof ParquetCorruptionException) {
                 throw new PrestoException(HIVE_BAD_DATA, e);
+            }
+            if (e instanceof AccessControlException) {
+                throw new PrestoException(PERMISSION_DENIED, e.getMessage(), e);
             }
             if (nullToEmpty(e.getMessage()).trim().equals("Filesystem closed") ||
                     e instanceof FileNotFoundException) {
