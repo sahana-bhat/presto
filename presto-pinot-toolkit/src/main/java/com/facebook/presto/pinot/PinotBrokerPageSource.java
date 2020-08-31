@@ -260,6 +260,8 @@ public class PinotBrokerPageSource
     {
         session.getSessionLogger().log(() -> "Pql Issue Start");
 
+        List<String> brokerHosts = clusterInfoFetcher.getBrokerHosts(tableHandle);
+
         return doWithRetries(PinotSessionProperties.getPinotRetryCount(session), (retryNumber) -> {
             String queryHost;
             Optional<String> rpcService;
@@ -271,7 +273,7 @@ public class PinotBrokerPageSource
                         Optional.ofNullable(pinotConfig.getRestProxyServiceForQuery());
             }
             else {
-                queryHost = clusterInfoFetcher.getBrokerHost(tableHandle);
+                queryHost = brokerHosts.get(retryNumber % brokerHosts.size());
                 rpcService = Optional.empty();
             }
             Request.Builder builder = Request.Builder

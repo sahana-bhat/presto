@@ -34,10 +34,10 @@ import org.apache.pinot.common.data.Schema;
 
 import javax.inject.Inject;
 
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,12 +50,14 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.facebook.airlift.http.client.StringResponseHandler.createStringResponseHandler;
+import static com.facebook.presto.pinot.PinotErrorCode.PINOT_CONNECTION_ERROR;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_HTTP_ERROR;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_INVALID_CONFIGURATION;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_UNABLE_TO_FIND_BROKER;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_UNEXPECTED_RESPONSE;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.lang.String.format;
+import static java.util.Collections.shuffle;
 import static java.util.Objects.requireNonNull;
 import static org.apache.pinot.common.config.TableNameBuilder.extractRawTableName;
 
@@ -150,6 +152,9 @@ public class PinotClusterInfoFetcher
         StringResponseHandler.StringResponse response;
         try {
             response = httpClient.execute(request, createStringResponseHandler());
+        }
+        catch (UncheckedIOException e) {
+            throw new PinotException(PINOT_CONNECTION_ERROR, Optional.empty(), String.format("Error issuing PQL: %s", e.getCause()));
         }
         finally {
             duration = ticker.read() - startTime;
@@ -306,18 +311,24 @@ public class PinotClusterInfoFetcher
                     }
                 })
                 .collect(Collectors.toCollection(() -> new ArrayList<>()));
-        Collections.shuffle(brokers);
+        shuffle(brokers);
         return ImmutableList.copyOf(brokers);
     }
 
     public String getBrokerHost(PinotTableHandle tableHandle)
     {
+        return getBrokerHosts(tableHandle).get(0);
+    }
+
+    public List<String> getBrokerHosts(PinotTableHandle tableHandle)
+    {
         try {
-            List<String> brokers = brokersForTableCache.get(tableHandle);
+            List<String> brokers = new ArrayList(brokersForTableCache.get(tableHandle));
             if (brokers.isEmpty()) {
                 throw new PinotException(PINOT_UNABLE_TO_FIND_BROKER, Optional.empty(), "No valid brokers found for " + tableHandle.getTableName());
             }
-            return brokers.get(ThreadLocalRandom.current().nextInt(brokers.size()));
+            shuffle(brokers);
+            return brokers;
         }
         catch (ExecutionException e) {
             Throwable throwable = e.getCause();
@@ -401,7 +412,7 @@ public class PinotClusterInfoFetcher
                 ImmutableMap.Builder<String, List<String>> routingTableBuilder = ImmutableMap.builder();
                 routingTableEntries.forEach((host, segments) -> {
                     List<String> segmentsCopied = new ArrayList<>(segments);
-                    Collections.shuffle(segmentsCopied);
+                    shuffle(segmentsCopied);
                     routingTableBuilder.put(host, ImmutableList.copyOf(segmentsCopied));
                 });
                 routingTableMap.put(tableNameWithType, routingTableBuilder.build());
