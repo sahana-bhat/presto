@@ -150,7 +150,17 @@ public class FeaturesConfig
     private boolean partitionFilteringEnforced;
     private String partitionFilteringTables = "";
 
-    private boolean autoSampleTableReplace;
+    private ApproxResultsOption approxResultsOption = ApproxResultsOption.NONE;
+
+    public enum ApproxResultsOption
+    {
+        NONE,
+        APPROX_DISTINCT,
+        SAMPLING,
+        SAMPLING_WITH_FAIL_CLOSE,
+        APPROX_DISTINCT_WITH_SAMPLING,
+        APPROX_DISTINCT_WITH_SAMPLING_WITH_FAIL_CLOSE,
+    }
 
     private boolean nestedColumnPushdown = true;
 
@@ -1185,16 +1195,16 @@ public class FeaturesConfig
         return this;
     }
 
-    public boolean isAutoSampleTableReplace()
+    public ApproxResultsOption getApproxResultsOption()
     {
-        return autoSampleTableReplace;
+        return approxResultsOption;
     }
 
-    @Config("auto-sample-table-replace")
-    @ConfigDescription("Use auto sampling on the query")
-    public FeaturesConfig setAutoSampleTableReplace(boolean autoSampleTableReplace)
+    @Config("approx-results-option")
+    @ConfigDescription("Approx Results using sampling and approx distinct")
+    public FeaturesConfig setApproxResultsOption(ApproxResultsOption approxResultsOption)
     {
-        this.autoSampleTableReplace = autoSampleTableReplace;
+        this.approxResultsOption = approxResultsOption;
         return this;
     }
 }

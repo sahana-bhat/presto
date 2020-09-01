@@ -27,6 +27,7 @@ import java.util.Map;
 
 import static com.facebook.airlift.configuration.testing.ConfigAssertions.assertFullMapping;
 import static com.facebook.airlift.configuration.testing.ConfigAssertions.assertRecordedDefaults;
+import static com.facebook.presto.sql.analyzer.FeaturesConfig.ApproxResultsOption;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.JoinDistributionType.BROADCAST;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.JoinDistributionType.PARTITIONED;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.JoinReorderingStrategy.ELIMINATE_CROSS_JOINS;
@@ -127,7 +128,7 @@ public class TestFeaturesConfig
                 .setTupleDomainLimitForInPredicate(Integer.MAX_VALUE)
                 .setPartitionFilteringEnforced(false)
                 .setPartitionFilteringTables("")
-                .setAutoSampleTableReplace(false)
+                .setApproxResultsOption(ApproxResultsOption.NONE)
                 .setNestedColumnPushdown(true));
     }
 
@@ -214,7 +215,7 @@ public class TestFeaturesConfig
                 .put("optimizer.tuple-domain-limit-in-predicate", "10")
                 .put("optimizer.partition-filtering-enforced", "true")
                 .put("optimizer.partition-filtering-tables", "dwh.a:hdrone.b")
-                .put("auto-sample-table-replace", "true")
+                .put("approx-results-option", ApproxResultsOption.APPROX_DISTINCT_WITH_SAMPLING.name())
                 .put("optimizer.nested-column-pushdown", "false")
                 .build();
 
@@ -298,7 +299,7 @@ public class TestFeaturesConfig
                 .setTupleDomainLimitForInPredicate(10)
                 .setPartitionFilteringEnforced(true)
                 .setPartitionFilteringTables("dwh.a:hdrone.b")
-                .setAutoSampleTableReplace(true)
+                .setApproxResultsOption(ApproxResultsOption.APPROX_DISTINCT_WITH_SAMPLING)
                 .setNestedColumnPushdown(false);
         assertFullMapping(properties, expected);
     }

@@ -20,6 +20,7 @@ import com.facebook.presto.memory.MemoryManagerConfig;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.session.PropertyMetadata;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
+import com.facebook.presto.sql.analyzer.FeaturesConfig.ApproxResultsOption;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.JoinDistributionType;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.JoinReorderingStrategy;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.PartialMergePushdownStrategy;
@@ -140,7 +141,7 @@ public final class SystemSessionProperties
     private static final String FORCE_SINGLE_NODE_PLAN = "force_single_node_plan";
     public static final String PARTITION_FILTER = "enforce_partition_filter";
     public static final String PARTITION_FILTER_TABLES = "partition_filter_tables";
-    public static final String AUTO_SAMPLE_TABLE_REPLACE = "auto_sample_table_replace";
+    public static final String APPROX_RESULTS_OPTION = "approx_results_option";
     public static final String NESTED_COLUMN_PUSHDOWN = "nested_column_pushdown";
 
     private final List<PropertyMetadata<?>> sessionProperties;
@@ -696,11 +697,18 @@ public final class SystemSessionProperties
                         "tables to enforce partition filtering",
                         featuresConfig.getPartitionFilteringTables(),
                         true),
-                booleanProperty(
-                        AUTO_SAMPLE_TABLE_REPLACE,
-                        "Experimental: Replace original tables by sampled tables",
-                        featuresConfig.isAutoSampleTableReplace(),
-                        false),
+                new PropertyMetadata<>(
+                        APPROX_RESULTS_OPTION,
+                        format("Experimental: Approx Results using sampling and approx distinct. Options are %s",
+                                Stream.of(ApproxResultsOption.values())
+                                        .map(ApproxResultsOption::name)
+                                        .collect(joining(","))),
+                        VARCHAR,
+                        ApproxResultsOption.class,
+                        featuresConfig.getApproxResultsOption(),
+                        false,
+                        value -> ApproxResultsOption.valueOf(((String) value).toUpperCase()),
+                        ApproxResultsOption::name),
                 booleanProperty(
                         NESTED_COLUMN_PUSHDOWN,
                         "enable nested column pushdown",
@@ -1195,9 +1203,9 @@ public final class SystemSessionProperties
         return session.getSystemProperty(PARTITION_FILTER_TABLES, String.class);
     }
 
-    public static boolean isAutoSampleTableReplace(Session session)
+    public static ApproxResultsOption getApproxResultsOption(Session session)
     {
-        return session.getSystemProperty(AUTO_SAMPLE_TABLE_REPLACE, Boolean.class);
+        return session.getSystemProperty(APPROX_RESULTS_OPTION, ApproxResultsOption.class);
     }
 
     public static boolean isNestedColumnPushdown(Session session)

@@ -643,9 +643,14 @@ public final class SqlToRowExpressionTranslator
         {
             ImmutableList.Builder<RowExpression> arguments = ImmutableList.builder();
             arguments.add(process(node.getValue(), context));
-            InListExpression values = (InListExpression) node.getValueList();
-            for (Expression value : values.getValues()) {
-                arguments.add(process(value, context));
+            if (node.getValueList() instanceof InListExpression) {
+                InListExpression values = (InListExpression) node.getValueList();
+                for (Expression value : values.getValues()) {
+                    arguments.add(process(value, context));
+                }
+            }
+            else {
+                arguments.add(process(node.getValueList(), context));
             }
 
             return specialForm(IN, BOOLEAN, arguments.build());

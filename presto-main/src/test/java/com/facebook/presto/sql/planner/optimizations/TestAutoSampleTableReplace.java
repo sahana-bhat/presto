@@ -14,295 +14,664 @@
 package com.facebook.presto.sql.planner.optimizations;
 
 import com.facebook.presto.Session;
-import com.facebook.presto.execution.warnings.WarningCollector;
-import com.facebook.presto.metadata.AbstractMockMetadata;
 import com.facebook.presto.metadata.Metadata;
-import com.facebook.presto.metadata.QualifiedObjectName;
-import com.facebook.presto.metadata.TableMetadata;
-import com.facebook.presto.spi.ColumnHandle;
-import com.facebook.presto.spi.ColumnMetadata;
-import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.ConnectorTableMetadata;
-import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.TableHandle;
 import com.facebook.presto.spi.TableSample;
-import com.facebook.presto.spi.TestingColumnHandle;
-import com.facebook.presto.spi.plan.PlanNode;
-import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
-import com.facebook.presto.spi.plan.TableScanNode;
-import com.facebook.presto.spi.relation.VariableReferenceExpression;
-import com.facebook.presto.sql.planner.PlanVariableAllocator;
-import com.facebook.presto.sql.planner.TypeProvider;
+import com.facebook.presto.sql.analyzer.FeaturesConfig.ApproxResultsOption;
 import com.facebook.presto.sql.planner.assertions.BasePlanTest;
-import com.facebook.presto.sql.planner.iterative.rule.test.PlanBuilder;
-import com.facebook.presto.testing.TestingMetadata;
+import com.facebook.presto.sql.planner.assertions.PlanMatchPattern;
+import com.facebook.presto.sql.planner.plan.JoinNode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
-import static com.facebook.presto.SessionTestUtils.TEST_SESSION;
-import static com.facebook.presto.SystemSessionProperties.AUTO_SAMPLE_TABLE_REPLACE;
-import static com.facebook.presto.spi.type.BigintType.BIGINT;
-import static com.facebook.presto.spi.type.BooleanType.BOOLEAN;
-import static com.facebook.presto.spi.type.DateType.DATE;
-import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
-import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotEquals;
-import static org.testng.Assert.assertTrue;
+import static com.facebook.presto.SystemSessionProperties.APPROX_RESULTS_OPTION;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.aggregation;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.anySymbol;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.anyTree;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.apply;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.equiJoinClause;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.expression;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.functionCall;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.join;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.lateral;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.output;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.project;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.tableScan;
+import static com.facebook.presto.sql.planner.assertions.PlanMatchPattern.union;
 
 public class TestAutoSampleTableReplace
         extends BasePlanTest
 {
-    // Test that the optimizer replaces the original table with the sampled table
     @Test
-    public void testSampleTableReplaceWithProperty()
+    public void testScale()
     {
-        PlanNodeIdAllocator idAllocator = new PlanNodeIdAllocator();
-        PlanVariableAllocator variableAllocator = new PlanVariableAllocator();
+        assertPlanWithSamples("select count(orderkey) from orders",
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                            aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                tableScan("orders", true)))),
+                Collections.singletonList("orders"));
 
-        Session session = testSessionBuilder()
-                .setSystemProperty(AUTO_SAMPLE_TABLE_REPLACE, "true")
-                .build();
-        MockMetadata metadata = new MockMetadata();
+        assertPlanWithSamples("select count(distinct orderkey) from orders",
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", true, ImmutableList.of(anySymbol()))),
+                                        tableScan("orders", true)))),
+                Collections.singletonList("orders"));
 
-        SchemaTableName table1Name = new SchemaTableName("db_name", "table_name");
-        SchemaTableName table2Name = new SchemaTableName("db_name", "table_name2");
+        assertPlanWithSamples("select orderkey, count(*) from orders group by 1",
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                        tableScan("orders", true)))),
+                Collections.singletonList("orders"));
 
-        ImmutableList.Builder<ColumnMetadata> columnsBuilder = ImmutableList.builder();
-        columnsBuilder.add(new ColumnMetadata("column1", BIGINT));
-        columnsBuilder.add(new ColumnMetadata("column2", VARCHAR));
-        columnsBuilder.add(new ColumnMetadata("column3", BOOLEAN));
-        columnsBuilder.add(new ColumnMetadata("column4", DATE));
-        ImmutableList<ColumnMetadata> columns = columnsBuilder.build();
-
-        ConnectorTableMetadata table1 = new ConnectorTableMetadata(
-                table1Name,
-                columns,
-                ImmutableMap.of(),
-                Optional.empty(),
-                Collections.singletonList(new TableSample((table2Name))));
-
-        ImmutableMap.Builder<VariableReferenceExpression, ColumnHandle> assignmentsBuilder = ImmutableMap.builder();
-        ImmutableList.Builder<VariableReferenceExpression> variableBuilder = ImmutableList.builder();
-        ImmutableMap.Builder<String, ColumnHandle> columnHandleBuilder1 = ImmutableMap.builder();
-        ImmutableMap.Builder<String, ColumnHandle> columnHandleBuilder2 = ImmutableMap.builder();
-
-        for (ColumnMetadata cm : columns) {
-            VariableReferenceExpression var1 = variableAllocator.newVariable(cm.getName(), cm.getType());
-            ColumnHandle c1 = new TestingColumnHandle(cm.getName());
-            variableBuilder.add(var1);
-            assignmentsBuilder.put(var1, c1);
-            columnHandleBuilder1.put(cm.getName(), c1);
-            columnHandleBuilder2.put(cm.getName(), new TestingColumnHandle(cm.getName()));
-            metadata.addColumnMetadata(c1, cm);
-        }
-
-        ImmutableList<VariableReferenceExpression> vars = variableBuilder.build();
-        ImmutableMap<VariableReferenceExpression, ColumnHandle> assignments = assignmentsBuilder.build();
-
-        ImmutableMap<String, ColumnHandle> columnHandles1 = columnHandleBuilder1.build();
-        ImmutableMap<String, ColumnHandle> columnHandles2 = columnHandleBuilder2.build();
-
-        PlanBuilder p = new PlanBuilder(session, idAllocator, metadata);
-        TableScanNode plan = p.tableScan(table1Name, vars, assignments);
-
-        TableScanNode plan2 = p.tableScan(table2Name, vars, assignments);
-
-        metadata.addTable(table1);
-        metadata.addColumnHandles(plan.getTable(), columnHandles1);
-
-        metadata.addTable(plan2.getTable());
-        metadata.addColumnHandles(plan2.getTable(), columnHandles2);
-
-        PlanNode optimized = optimize(plan, session, idAllocator, metadata);
-        assertTrue(optimized instanceof TableScanNode);
-        assertNotEquals(MockMetadata.getTableName(((TableScanNode) optimized).getTable()), MockMetadata.getTableName(plan.getTable()));
-        assertEquals(MockMetadata.getTableName(((TableScanNode) optimized).getTable()), MockMetadata.getTableName(plan2.getTable()));
-    }
-
-    // Test that if the variable names in the TableScanNode assignments do not
-    // match the column handle names, it still works
-    @Test
-    public void testSampleTableReplaceWithPropertyWithDifferentVarNames()
-    {
-        PlanNodeIdAllocator idAllocator = new PlanNodeIdAllocator();
-        PlanVariableAllocator variableAllocator = new PlanVariableAllocator();
-
-        Session session = testSessionBuilder()
-                .setSystemProperty(AUTO_SAMPLE_TABLE_REPLACE, "true")
-                .build();
-        MockMetadata metadata = new MockMetadata();
-
-        SchemaTableName table1Name = new SchemaTableName("db_name", "table_name");
-        SchemaTableName table2Name = new SchemaTableName("db_name", "table_name2");
-
-        ImmutableList.Builder<ColumnMetadata> columnsBuilder = ImmutableList.builder();
-        columnsBuilder.add(new ColumnMetadata("column1", BIGINT));
-        columnsBuilder.add(new ColumnMetadata("column2", VARCHAR));
-        columnsBuilder.add(new ColumnMetadata("column3", BOOLEAN));
-        columnsBuilder.add(new ColumnMetadata("column4", DATE));
-        ImmutableList<ColumnMetadata> columns = columnsBuilder.build();
-
-        ConnectorTableMetadata table1 = new ConnectorTableMetadata(
-                table1Name,
-                columns,
-                ImmutableMap.of(),
-                Optional.empty(),
-                Collections.singletonList(new TableSample((table2Name))));
-
-        ImmutableMap.Builder<VariableReferenceExpression, ColumnHandle> assignmentsBuilder = ImmutableMap.builder();
-        ImmutableList.Builder<VariableReferenceExpression> variableBuilder = ImmutableList.builder();
-        ImmutableMap.Builder<String, ColumnHandle> columnHandleBuilder1 = ImmutableMap.builder();
-        ImmutableMap.Builder<String, ColumnHandle> columnHandleBuilder2 = ImmutableMap.builder();
-
-        for (ColumnMetadata cm : columns) {
-            VariableReferenceExpression var1 = variableAllocator.newVariable(cm.getName() + "tmp", cm.getType());
-            ColumnHandle c1 = new TestingColumnHandle(cm.getName());
-            variableBuilder.add(var1);
-            assignmentsBuilder.put(var1, c1);
-            columnHandleBuilder1.put(cm.getName(), c1);
-            columnHandleBuilder2.put(cm.getName(), new TestingColumnHandle(cm.getName()));
-            metadata.addColumnMetadata(c1, cm);
-        }
-
-        ImmutableList<VariableReferenceExpression> vars = variableBuilder.build();
-        ImmutableMap<VariableReferenceExpression, ColumnHandle> assignments = assignmentsBuilder.build();
-
-        ImmutableMap<String, ColumnHandle> columnHandles1 = columnHandleBuilder1.build();
-        ImmutableMap<String, ColumnHandle> columnHandles2 = columnHandleBuilder2.build();
-
-        PlanBuilder p = new PlanBuilder(session, idAllocator, metadata);
-        TableScanNode plan = p.tableScan(table1Name, vars, assignments);
-
-        TableScanNode plan2 = p.tableScan(table2Name, vars, assignments);
-
-        metadata.addTable(table1);
-        metadata.addColumnHandles(plan.getTable(), columnHandles1);
-
-        metadata.addTable(plan2.getTable());
-        metadata.addColumnHandles(plan2.getTable(), columnHandles2);
-
-        PlanNode optimized = optimize(plan, session, idAllocator, metadata);
-        assertTrue(optimized instanceof TableScanNode);
-        assertNotEquals(MockMetadata.getTableName(((TableScanNode) optimized).getTable()), MockMetadata.getTableName(plan.getTable()));
-        assertEquals(MockMetadata.getTableName(((TableScanNode) optimized).getTable()), MockMetadata.getTableName(plan2.getTable()));
+        assertPlanWithSamples("select count_if(totalprice > 10.0) from orders",
+                output(
+                        project(ImmutableMap.of("count_if", expression("(\"sample_count_if\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count_if", functionCall("count_if", false, ImmutableList.of(anySymbol()))),
+                                        project(
+                                                tableScan("orders", true))))),
+                Collections.singletonList("orders"));
     }
 
     @Test
-    public void testSampleTableReplaceWithoutProperty()
+    public void testLateral()
     {
-        PlanNodeIdAllocator idAllocator = new PlanNodeIdAllocator();
-        Session session = testSessionBuilder()
-                .setSystemProperty(AUTO_SAMPLE_TABLE_REPLACE, "true")
-                .build();
-        MockMetadata metadata = new MockMetadata();
-
-        SchemaTableName table1Name = new SchemaTableName("db_name", "table_name");
-        ConnectorTableMetadata table1 = new ConnectorTableMetadata(table1Name, ImmutableList.of(), ImmutableMap.of());
-        metadata.addTable(table1);
-
-        PlanBuilder p = new PlanBuilder(session, idAllocator, metadata);
-        TableScanNode plan = p.tableScan(table1Name, ImmutableList.of(), ImmutableMap.of());
-
-        PlanNode optimized = optimize(plan, session, idAllocator, metadata);
-        assertTrue(optimized instanceof TableScanNode);
-        assertEquals(MockMetadata.getTableName(((TableScanNode) optimized).getTable()), MockMetadata.getTableName(plan.getTable()));
+        String sql = "SELECT count(name)\n" +
+                "FROM customer\n" +
+                "WHERE nationkey = (\n" +
+                "  SELECT nationkey FROM nation WHERE name = 'ALGERIA' LIMIT 1\n" +
+                ")";
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        anyTree(
+                                                lateral(
+                                                        ImmutableList.of(),
+                                                        tableScan("customer", true),
+                                                        anyTree(
+                                                                tableScan("nation"))))))),
+                Collections.singletonList("customer"));
     }
 
     @Test
-    public void testSampleTableNoReplaceWithoutSession()
+    public void testApply()
     {
-        PlanNodeIdAllocator idAllocator = new PlanNodeIdAllocator();
-        Metadata metadata = new MockMetadata();
-        PlanBuilder p = new PlanBuilder(TEST_SESSION, idAllocator, metadata);
-        PlanNode plan = p.tableScan(ImmutableList.of(), ImmutableMap.of());
-        PlanNode actual = optimize(plan, TEST_SESSION, idAllocator, metadata);
-        assertEquals(actual, plan);
+        String sql = "SELECT count(name)\n" +
+                "FROM customer\n" +
+                "WHERE nationkey in (\n" +
+                "  SELECT nationkey FROM nation WHERE name like 'A%'\n" +
+                ")";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        anyTree(
+                                                apply(
+                                                        ImmutableList.of(),
+                                                        ImmutableMap.of(),
+                                                        tableScan("customer", true),
+                                                        anyTree(
+                                                                tableScan("nation"))))))),
+                Collections.singletonList("customer"));
+
+        // If the subquery is sampled, then also scaleup the vars from the input query
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        anyTree(
+                                                apply(
+                                                        ImmutableList.of(),
+                                                        ImmutableMap.of(),
+                                                        tableScan("customer"),
+                                                        anyTree(
+                                                                tableScan("nation", true))))))),
+                Collections.singletonList("nation"));
     }
 
-    private PlanNode optimize(PlanNode plan, Session session, PlanNodeIdAllocator idAllocator, Metadata metadata)
+    @Test
+    public void testApplyAfterJoin()
     {
-        AutoSampleTableReplaceOptimizer optimizer = new AutoSampleTableReplaceOptimizer(metadata);
-        return optimizer.optimize(plan, session, TypeProvider.empty(), new PlanVariableAllocator(), idAllocator, WarningCollector.NOOP);
+        // Don't scale from left join between non-sampled and sampled
+        String sql = "WITH cust as (" +
+                "SELECT customer.name, customer.address\n" +
+                "FROM customer\n" +
+                "LEFT JOIN nation on customer.nationkey = nation.nationkey and nation.name = 'ALGERIA')\n" +
+                "SELECT count(supplier.name)\n" +
+                "FROM supplier WHERE address in (select address from cust)\n";
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                anyTree(
+                                        apply(
+                                                ImmutableList.of(),
+                                                ImmutableMap.of("expr_28", expression("ad IN (ad1)")),
+                                                tableScan("supplier", ImmutableMap.of("ad", "address", "snm", "name")),
+                                                join(
+                                                        JoinNode.Type.LEFT,
+                                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                        Optional.of("nm = 'ALGERIA'"),
+                                                        tableScan("customer", ImmutableMap.of("cn", "nationkey", "ad1", "address")),
+                                                        tableScan("nation", ImmutableMap.of("nn", "nationkey", "nm", "name"), true)))))),
+                Collections.singletonList("nation"));
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        anyTree(
+                                                apply(
+                                                        ImmutableList.of(),
+                                                        ImmutableMap.of("expr_28", expression("ad IN (ad1)")),
+                                                        tableScan("supplier", ImmutableMap.of("ad", "address", "snm", "name")),
+                                                        join(
+                                                                JoinNode.Type.LEFT,
+                                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                                Optional.of("nm = 'ALGERIA'"),
+                                                                tableScan("customer", ImmutableMap.of("cn", "nationkey", "ad1", "address"), true),
+                                                                tableScan("nation", ImmutableMap.of("nn", "nationkey", "nm", "name")))))))),
+                Collections.singletonList("customer"));
     }
 
-    private static class MockMetadata
-            extends AbstractMockMetadata
+    @Test
+    public void testInnerJoin()
     {
-        private final ConcurrentMap<SchemaTableName, ConnectorTableMetadata> tables = new ConcurrentHashMap<>();
-        private final ConcurrentMap<SchemaTableName, TableHandle> tableHandles = new ConcurrentHashMap<>();
-        private final ConcurrentMap<SchemaTableName, Map<String, ColumnHandle>> columnHandles = new ConcurrentHashMap<>();
-        private final ConcurrentMap<ColumnHandle, ColumnMetadata> columnMetadataMap = new ConcurrentHashMap<>();
+        // Scale sampled data
+        String sql = "SELECT count(customer.name)\n" +
+                "FROM customer\n" +
+                "INNER JOIN nation on customer.nationkey = nation.nationkey and\n" +
+                "nation.name = 'ALGERIA'";
 
-        public void addTable(ConnectorTableMetadata tableMetadata)
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        anyTree(
+                                                join(
+                                                        JoinNode.Type.INNER,
+                                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                        tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"))))))),
+                Collections.singletonList("customer"));
+
+        // Scale non sampled data too in case of inner join
+        sql = "SELECT count(nation.name)\n" +
+                "FROM customer\n" +
+                "INNER JOIN nation on customer.nationkey = nation.nationkey and\n" +
+                "nation.name like 'A%'";
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        anyTree(
+                                                join(
+                                                        JoinNode.Type.INNER,
+                                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                        tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"))))))),
+                Collections.singletonList("customer"));
+    }
+
+    @Test
+    public void testLeftJoin()
+    {
+        // Scale sampled data for left join between sampled and non sampled
+        String sql = "SELECT count(customer.name)\n" +
+                "FROM customer\n" +
+                "LEFT JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.LEFT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey")))))),
+                Collections.singletonList("customer"));
+
+        // Scale non-sampled data for left join between sampled and non sampled since the non-sampled effectively becomes sampled
+        sql = "SELECT count(nation.name)\n" +
+                "FROM customer\n" +
+                "LEFT JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.LEFT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey")))))),
+                Collections.singletonList("customer"));
+
+        // Don't scale from left join between non-sampled and sampled
+        sql = "SELECT count(customer.name)\n" +
+                "FROM customer\n" +
+                "LEFT JOIN nation on customer.nationkey = nation.nationkey";
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                join(
+                                        JoinNode.Type.LEFT,
+                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                        tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"), true)))),
+                Collections.singletonList("nation"));
+
+        // Scale the sampled data on left join from non-sampled to sampled
+        sql = "SELECT count(nation.name)\n" +
+                "FROM customer\n" +
+                "LEFT JOIN nation on customer.nationkey = nation.nationkey";
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.LEFT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey"), true))))),
+                Collections.singletonList("nation"));
+    }
+
+    @Test
+    public void testRightJoin()
+    {
+        // Scale sampled data for right join between sampled and non sampled
+        String sql = "SELECT count(customer.name)\n" +
+                "FROM customer\n" +
+                "RIGHT JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.RIGHT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey")))))),
+                Collections.singletonList("customer"));
+
+        // Don't scale non-sampled data on right join between sampled and non sampled
+        sql = "SELECT count(nation.name)\n" +
+                "FROM customer\n" +
+                "RIGHT JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                join(
+                                        JoinNode.Type.RIGHT,
+                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                        tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"))))),
+                Collections.singletonList("customer"));
+
+        // Scale the non sampled data on right join between sampled and non sampled
+        sql = "SELECT count(customer.name)\n" +
+                "FROM customer\n" +
+                "RIGHT JOIN nation on customer.nationkey = nation.nationkey";
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                            aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                    join(
+                                            JoinNode.Type.RIGHT,
+                                            ImmutableList.of(equiJoinClause("cn", "nn")),
+                                            tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                            tableScan("nation", ImmutableMap.of("nn", "nationkey"), true))))),
+                Collections.singletonList("nation"));
+
+        // Scale the sampled data on right join between sampled and non sampled
+        sql = "SELECT count(nation.name)\n" +
+                "FROM customer\n" +
+                "RIGHT JOIN nation on customer.nationkey = nation.nationkey";
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.RIGHT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey"), true))))),
+                Collections.singletonList("nation"));
+    }
+
+    @Test
+    public void testFullJoin()
+    {
+        // Only the sampled dataset will get scaled
+        String sql = "SELECT count(customer.name)\n" +
+                "FROM customer\n" +
+                "FULL JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.FULL,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey")))))),
+                Collections.singletonList("customer"));
+
+        sql = "SELECT count(nation.name)\n" +
+                "FROM customer\n" +
+                "FULL JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                join(
+                                        JoinNode.Type.FULL,
+                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                        tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"))))),
+                Collections.singletonList("customer"));
+
+        sql = "SELECT count(customer.name)\n" +
+                "FROM customer\n" +
+                "FULL JOIN nation on customer.nationkey = nation.nationkey";
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                join(
+                                        JoinNode.Type.FULL,
+                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                        tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"), true)))),
+                Collections.singletonList("nation"));
+
+        sql = "SELECT count(nation.name)\n" +
+                "FROM customer\n" +
+                "FULL JOIN nation on customer.nationkey = nation.nationkey";
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.FULL,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey"), true))))),
+                Collections.singletonList("nation"));
+    }
+
+    @Test
+    public void testNestedJoin()
+    {
+        // Don't scale from left join between non-sampled and sampled
+        String sql = "WITH cust as (" +
+                "SELECT customer.name, customer.address\n" +
+                "FROM customer\n" +
+                "LEFT JOIN nation on customer.nationkey = nation.nationkey and nation.name = 'ALGERIA')\n" +
+                "SELECT count(supplier.name)\n" +
+                "FROM supplier join cust on supplier.address = cust.address\n";
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                join(
+                                        JoinNode.Type.INNER,
+                                        ImmutableList.of(equiJoinClause("ad", "ad1")),
+                                        tableScan("supplier", ImmutableMap.of("ad", "address")),
+                                        join(
+                                                JoinNode.Type.LEFT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                Optional.of("nm = 'ALGERIA'"),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey", "ad1", "address")),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey", "nm", "name"), true))))),
+                Collections.singletonList("nation"));
+
+        sql = "WITH cust as (" +
+                "SELECT customer.name, customer.address\n" +
+                "FROM customer\n" +
+                "RIGHT JOIN nation on customer.nationkey = nation.nationkey and nation.name = 'ALGERIA')\n" +
+                "SELECT count(supplier.name)\n" +
+                "FROM supplier join cust on supplier.address = cust.address\n";
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                join(
+                                        JoinNode.Type.INNER,
+                                        ImmutableList.of(equiJoinClause("ad", "ad1")),
+                                        tableScan("supplier", ImmutableMap.of("ad", "address")),
+                                        join(
+                                                JoinNode.Type.RIGHT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                Optional.of("nm = 'ALGERIA'"),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey", "ad1", "address"), true),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey", "nm", "name")))))),
+                Collections.singletonList("customer"));
+
+        sql = "WITH cust as (" +
+            "SELECT customer.name, customer.address\n" +
+            "FROM customer\n" +
+            "LEFT JOIN nation on customer.nationkey = nation.nationkey and nation.name = 'ALGERIA')\n" +
+            "SELECT count(supplier.name)\n" +
+            "FROM supplier join cust on supplier.address = cust.address\n";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.INNER,
+                                                ImmutableList.of(equiJoinClause("ad", "ad1")),
+                                                tableScan("supplier", ImmutableMap.of("ad", "address")),
+                                                join(
+                                                        JoinNode.Type.LEFT,
+                                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                        Optional.of("nm = 'ALGERIA'"),
+                                                        tableScan("customer", ImmutableMap.of("cn", "nationkey", "ad1", "address"), true),
+                                                        tableScan("nation", ImmutableMap.of("nn", "nationkey", "nm", "name"))))))),
+                Collections.singletonList("customer"));
+
+        sql = "WITH cust as (" +
+                "SELECT customer.name, customer.address\n" +
+                "FROM customer\n" +
+                "RIGHT JOIN nation on customer.nationkey = nation.nationkey and nation.name = 'ALGERIA')\n" +
+                "SELECT count(supplier.name)\n" +
+                "FROM supplier join cust on supplier.address = cust.address\n";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                        join(
+                                                JoinNode.Type.INNER,
+                                                ImmutableList.of(equiJoinClause("ad", "ad1")),
+                                                tableScan("supplier", ImmutableMap.of("ad", "address")),
+                                                join(
+                                                        JoinNode.Type.RIGHT,
+                                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                        Optional.of("nm = 'ALGERIA'"),
+                                                        tableScan("customer", ImmutableMap.of("cn", "nationkey", "ad1", "address")),
+                                                        tableScan("nation", ImmutableMap.of("nn", "nationkey", "nm", "name"), true)))))),
+                Collections.singletonList("nation"));
+    }
+
+    @Test
+    public void testUnion()
+    {
+        // union between sampled and non-sampled does not scale
+        String sql = "select custkey, count(*) as count from customer group by 1 union select custkey, count(*) as count from orders group by 1";
+
+        assertPlanWithSamples(sql,
+                anyTree(
+                        union(
+                                aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
+                                        tableScan("customer")),
+                                aggregation(ImmutableMap.of("sample_count_10", functionCall("count", false, ImmutableList.of())),
+                                                tableScan("orders")))),
+                Collections.singletonList("orders"),
+                true);
+
+        // union all
+        sql = "select custkey, count(*) as count from customer group by 1 union all select custkey, count(*) as count from orders group by 1";
+
+        assertPlanWithSamples(sql,
+                anyTree(
+                        union(
+                                aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
+                                        tableScan("customer")),
+                                aggregation(ImmutableMap.of("sample_count_10", functionCall("count", false, ImmutableList.of())),
+                                                tableScan("orders")))),
+                Collections.singletonList("orders"),
+                true);
+
+        // Test that union of multiple different sample table fails
+        assertPlanWithSamples(sql,
+                anyTree(
+                        union(
+                                aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
+                                        tableScan("customer")),
+                                aggregation(ImmutableMap.of("count_10", functionCall("count", false, ImmutableList.of())),
+                                        tableScan("orders")))),
+                Arrays.asList("orders", "customer"),
+                true);
+
+        // union with the same sampled table multiple times works fine
+        sql = "Select nationkey, count(*) nat_count from customer group by 1\n" +
+                "union ALL\n" +
+                "Select -1 nationkey, count(nationkey) nat_count from customer";
+
+        PlanMatchPattern pattern = project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                        tableScan("customer", ImmutableMap.of("nn", "nationkey"), true)));
+
+        assertPlanWithSamples(sql,
+                output(
+                        union(
+                                project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                        aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                                tableScan("customer", ImmutableMap.of("nn", "nationkey"), true))),
+                                anyTree(
+                                        project(ImmutableMap.of("count_15", expression("(\"sample_count_15\" * CAST(20 as bigint))")),
+                                                aggregation(ImmutableMap.of("sample_count_15", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                                        tableScan("customer", ImmutableMap.of("nn", "nationkey"), true)))))),
+                Collections.singletonList("customer"));
+
+        // union of the sampled table (two times) with a non sampled table
+        sql = "Select nationkey, count(*) nat_count from customer group by 1\n" +
+                "union ALL\n" +
+                "Select -1 nationkey, count(nationkey) nat_count from customer\n" +
+                "union ALL\n" +
+                "Select nationkey, count(*) nat_count from supplier group by 1";
+
+        assertPlanWithSamples(sql,
+                output(
+                        union(
+                                union(
+                                        aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                                        tableScan("customer", ImmutableMap.of("nn", "nationkey"))),
+                                        anyTree(
+                                                aggregation(ImmutableMap.of("sample_count_15", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                                                tableScan("customer", ImmutableMap.of("nn", "nationkey"))))),
+                                aggregation(ImmutableMap.of("count_21", functionCall("count", false, ImmutableList.of())),
+                                        tableScan("supplier", ImmutableMap.of("sn", "nationkey"))))),
+                Collections.singletonList("customer"),
+                true);
+
+        // Inner join of a full dataset with this sampled union scales it too
+        sql = "Select nation.name, count(*) from nation join\n" +
+                "(Select nationkey, count(*) nat_count from customer group by 1\n" +
+                "union ALL\n" +
+                "Select -1 nationkey, count(nationkey) nat_count from customer) b on nation.nationkey = b.nationkey group by 1";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                        anyTree(
+                                                tableScan("nation"),
+                                                union(
+                                                        anyTree(
+                                                                tableScan("customer", true)),
+                                                        anyTree(
+                                                                tableScan("customer", true))))))),
+                Collections.singletonList("customer"));
+
+        sql = "Select nation.name, count(*) from nation join\n" +
+                "(Select nationkey, count(*) nat_count from customer group by 1\n" +
+                "union ALL\n" +
+                "Select nationkey, count(*) nat_count from supplier group by 1) b on nation.nationkey = b.nationkey group by 1";
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
+                                anyTree(
+                                        tableScan("nation"),
+                                        union(
+                                                anyTree(
+                                                        tableScan("customer")),
+                                                anyTree(
+                                                        tableScan("supplier")))))),
+                Collections.singletonList("customer"),
+                true);
+    }
+
+    public void assertPlanWithSamples(String sql, PlanMatchPattern pattern, List<String> sampleTables)
+    {
+        assertPlanWithSamples(sql, pattern, sampleTables, false);
+    }
+
+    public void assertPlanWithSamples(String sql, PlanMatchPattern pattern, List<String> sampleTables, boolean failOpen)
+    {
+        List<PlanOptimizer> optimizers = ImmutableList.of(
+                new TestAutoSampleTableReplaceOptimizer(getMetadata(), sampleTables, failOpen));
+        Session session;
+        if (failOpen) {
+            session = Session.builder(this.getQueryRunner().getDefaultSession())
+                    .setSystemProperty(APPROX_RESULTS_OPTION, ApproxResultsOption.SAMPLING.name())
+                    .build();
+        }
+        else {
+            session = Session.builder(this.getQueryRunner().getDefaultSession())
+                    .setSystemProperty(APPROX_RESULTS_OPTION, ApproxResultsOption.SAMPLING_WITH_FAIL_CLOSE.name())
+                    .build();
+        }
+        assertMinimallyOptimizedPlanWithSession(sql, session, pattern, optimizers);
+    }
+
+    private class TestAutoSampleTableReplaceOptimizer
+            extends AutoSampleTableReplaceOptimizer
+    {
+        private List<String> sampleTables;
+
+        public TestAutoSampleTableReplaceOptimizer(Metadata metadata, List<String> sampleTables, boolean failOpen)
         {
-            tables.putIfAbsent(tableMetadata.getTable(), tableMetadata);
+            super(metadata, failOpen);
+            this.sampleTables = sampleTables;
         }
 
-        public void addTable(TableHandle tableHandle)
+        // If the table is in the list, then return the same table as its sample with a sampling percentage of 5%
+        public Optional<TableSample> getSampleTable(Session session, TableHandle tableHandle)
         {
-            tableHandles.putIfAbsent(getTableName(tableHandle), tableHandle);
-        }
-
-        public void addColumnHandles(TableHandle tableHandle, Map<String, ColumnHandle> columnHandleMap)
-        {
-            columnHandles.putIfAbsent(getTableName(tableHandle), columnHandleMap);
-        }
-
-        public void addColumnMetadata(ColumnHandle columnHandle, ColumnMetadata columnMetadata)
-        {
-            columnMetadataMap.putIfAbsent(columnHandle, columnMetadata);
-        }
-
-        @Override
-        public TableMetadata getTableMetadata(Session session, TableHandle tableHandle)
-        {
-            requireNonNull(tableHandle, "tableHandle is null");
-            SchemaTableName tableName = getTableName(tableHandle);
-            ConnectorTableMetadata tableMetadata = tables.get(tableName);
-            checkArgument(tableMetadata != null, "Table %s does not exist", tableName);
-            return new TableMetadata(tableHandle.getConnectorId(), tableMetadata);
-        }
-
-        private static SchemaTableName getTableName(TableHandle tableHandle)
-        {
-            requireNonNull(tableHandle, "tableHandle is null");
-            ConnectorTableHandle connTableHandle = tableHandle.getConnectorHandle();
-            checkArgument(connTableHandle instanceof TestingMetadata.TestingTableHandle, "tableHandle is not an instance of TestingTableHandle");
-            TestingMetadata.TestingTableHandle testingTableHandle = (TestingMetadata.TestingTableHandle) connTableHandle;
-            return testingTableHandle.getTableName();
-        }
-
-        @Override
-        public Optional<TableHandle> getTableHandle(Session session, QualifiedObjectName tableName)
-        {
-            SchemaTableName tableName2 = new SchemaTableName(tableName.getSchemaName(), tableName.getObjectName());
-            if (!tableHandles.containsKey(tableName2)) {
-                return Optional.empty();
+            ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(session, tableHandle).getMetadata();
+            if (sampleTables.contains(tableMetadata.getTable().getTableName())) {
+                return Optional.of(new TableSample(tableMetadata.getTable(), Optional.of(Integer.valueOf(5))));
             }
-            return Optional.of(tableHandles.get(tableName2));
-        }
-
-        @Override
-        public Map<String, ColumnHandle> getColumnHandles(Session session, TableHandle tableHandle)
-        {
-            SchemaTableName tableName = getTableName(tableHandle);
-            return columnHandles.getOrDefault(tableName, ImmutableMap.of());
-        }
-
-        @Override
-        public ColumnMetadata getColumnMetadata(Session session, TableHandle tableHandle, ColumnHandle columnHandle)
-        {
-            return columnMetadataMap.get(columnHandle);
+            return Optional.empty();
         }
     }
 }
