@@ -1,0 +1,72 @@
+#!/bin/bash
+
+
+ENVIRONMENT_FILE=/etc/uber/environment
+DATACENTER_FILE=/etc/uber/datacenter
+ENVIRONMENT_DEV="development"
+
+isDevelopment() {
+    if [ -e $DATACENTER_FILE ]; then
+        if [ ! -z $(grep "$ENVIRONMENT_DEV" "$ENVIRONMENT_FILE") ]; then
+            return 0
+        else
+            return 1
+        fi
+    else
+        return 0
+    fi
+}
+
+# A bit hacky way to determine the script is running in
+# container mode (mesos) or not (dedicated host)
+isContainer() {
+    if [ -z "${UBER_PORT_HTTP}" ]; then
+      return 1
+    else
+      return 0
+    fi
+}
+
+# Set Data Center Variable
+DATACENTER=`cat $DATACENTER_FILE`
+
+#Setup Env Variables
+USER=`whoami`
+HOST=`hostname`
+if isContainer; then
+  LOG_DIR=/var/log/udocker/$SERVICE_NAME
+else
+  LOG_DIR=/var/log/$SERVICE_NAME
+fi
+CONFIG_DIR=$BASE_DIR/config
+PROCNAME="com.facebook.presto.server.PrestoServer"
+PROC_USER=uber
+
+#Make dir/log dir if don't exist
+mkdir -p $LOG_DIR
+chmod -R 777 $LOG_DIR
+
+#setup Java
+export JAVA_HOME=/usr/lib/jvm/jdk-11.0.4
+export PATH=$JAVA_HOME/bin:$PATH
+
+#configure functions
+run_command() {
+    echo "[`date`] running $@"
+    eval "$@"
+}
+
+log() {
+  echo "[`date`] $@"
+}
+
+#Print out env
+log "USER: $USER"
+log "PROC_USER: $PROC_USER"
+log "DATACENTER: $DATACENTER"
+log "LOG_DIR: $LOG_DIR"
+log "CONFIG_DIR: $CONFIG_DIR"
+log "PROCNAME: $PROCNAME"
+log "JAVA_HOME: $JAVA_HOME"
+log "PATH: $PATH"
+log "DEPLOYMENT: $UDEPLOY_DEPLOYMENT_NAME"

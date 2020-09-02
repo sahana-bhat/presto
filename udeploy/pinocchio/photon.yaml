@@ -1,0 +1,51 @@
+schema_version: 2.0.0
+service_name: photon
+service_type: custom
+backend_port: 4167
+export_paths:
+  - /home/udocker
+  - /opt
+  - /usr/bin
+  - /usr/local
+  - /usr/share
+  - /var
+  - /etc
+debian_packages_for_runtime:
+  - name: wget
+  - name: vim
+  - name: sudo
+  - name: krb5-user
+  - name: maven
+  - name: ubermon
+  - name: openjdk-11-jdk
+  - name: python
+  - name: default-mysql-client
+custom:
+  base_image: uber-ubi/debian-10
+  build_cmds:
+    - ENV JDK_VERSION="11.0.7+10-3~deb10u1" JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
+    - ENV PATH=$PATH:$JAVA_HOME/bin
+    - RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-11-openjdk-amd64/bin/java 9999
+    - RUN cp ./photon/krb5.conf /etc/krb5.conf
+    - RUN bash -x ./photon/setup-sudoers.sh
+    - RUN ./photon/build_target.sh
+    - RUN chown -R udocker:udocker /home/udocker/photon*
+    - RUN (git clone gitolite@code.uber.internal:data/dsc-tool)
+    - RUN (cd dsc-tool && ./copy.sh  presto* ../config)
+    - RUN (rm -rf dsc-tool)
+  pre_build_cmds:
+    - RUN mkdir -p /var/log/udocker/presto/
+debian_packages_for_build:
+  - name: wget
+  - name: vim
+  - name: sudo
+  - name: krb5-user
+  - name: ubermon
+  - name: openjdk-11-jdk
+  - name: python
+applications:
+  - app_type: command_line
+    command_line:
+      run_cmd: bash -x photon/start.sh
+    health_check: photon/health_check.sh
+    udeploy_app_id: photon
