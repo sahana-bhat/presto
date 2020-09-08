@@ -17,8 +17,8 @@ source ${BASE_DIR}/photon/common
 mkdir -p /shared/var/log
 
 # Setup libjvmkill for killing the OOM worker
-if [ ! -f "/var/log/udcoker/presto/libjvmkill.so"  ] ; then
-    sudo cp ${BASE_DIR}/presto-docker/bin/libjvmkill.so /var/log/udcoker/presto/libjvmkill.so
+if [ ! -f "/var/log/udocker/presto/libjvmkill.so"  ] ; then
+    sudo cp ${BASE_DIR}/presto-docker/bin/libjvmkill.so /var/log/udocker/presto/libjvmkill.so
 fi
 
 log "Starting Presto for $UBER_DATACENTER under $BASE_DIR"
@@ -42,7 +42,12 @@ start_presto() {
        sudo -u presto mv /var/log/udocker/presto/var/log/launcher.log /var/log/udocker/presto/var/log/launcher.log.old
     fi
     log "Starting Presto ..."
-    sudo sh -c "export PATH=$JAVA_HOME/bin:$PATH; $BASE_DIR/presto-docker/bin/launcher run --enable-central-logging"
+    set -e
+    export PATH=$JAVA_HOME/bin:$PATH;
+    sudo sh -c "$BASE_DIR/presto-docker/bin/launcher.py run --enable-central-logging"
+    background_pid=$!
+    wait "${background_pid}"
+    echo "logoff"
 }
 
 rm -rf $BASE_DIR/presto-docker/etc
@@ -56,6 +61,7 @@ mv $BASE_DIR/presto-docker/etc/rta_staging.properties $BASE_DIR/presto-docker/et
 mv $BASE_DIR/presto-docker/etc/rta.properties $BASE_DIR/presto-docker/etc/catalog/
 mv $BASE_DIR/presto-docker/etc/pinotstg.properties $BASE_DIR/presto-docker/etc/catalog/
 mv $BASE_DIR/presto-docker/etc/pinotadhoc.properties $BASE_DIR/presto-docker/etc/catalog/
+mv ${BASE_DIR}/photon/launcher.py ${BASE_DIR}/presto-docker/bin/
 
 # Update truststore path and password in config
 CONFIG_PROPERTIES="$BASE_DIR/presto-docker/etc/config.properties"
@@ -82,6 +88,8 @@ REPLACE_HOST_NAME="http://"$HOST_NAME".prod.uber.internal:8080"
 sed -i -e "/^discovery.uri/ s%REPLACE_DISCOVERY_URI%$REPLACE_HOST_NAME%" $CONFIG_PROPERTIES
 
 sed -i -e "s/host_name/$HOST_NAME/g" ${BASE_DIR}/photon/metrics.conf
+
+echo $HOST_NAME |tr -d '\n' > /shared/coordinator
 
 # Setup password in etc/resource-groups.properties
 # Find the actual password from langley password file based on data center
