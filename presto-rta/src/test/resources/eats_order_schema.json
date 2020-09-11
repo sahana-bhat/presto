@@ -48,6 +48,30 @@
       "columnType": "dimension",
       "cardinality": "low",
       "doc": null
+    },
+    {
+      "type": {
+        "type": "array",
+        "items": "string"
+      },
+      "name": "array_string",
+      "multiValueField": true,
+      "uberLogicalType": "Set",
+      "columnType": "dimension",
+      "cardinality": "high",
+      "doc": null
+    },
+    {
+      "type": {
+        "type": "array",
+        "items": "long"
+      },
+      "name": "array_long",
+      "multiValueField": true,
+      "uberLogicalType": "Set",
+      "columnType": "dimension",
+      "cardinality": "high",
+      "doc": null
     }
   ],
   "type": "record",
