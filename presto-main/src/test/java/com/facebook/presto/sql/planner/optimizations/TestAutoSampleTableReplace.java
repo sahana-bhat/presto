@@ -80,6 +80,13 @@ public class TestAutoSampleTableReplace
                                         project(
                                                 tableScan("orders", true))))),
                 Collections.singletonList("orders"));
+
+        assertPlanWithSamples("select count(*) from orders",
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                        tableScan("orders", true)))),
+                Collections.singletonList("orders"));
     }
 
     @Test
@@ -88,8 +95,21 @@ public class TestAutoSampleTableReplace
         String sql = "SELECT count(name)\n" +
                 "FROM customer\n" +
                 "WHERE nationkey = (\n" +
-                "  SELECT nationkey FROM nation WHERE name = 'ALGERIA' LIMIT 1\n" +
+                "  SELECT nationkey FROM nation WHERE name like 'A%'\n" +
                 ")";
+
+        assertPlanWithSamples(sql,
+                output(
+                    project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                            aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                    anyTree(
+                                            lateral(
+                                                    ImmutableList.of(),
+                                                    tableScan("customer", true),
+                                                    anyTree(
+                                                            tableScan("nation"))))))),
+                Collections.singletonList("customer"));
+
         assertPlanWithSamples(sql,
                 output(
                         project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
@@ -97,10 +117,23 @@ public class TestAutoSampleTableReplace
                                         anyTree(
                                                 lateral(
                                                         ImmutableList.of(),
-                                                        tableScan("customer", true),
+                                                        tableScan("customer"),
                                                         anyTree(
-                                                                tableScan("nation"))))))),
-                Collections.singletonList("customer"));
+                                                                tableScan("nation", true))))))),
+                Collections.singletonList("nation"));
+
+        // Both tables cannot be sampled
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                anyTree(
+                                        lateral(
+                                                ImmutableList.of(),
+                                                tableScan("customer"),
+                                                anyTree(
+                                                        tableScan("nation")))))),
+                Arrays.asList("customer", "nation"),
+                true);
     }
 
     @Test
@@ -138,6 +171,66 @@ public class TestAutoSampleTableReplace
                                                         anyTree(
                                                                 tableScan("nation", true))))))),
                 Collections.singletonList("nation"));
+
+        // If both subquery and main query are sampled, then fail
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                anyTree(
+                                        apply(
+                                                ImmutableList.of(),
+                                                ImmutableMap.of(),
+                                                tableScan("customer"),
+                                                anyTree(
+                                                        tableScan("nation")))))),
+                Arrays.asList("customer", "nation"),
+                true);
+
+        // Count(*) behaves the same way
+        sql = "SELECT count(*)\n" +
+                "FROM customer\n" +
+                "WHERE nationkey in (\n" +
+                "  SELECT nationkey FROM nation WHERE name like 'A%'\n" +
+                ")";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                        anyTree(
+                                                apply(
+                                                        ImmutableList.of(),
+                                                        ImmutableMap.of(),
+                                                        tableScan("customer", true),
+                                                        anyTree(
+                                                                tableScan("nation"))))))),
+                Collections.singletonList("customer"));
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                        anyTree(
+                                                apply(
+                                                        ImmutableList.of(),
+                                                        ImmutableMap.of(),
+                                                        tableScan("customer"),
+                                                        anyTree(
+                                                                tableScan("nation", true))))))),
+                Collections.singletonList("nation"));
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
+                                anyTree(
+                                        apply(
+                                                ImmutableList.of(),
+                                                ImmutableMap.of(),
+                                                tableScan("customer"),
+                                                anyTree(
+                                                        tableScan("nation")))))),
+                Arrays.asList("customer", "nation"),
+                true);
     }
 
     @Test
@@ -222,6 +315,22 @@ public class TestAutoSampleTableReplace
                                                         tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
                                                         tableScan("nation", ImmutableMap.of("nn", "nationkey"))))))),
                 Collections.singletonList("customer"));
+
+        sql = "SELECT count(*)\n" +
+                "FROM customer\n" +
+                "INNER JOIN nation on customer.nationkey = nation.nationkey and\n" +
+                "nation.name = 'ALGERIA'";
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                        anyTree(
+                                                join(
+                                                        JoinNode.Type.INNER,
+                                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                        tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"))))))),
+                Collections.singletonList("customer"));
     }
 
     @Test
@@ -266,6 +375,32 @@ public class TestAutoSampleTableReplace
         assertPlanWithSamples(sql,
                 output(
                         aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of(anySymbol()))),
+                                join(
+                                        JoinNode.Type.LEFT,
+                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                        tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"), true)))),
+                Collections.singletonList("nation"));
+
+        // count * will or will not get aggregated based on whether the left table is sampled or not
+        sql = "SELECT count(*)\n" +
+                "FROM customer\n" +
+                "LEFT JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                        join(
+                                                JoinNode.Type.LEFT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey")))))),
+                Collections.singletonList("customer"));
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
                                 join(
                                         JoinNode.Type.LEFT,
                                         ImmutableList.of(equiJoinClause("cn", "nn")),
@@ -322,6 +457,32 @@ public class TestAutoSampleTableReplace
                                         tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
                                         tableScan("nation", ImmutableMap.of("nn", "nationkey"))))),
                 Collections.singletonList("customer"));
+
+        // Count * will or will not get aggregated depending on whether the right table is sampled or not
+        sql = "SELECT count(*)\n" +
+                "FROM customer\n" +
+                "RIGHT JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
+                                join(
+                                        JoinNode.Type.RIGHT,
+                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                        tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"))))),
+                Collections.singletonList("customer"));
+
+        assertPlanWithSamples(sql,
+                output(
+                        project(ImmutableMap.of("count", expression("(\"sample_count\" * CAST(20 as bigint))")),
+                                aggregation(ImmutableMap.of("sample_count", functionCall("count", false, ImmutableList.of())),
+                                        join(
+                                                JoinNode.Type.RIGHT,
+                                                ImmutableList.of(equiJoinClause("cn", "nn")),
+                                                tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                                tableScan("nation", ImmutableMap.of("nn", "nationkey"), true))))),
+                Collections.singletonList("nation"));
 
         // Scale the non sampled data on right join between sampled and non sampled
         sql = "SELECT count(customer.name)\n" +
@@ -386,6 +547,31 @@ public class TestAutoSampleTableReplace
                                         tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
                                         tableScan("nation", ImmutableMap.of("nn", "nationkey"))))),
                 Collections.singletonList("customer"));
+
+        // Count * should not get aggregated irrespective of which table is sampled in the join
+        sql = "SELECT count(*)\n" +
+                "FROM customer\n" +
+                "FULL JOIN nation on customer.nationkey = nation.nationkey";
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
+                                join(
+                                        JoinNode.Type.FULL,
+                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                        tableScan("customer", ImmutableMap.of("cn", "nationkey"), true),
+                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"))))),
+                Collections.singletonList("customer"));
+
+        assertPlanWithSamples(sql,
+                output(
+                        aggregation(ImmutableMap.of("count", functionCall("count", false, ImmutableList.of())),
+                                join(
+                                        JoinNode.Type.FULL,
+                                        ImmutableList.of(equiJoinClause("cn", "nn")),
+                                        tableScan("customer", ImmutableMap.of("cn", "nationkey")),
+                                        tableScan("nation", ImmutableMap.of("nn", "nationkey"), true)))),
+                Collections.singletonList("nation"));
 
         sql = "SELECT count(customer.name)\n" +
                 "FROM customer\n" +

@@ -28,7 +28,9 @@ import com.facebook.presto.spi.TableHandle;
 import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.Assignments;
+import com.facebook.presto.spi.plan.ExceptNode;
 import com.facebook.presto.spi.plan.FilterNode;
+import com.facebook.presto.spi.plan.IntersectNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.plan.ProjectNode;
@@ -44,6 +46,7 @@ import com.facebook.presto.sql.planner.PlanVariableAllocator;
 import com.facebook.presto.sql.planner.TypeProvider;
 import com.facebook.presto.sql.planner.plan.ApplyNode;
 import com.facebook.presto.sql.planner.plan.JoinNode;
+import com.facebook.presto.sql.planner.plan.LateralJoinNode;
 import com.facebook.presto.sql.planner.plan.SimplePlanRewriter;
 import com.facebook.presto.sql.relational.OriginalExpressionUtils;
 import com.facebook.presto.sql.tree.ArithmeticBinaryExpression;
@@ -325,15 +328,17 @@ public class AutoSampleTableReplaceOptimizer
             final Map<VariableReferenceExpression, AggregationNode.Aggregation> aggregations = node.getAggregations();
             for (VariableReferenceExpression variable : aggregations.keySet()) {
                 AggregationNode.Aggregation aggregation = aggregations.get(variable);
+                Optional<SampleInfo> si;
                 if (aggregation.getArguments().isEmpty() && node.getGroupingSets().getGroupingKeys().isEmpty()) {
-                    context.get().setFailed("Count * aggregations not supported yet");
-                    return node;
+                    si = Optional.of(new SampleInfo(false, context.get().getShouldScale()));
                 }
-                Optional<SampleInfo> si = getSampleInfoFromBaseVars(
-                        !aggregation.getArguments().isEmpty() ?
-                                aggregation.getArguments() :
-                                new ArrayList<>(node.getGroupingSets().getGroupingKeys()),
-                        context.get());
+                else {
+                    si = getSampleInfoFromBaseVars(
+                            !aggregation.getArguments().isEmpty() ?
+                                    aggregation.getArguments() :
+                                    new ArrayList<>(node.getGroupingSets().getGroupingKeys()),
+                            context.get());
+                }
                 if (!si.isPresent()) {
                     continue;
                 }
@@ -468,6 +473,83 @@ public class AutoSampleTableReplaceOptimizer
                     node.getSubqueryAssignments(),
                     node.getCorrelation(),
                     node.getOriginSubqueryError());
+        }
+
+        @Override
+        public PlanNode visitLateralJoin(LateralJoinNode node, RewriteContext<SampleContext> context)
+        {
+            checkState(!context.get().getTableSample().isPresent(), "TableSample cannot be set on entry to lateral node");
+            SampleContext inputContext = new SampleContext();
+            PlanNode input = context.rewrite(node.getInput(), inputContext);
+
+            if (inputContext.getSamplingFailed()) {
+                context.get().setFailed(inputContext.getFailureMessage());
+                return node;
+            }
+
+            SampleContext subQueryContext = new SampleContext();
+            PlanNode subQuery = context.rewrite(node.getSubquery(), subQueryContext);
+
+            if (subQueryContext.getSamplingFailed()) {
+                context.get().setFailed(subQueryContext.getFailureMessage());
+                return node;
+            }
+
+            if (!inputContext.getTableSample().isPresent() && !subQueryContext.getTableSample().isPresent()) {
+                context.get().getMap().putAll(inputContext.getMap());
+                return new LateralJoinNode(
+                        node.getId(),
+                        input,
+                        subQuery,
+                        node.getCorrelation(),
+                        node.getType(),
+                        node.getOriginSubqueryError());
+            }
+
+            if (inputContext.getTableSample().isPresent() && subQueryContext.getTableSample().isPresent()) {
+                context.get().setFailed("Both input and subQuery of apply are being sampled");
+                return node;
+            }
+
+            // If subquery was sampled, then the main query vars become eligible for scaling
+            if (subQueryContext.getTableSample().isPresent()) {
+                context.get().setTableSample(subQueryContext.getTableSample().get());
+                if (subQueryContext.getShouldScale()) {
+                    context.get().setShouldScale();
+                    inputContext.getMap().entrySet().forEach(e -> e.getValue().setScaleEligible(true));
+                }
+                context.get().getMap().putAll(inputContext.getMap());
+            }
+
+            if (inputContext.getTableSample().isPresent()) {
+                context.get().setTableSample(inputContext.getTableSample().get());
+                if (inputContext.getShouldScale()) {
+                    context.get().setShouldScale();
+                }
+                context.get().getMap().putAll(inputContext.getMap());
+            }
+
+            return new LateralJoinNode(
+                    node.getId(),
+                    input,
+                    subQuery,
+                    node.getCorrelation(),
+                    node.getType(),
+                    node.getOriginSubqueryError());
+        }
+
+        @Override
+        public PlanNode visitIntersect(IntersectNode node, RewriteContext<SampleContext> context)
+        {
+            context.get().setFailed("Intersect Node not supported yet");
+            return node;
+        }
+
+        @Override
+        public PlanNode visitExcept(ExceptNode node, RewriteContext<SampleContext> context)
+        {
+            context.get().setFailed("Except Node not supported yet");
+            return node;
         }
 
         @Override
