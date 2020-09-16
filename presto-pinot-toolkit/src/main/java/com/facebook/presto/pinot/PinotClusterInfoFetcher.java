@@ -40,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
@@ -79,7 +80,7 @@ public class PinotClusterInfoFetcher
 
     private final Ticker ticker = Ticker.systemTicker();
 
-    private final LoadingCache<PinotTableHandle, List<String>> brokersForTableCache;
+    private final LoadingCache<BrokerCacheKey, List<String>> brokersForTableCache;
 
     private final JsonCodec<GetTables> tablesJsonCodec;
     private final JsonCodec<BrokersForTable> brokersForTableJsonCodec;
@@ -186,17 +187,25 @@ public class PinotClusterInfoFetcher
 
     private String sendHttpGetToController(Optional<PinotTableHandle> tableHandle, String path)
     {
-        String controllerService = pinotConfig.getControllerRestService();
-        Optional<Map<String, String>> headers = Optional.empty();
+        Optional<PinotMuttleyConfig> muttleyConfigOptional = Optional.empty();
         if (tableHandle.isPresent()) {
-            PinotMuttleyConfig config = tableHandle.get().getMuttleyConfig();
-            if (config != null) {
-                if (!config.getMuttleyRwService().isEmpty()) {
-                    controllerService = config.getMuttleyRwService();
-                }
-                if (!config.getExtraHeaders().isEmpty()) {
-                    headers = Optional.ofNullable(config.getExtraHeaders());
-                }
+            muttleyConfigOptional = Optional.ofNullable(tableHandle.get().getMuttleyConfig());
+        }
+
+        return sendHttpGetToControllerForMuttley(muttleyConfigOptional, path);
+    }
+
+    private String sendHttpGetToControllerForMuttley(Optional<PinotMuttleyConfig> muttleyConfig, String path)
+    {
+        Optional<Map<String, String>> headers = Optional.empty();
+        String controllerService = pinotConfig.getControllerRestService();
+        if (muttleyConfig.isPresent()) {
+            PinotMuttleyConfig config = muttleyConfig.get();
+            if (!config.getMuttleyRwService().isEmpty()) {
+                controllerService = config.getMuttleyRwService();
+            }
+            if (!config.getExtraHeaders().isEmpty()) {
+                headers = Optional.ofNullable(config.getExtraHeaders());
             }
         }
 
@@ -288,10 +297,9 @@ public class PinotClusterInfoFetcher
     }
 
     @VisibleForTesting
-    List<String> getAllBrokersForTable(PinotTableHandle tableHandle)
+    List<String> getAllBrokersForTable(BrokerCacheKey cacheKey)
     {
-        String table = tableHandle.getTableName();
-        String responseBody = sendHttpGetToController(Optional.ofNullable(tableHandle), String.format(TABLE_INSTANCES_API_TEMPLATE, table));
+        String responseBody = sendHttpGetToControllerForMuttley(cacheKey.getMuttleyConfig(), String.format(TABLE_INSTANCES_API_TEMPLATE, cacheKey.getTableName()));
         ArrayList<String> brokers = brokersForTableJsonCodec
                 .fromJson(responseBody)
                 .getBrokers()
@@ -323,7 +331,7 @@ public class PinotClusterInfoFetcher
     public List<String> getBrokerHosts(PinotTableHandle tableHandle)
     {
         try {
-            List<String> brokers = new ArrayList(brokersForTableCache.get(tableHandle));
+            List<String> brokers = new ArrayList(brokersForTableCache.get(new BrokerCacheKey(tableHandle.getTableName(), Optional.ofNullable(tableHandle.getMuttleyConfig()))));
             if (brokers.isEmpty()) {
                 throw new PinotException(PINOT_UNABLE_TO_FIND_BROKER, Optional.empty(), "No valid brokers found for " + tableHandle.getTableName());
             }
@@ -469,5 +477,48 @@ public class PinotClusterInfoFetcher
     {
         String responseBody = sendHttpGetToBroker(tableHandle, String.format(TIME_BOUNDARY_API_TEMPLATE, tableHandle.getTableName()));
         return timeBoundaryJsonCodec.fromJson(responseBody);
+    }
+
+    @VisibleForTesting
+    static class BrokerCacheKey
+    {
+        private final String tableName;
+        private final Optional<PinotMuttleyConfig> muttleyConfig;
+
+        public BrokerCacheKey(String tableName, Optional<PinotMuttleyConfig> muttleyConfig)
+        {
+            this.tableName = tableName;
+            this.muttleyConfig = muttleyConfig;
+        }
+
+        public String getTableName()
+        {
+            return tableName;
+        }
+
+        public Optional<PinotMuttleyConfig> getMuttleyConfig()
+        {
+            return muttleyConfig;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            BrokerCacheKey that = (BrokerCacheKey) o;
+            return Objects.equals(tableName, that.tableName) &&
+                    Objects.equals(muttleyConfig, that.muttleyConfig);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(tableName, muttleyConfig);
+        }
     }
 }
