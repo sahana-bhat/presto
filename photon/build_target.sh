@@ -43,9 +43,9 @@ else
   exit 1
 fi
 
-wget "${buildUrl}${ARTIFACT_NAME}" -O presto-server.tar.gz
+wget --no-verbose "${buildUrl}${ARTIFACT_NAME}" -O presto-server.tar.gz
 mkdir presto-docker
-tar xvf presto-server.tar.gz -C presto-docker --strip-components 1
+tar xf presto-server.tar.gz -C presto-docker --strip-components 1
 rm presto-server.tar.gz
 
 #######################################################################################################################
@@ -54,7 +54,7 @@ rm presto-server.tar.gz
 
 JVMKILL_URL="${dependenciesUrl}libjvmkill.so"
 JVMKILL_LIB_NAME=$(echo "$JVMKILL_URL" | rev | cut -d'/' -f 1 | rev | cut -d'?' -f 1)
-wget "$JVMKILL_URL" -O "$JVMKILL_LIB_NAME"
+wget --no-verbose "$JVMKILL_URL" -O "$JVMKILL_LIB_NAME"
 mv "$JVMKILL_LIB_NAME" presto-docker/bin/
 
 #######################################################################################################################
