@@ -76,7 +76,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -559,12 +558,12 @@ public class SqlQueryExecution
         }
     }
 
-    private List<String> getTablesWithSamples()
+    private Set<String> getTablesWithSamples()
     {
-        List<String> tablesWithSamples = new ArrayList<>();
+        ImmutableSet.Builder<String> tablesWithSamples = ImmutableSet.builder();
 
         if (getQueryPlan() == null) {
-            return tablesWithSamples;
+            return tablesWithSamples.build();
         }
 
         for (Input input : new InputExtractor(metadata, stateMachine.getSession()).extractInputs(getQueryPlan().getRoot())) {
@@ -581,11 +580,11 @@ public class SqlQueryExecution
                 tablesWithSamples.add(input.getSchema() + "." + input.getTable());
             }
         }
-        return tablesWithSamples;
+        return tablesWithSamples.build();
     }
 
     @VisibleForTesting
-    private static PrestoException addSamplingUseMessage(PrestoException exp, List<String> tablesWithSamples)
+    private static PrestoException addSamplingUseMessage(PrestoException exp, Set<String> tablesWithSamples)
     {
         if (tablesWithSamples.isEmpty()) {
             return exp;
