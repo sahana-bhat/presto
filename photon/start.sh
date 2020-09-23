@@ -45,9 +45,6 @@ start_presto() {
     set -e
     export PATH=$JAVA_HOME/bin:$PATH;
     sudo sh -c "$BASE_DIR/presto-docker/bin/launcher.py run --enable-central-logging"
-    background_pid=$!
-    wait "${background_pid}"
-    echo "logoff"
 }
 
 rm -rf $BASE_DIR/presto-docker/etc
@@ -131,25 +128,13 @@ else
 fi
 
 config_nodeid
-start_presto
 
 METRICS_CONFIG="$BASE_DIR/presto-docker/etc/node.properties"
 METRICS_CLUSTER_NAME=$(grep "node.environment=" $METRICS_CONFIG | awk -F'=' '{print $2}')
 
 mkdir -p $SCRIPT_DIR/log
-checker_pid=0
 ${BASE_DIR}/photon/metrics.py --port 8080 --interval 60 --service "presto.$METRICS_CLUSTER_NAME" --debug &
-checker_pid=$!
 
-trap 'kill $checker_pid; exit 1' SIGINT SIGTERM
-sleep 5
-
-while [ 1 ]; do
-    if [[ $checker_pid -ne 0 ]]; then
-        kill -0 $checker_pid
-    fi
-    set +x
-    sleep 10
-done
+start_presto
 
 exit 0
