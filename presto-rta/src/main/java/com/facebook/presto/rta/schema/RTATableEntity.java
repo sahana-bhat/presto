@@ -15,7 +15,6 @@ package com.facebook.presto.rta.schema;
 
 import com.facebook.presto.rta.RtaColumnMetadata;
 import com.facebook.presto.spi.ColumnMetadata;
-import com.facebook.presto.spi.type.ArrayType;
 import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.DoubleType;
@@ -47,21 +46,7 @@ public class RTATableEntity
         this.table = table;
         this.deployments = deployments;
         this.definition = definition;
-        this.columns = this.definition.getFields().stream()
-                .map(field -> new RtaColumnMetadata(
-                        field.getName(),
-                        field.isMultiValueField() ? getPrestoMultiValuedTypeFromRtaType((RTADefinition.DataType) field.getType()) : getPrestoTypeFromRtaType((String) field.getType())))
-                .collect(toImmutableList());
-    }
-
-    private static Type getPrestoMultiValuedTypeFromRtaType(RTADefinition.DataType dataType)
-    {
-        switch (dataType.getType().toLowerCase(Locale.ENGLISH)) {
-            case "array":
-                return new ArrayType(getPrestoTypeFromRtaType(dataType.getItems()));
-            default:
-                throw new UnsupportedOperationException("Don't know how to convert RTA type " + dataType);
-        }
+        this.columns = this.definition.getFields().stream().map(field -> new RtaColumnMetadata(field.getName(), getPrestoTypeFromRtaType(field.getType()))).collect(toImmutableList());
     }
 
     private static Type getPrestoTypeFromRtaType(String type)
@@ -145,6 +130,6 @@ public class RTATableEntity
 
     public Optional<Type> getTimestampType()
     {
-        return getTimestampFieldHelper().map(field -> field.isMultiValueField() ? getPrestoMultiValuedTypeFromRtaType((RTADefinition.DataType) field.getType()) : getPrestoTypeFromRtaType((String) field.getType()));
+        return getTimestampFieldHelper().map(field -> getPrestoTypeFromRtaType(field.getType()));
     }
 }

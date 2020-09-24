@@ -14,20 +14,11 @@
 
 package com.facebook.presto.rta.schema;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
-import static com.facebook.presto.rta.RtaUtil.checkType;
 import static com.facebook.presto.rta.RtaUtil.checked;
 import static com.facebook.presto.rta.RtaUtil.checkedOr;
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -79,11 +70,10 @@ public class RTADefinition
                 .toString();
     }
 
-    @JsonDeserialize(using = FieldDeserializer.class)
-    public static class Field<T>
+    public static class Field
     {
         @JsonProperty
-        private T type;
+        private String type;
 
         @JsonProperty
         private String name;
@@ -97,27 +87,16 @@ public class RTADefinition
         @JsonProperty
         private String cardinality;
 
-        @JsonProperty
-        private boolean multiValueField;
-
-        public Field(@JsonProperty("type") T type, @JsonProperty("name") String name, @JsonProperty("uberLogicalType") String uberLogicalType, @JsonProperty("columnType") String columnType, @JsonProperty("cardinality") String cardinality, @JsonProperty("multiValueField") boolean multiValueField)
+        public Field(@JsonProperty("type") String type, @JsonProperty("name") String name, @JsonProperty("uberLogicalType") String uberLogicalType, @JsonProperty("columnType") String columnType, @JsonProperty("cardinality") String cardinality)
         {
-            if (multiValueField) {
-                checkType(type, DataType.class, "dataType");
-            }
-            else {
-                checked((String) type, "type");
-            }
-
-            this.type = type;
+            this.type = checked(type, "type");
             this.name = checked(name, "name");
             this.uberLogicalType = checkedOr(uberLogicalType, "");
             this.columnType = checkedOr(columnType, "");
             this.cardinality = checkedOr(cardinality, "");
-            this.multiValueField = multiValueField;
         }
 
-        public T getType()
+        public String getType()
         {
             return type;
         }
@@ -140,11 +119,6 @@ public class RTADefinition
         public String getCardinality()
         {
             return cardinality;
-        }
-
-        public boolean isMultiValueField()
-        {
-            return multiValueField;
         }
 
         @Override
@@ -179,61 +153,6 @@ public class RTADefinition
                     .add("uberLogicalType", uberLogicalType)
                     .add("columnType", columnType)
                     .add("cardinality", cardinality)
-                    .toString();
-        }
-    }
-
-    public static class DataType
-    {
-        @JsonProperty
-        private String type;
-
-        @JsonProperty
-        private String items;
-
-        @JsonCreator
-        public DataType(
-                @JsonProperty("type") String type, @JsonProperty("items") String items)
-        {
-            this.type = checked(type, "type");
-            this.items = checked(items, "items");
-        }
-
-        public String getItems()
-        {
-            return items;
-        }
-
-        public String getType()
-        {
-            return type;
-        }
-
-        @Override
-        public boolean equals(Object o)
-        {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            DataType that = (DataType) o;
-            return Objects.equals(type, that.type) && Objects.equals(items, that.items);
-        }
-
-        @Override
-        public int hashCode()
-        {
-            return Objects.hash(type, items);
-        }
-
-        @Override
-        public String toString()
-        {
-            return toStringHelper(this)
-                    .add("type", type)
-                    .add("items", items)
                     .toString();
         }
     }
@@ -281,49 +200,6 @@ public class RTADefinition
                     .add("queryTypes", queryTypes)
                     .add("retentionDays", retentionDays)
                     .toString();
-        }
-    }
-
-    public static class FieldDeserializer
-            extends StdDeserializer<Field<?>>
-    {
-        protected FieldDeserializer()
-        {
-            this(null);
-        }
-
-        protected FieldDeserializer(Class<?> vc)
-        {
-            super(vc);
-        }
-
-        @Override
-        public Field<?> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException
-        {
-            JsonNode root = p.readValueAsTree();
-            boolean multiValuedField = root.get("multiValueField") != null && root.get("multiValueField").booleanValue();
-            Field<?> fieldValue;
-
-            if (multiValuedField) {
-                fieldValue = new Field<>(
-                        new DataType(root.get("type").get("type").asText(), root.get("type").get("items").asText()),
-                        root.get("name").asText(),
-                        root.get("uberLogicalType").asText(),
-                        root.get("columnType").asText(),
-                        root.get("cardinality").asText(),
-                        multiValuedField);
-            }
-            else {
-                fieldValue = new Field<>(
-                        root.get("type").asText(),
-                        root.get("name").asText(),
-                        root.get("uberLogicalType").asText(),
-                        root.get("columnType").asText(),
-                        root.get("cardinality").asText(),
-                        multiValuedField);
-            }
-
-            return fieldValue;
         }
     }
 }

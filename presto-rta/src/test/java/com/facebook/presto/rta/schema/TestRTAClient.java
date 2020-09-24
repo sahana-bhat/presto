@@ -48,7 +48,7 @@ public class TestRTAClient
             throws IOException
     {
         RTADefinition definiton = TestSchemaUtils.getDefinition();
-        assertEquals(definiton.getFields().size(), 6);
+        assertEquals(definiton.getFields().size(), 4);
         assertEquals(definiton.getMetadata().getPrimaryKeys().toArray(), new String[]{"workflowUUID"});
         assertTrue(definiton.getMetadata().isFactTable());
         assertEquals(definiton.getMetadata().getQueryTypes().toArray(), new String[]{"pre_defined"});
@@ -57,35 +57,6 @@ public class TestRTAClient
         assertEquals(definiton.getFields().get(0).getName(), "workflowUUID");
         assertEquals(definiton.getFields().get(0).getUberLogicalType(), "String");
         assertEquals(definiton.getFields().get(0).getType(), "string");
-        assertTrue(!definiton.getFields().get(0).isMultiValueField());
-    }
-
-    @Test
-    public void testMultiValuedDefinition()
-            throws IOException
-    {
-        RTADefinition definiton = TestSchemaUtils.getDefinition();
-        assertEquals(definiton.getFields().size(), 6);
-
-        assertEquals(definiton.getFields().get(4).getCardinality(), "high");
-        assertEquals(definiton.getFields().get(4).getColumnType(), "dimension");
-        assertEquals(definiton.getFields().get(4).getName(), "array_string");
-        assertEquals(definiton.getFields().get(4).getUberLogicalType(), "Set");
-        assertTrue(definiton.getFields().get(4).isMultiValueField());
-        assertTrue(definiton.getFields().get(4).getType() instanceof RTADefinition.DataType);
-        RTADefinition.DataType type = (RTADefinition.DataType) definiton.getFields().get(4).getType();
-        assertEquals(type.getType(), "array");
-        assertEquals(type.getItems(), "string");
-
-        assertEquals(definiton.getFields().get(5).getCardinality(), "high");
-        assertEquals(definiton.getFields().get(5).getColumnType(), "dimension");
-        assertEquals(definiton.getFields().get(5).getName(), "array_long");
-        assertEquals(definiton.getFields().get(5).getUberLogicalType(), "Set");
-        assertTrue(definiton.getFields().get(5).isMultiValueField());
-        assertTrue(definiton.getFields().get(5).getType() instanceof RTADefinition.DataType);
-        type = (RTADefinition.DataType) definiton.getFields().get(5).getType();
-        assertEquals(type.getType(), "array");
-        assertEquals(type.getItems(), "long");
     }
 
     @Test
