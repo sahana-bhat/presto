@@ -102,11 +102,13 @@ public final class PredicateUtils
     {
         ImmutableMap.Builder<ColumnDescriptor, Statistics<?>> statistics = ImmutableMap.builder();
         for (ColumnChunkMetaData columnMetaData : blockMetadata.getColumns()) {
-            Statistics<?> columnStatistics = columnMetaData.getStatistics();
-            if (columnStatistics != null) {
-                RichColumnDescriptor descriptor = descriptorsByPath.get(ParquetTypeUtils.lowerCasePath(Arrays.asList(columnMetaData.getPath().toArray())));
-                if (descriptor != null) {
-                    statistics.put(descriptor, columnStatistics);
+            if (!columnMetaData.isHiddenColumn()) {
+                Statistics<?> columnStatistics = columnMetaData.getStatistics();
+                if (columnStatistics != null) {
+                    RichColumnDescriptor descriptor = descriptorsByPath.get(ParquetTypeUtils.lowerCasePath(Arrays.asList(columnMetaData.getPath().toArray())));
+                    if (descriptor != null) {
+                        statistics.put(descriptor, columnStatistics);
+                    }
                 }
             }
         }
