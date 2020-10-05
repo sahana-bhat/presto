@@ -34,6 +34,9 @@ import com.facebook.presto.spi.security.PrestoPrincipal;
 import com.facebook.presto.spi.security.RoleGrant;
 import com.facebook.presto.spi.statistics.ColumnStatisticType;
 import com.facebook.presto.spi.type.Type;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -77,6 +80,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -119,8 +123,8 @@ public class ThriftHiveMetastore
     private final MBeanExporter exporter;
     private final HiveCluster clientProvider;
     private final Function<Exception, Exception> exceptionMapper;
-    private final Map<HostAndPort, ThriftHiveMetastoreStats> metastoreStats;
     private final boolean isHmsImpersonationEnabled;
+    private LoadingCache<HostAndPort, ThriftHiveMetastoreStats> metastoreStats;
 
     @Inject
     public ThriftHiveMetastore(HiveCluster hiveCluster, MetastoreClientConfig config, MBeanExporter exporter)
@@ -135,21 +139,39 @@ public class ThriftHiveMetastore
         this.clientProvider = requireNonNull(hiveCluster, "hiveCluster is null");
         this.stats = requireNonNull(stats, "stats is null");
         this.exceptionMapper = requireNonNull(exceptionMapper, "exceptionMapper is null");
-        ImmutableMap.Builder<HostAndPort, ThriftHiveMetastoreStats> metastoreStatsBuilder = ImmutableMap.builder();
-        for (HostAndPort hostAndPort : hiveCluster.getAddresses()) {
-            metastoreStatsBuilder.put(hostAndPort, new ThriftHiveMetastoreStats());
+        this.metastoreStats = CacheBuilder.newBuilder()
+                .build(new CacheLoader<HostAndPort, ThriftHiveMetastoreStats>() {
+                    @Override
+                    public ThriftHiveMetastoreStats load(HostAndPort hms) throws Exception
+                    {
+                        ThriftHiveMetastoreStats stats = new ThriftHiveMetastoreStats();
+                        String name = ObjectNames.builder(ThriftHiveMetastore.class)
+                                .withProperty("host", hms.getHost())
+                                .build();
+                        exporter.export(name, stats);
+                        return stats;
+                    }
+                });
+        if (!hiveCluster.getAddresses().isEmpty()) {
+            for (HostAndPort hostAndPort : hiveCluster.getAddresses()) {
+                this.metastoreStats.put(hostAndPort, new ThriftHiveMetastoreStats());
+            }
+            exportHmsStats();
         }
-        this.metastoreStats = metastoreStatsBuilder.build();
-        exportHmsStats();
     }
 
     private void exportHmsStats()
     {
-        for (HostAndPort key : metastoreStats.keySet()) {
+        for (HostAndPort key : metastoreStats.asMap().keySet()) {
             String name = ObjectNames.builder(ThriftHiveMetastore.class)
                     .withProperty("host", key.getHost())
                     .build();
-            exporter.export(name, metastoreStats.get(key));
+            try {
+                exporter.export(name, metastoreStats.get(key));
+            }
+            catch (ExecutionException e) {
+                throw new PrestoException(HIVE_METASTORE_ERROR, e);
+            }
         }
     }
 
@@ -169,7 +191,7 @@ public class ThriftHiveMetastore
     @Flatten
     public List<ThriftHiveMetastoreStats> getAllStats()
     {
-        return new ArrayList<>(metastoreStats.values());
+        return new ArrayList<>(metastoreStats.asMap().values());
     }
 
     @Override
