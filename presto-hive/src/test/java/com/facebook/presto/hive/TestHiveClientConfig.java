@@ -130,7 +130,8 @@ public class TestHiveClientConfig
                 .setParquetVerificationEnabled(false)
                 .setPartialAggregationPushdownEnabled(false)
                 .setTableOverwriteEnabled(false)
-                .setHoodieGloballyConsistentReadEnabled(false));
+                .setHoodieGloballyConsistentReadEnabled(false)
+                .setReadNullMaskedValueEnabled(false));
     }
 
     @Test
@@ -226,6 +227,7 @@ public class TestHiveClientConfig
                 .put("hive.enable_partial_aggregation_pushdown", "true")
                 .put("hive.enable-table-overwrite", "true")
                 .put("hive.hoodie-enable-globally-consistent-reads", "true")
+                .put("hive.read-masked-value-enabled", "true")
                 .build();
 
         HiveClientConfig expected = new HiveClientConfig()
@@ -318,7 +320,8 @@ public class TestHiveClientConfig
                 .setParquetVerificationEnabled(true)
                 .setPartialAggregationPushdownEnabled(true)
                 .setTableOverwriteEnabled(true)
-                .setHoodieGloballyConsistentReadEnabled(true);
+                .setHoodieGloballyConsistentReadEnabled(true)
+                .setReadNullMaskedValueEnabled(true);
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }

@@ -53,8 +53,11 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.crypto.CryptoMetadataRetriever;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncDecryptorRetriever;
+import org.apache.parquet.crypto.HiddenColumnException;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.MessageColumnIO;
@@ -67,6 +70,7 @@ import javax.inject.Inject;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -81,11 +85,13 @@ import static com.facebook.presto.hive.HiveErrorCode.HIVE_BAD_DATA;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_CANNOT_OPEN_SPLIT;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_MISSING_DATA;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_PARTITION_SCHEMA_MISMATCH;
+import static com.facebook.presto.hive.HiveErrorCode.HIVE_PERMISSION_ERROR;
 import static com.facebook.presto.hive.HiveSessionProperties.getParquetMaxReadBlockSize;
 import static com.facebook.presto.hive.HiveSessionProperties.isFailOnCorruptedParquetStatistics;
 import static com.facebook.presto.hive.HiveSessionProperties.isOptimizedParquetReaderEnabled;
 import static com.facebook.presto.hive.HiveSessionProperties.isParquetColumnDecryptionEnabled;
 import static com.facebook.presto.hive.HiveSessionProperties.isParquetVerificationEnabled;
+import static com.facebook.presto.hive.HiveSessionProperties.isReadMaskedValueEnabled;
 import static com.facebook.presto.hive.HiveSessionProperties.isUseParquetColumnNames;
 import static com.facebook.presto.hive.parquet.HdfsParquetDataSource.buildHdfsParquetDataSource;
 import static com.facebook.presto.memory.context.AggregatedMemoryContext.newSimpleAggregatedMemoryContext;
@@ -320,6 +326,7 @@ public class ParquetPageSourceFactory
             if (e.getClass().getSimpleName().equals("BlockMissingException")) {
                 throw new PrestoException(HIVE_MISSING_DATA, message, e);
             }
+
             throw new PrestoException(HIVE_CANNOT_OPEN_SPLIT, message, e);
         }
     }
@@ -370,6 +377,7 @@ public class ParquetPageSourceFactory
             }
             FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
             MessageType fileSchema = fileMetaData.getSchema();
+
             dataSource = buildHdfsParquetDataSource(inputStream, path, stats);
 
             Optional<MessageType> optionalRequestedSchema = columns.stream()
@@ -381,12 +389,27 @@ public class ParquetPageSourceFactory
                     .reduce(MessageType::union);
 
             MessageType requestedSchema = optionalRequestedSchema.orElse(new MessageType(fileSchema.getName(), ImmutableList.of()));
-
             ImmutableList.Builder<BlockMetaData> footerBlocks = ImmutableList.builder();
-            for (BlockMetaData block : parquetMetadata.getBlocks()) {
-                long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
-                if (firstDataPage >= start && firstDataPage < start + length) {
-                    footerBlocks.add(block);
+
+            if (isReadMaskedValueEnabled(session)) {
+                Set<ColumnPath> columnPaths = extractHiddenColumns(parquetMetadata);
+                requestedSchema = ParquetMetaDataUtils.removeColumnsInSchema(requestedSchema, columnPaths);
+                for (BlockMetaData block : parquetMetadata.getBlocks()) {
+                    Integer firstIndex = findFirstNonHiddenColumnId(block);
+                    if (firstIndex != null) {
+                        long firstDataPage = block.getColumns().get(firstIndex).getFirstDataPageOffset();
+                        if (firstDataPage >= start && firstDataPage < start + length) {
+                            footerBlocks.add(block);
+                        }
+                    }
+                }
+            }
+            else {
+                for (BlockMetaData block : parquetMetadata.getBlocks()) {
+                    long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
+                    if (firstDataPage >= start && firstDataPage < start + length) {
+                        footerBlocks.add(block);
+                    }
                 }
             }
 
@@ -448,6 +471,13 @@ public class ParquetPageSourceFactory
             if (e.getClass().getSimpleName().equals("BlockMissingException")) {
                 throw new PrestoException(HIVE_MISSING_DATA, message, e);
             }
+
+            if (e instanceof HiddenColumnException) {
+                message = format("User does not have access to encryption key for encrypted column = %s. If returning 'null' for encrypted " +
+                        "columns is acceptable to your query, please add 'set session hive.read_masked_value_enabled=true' before your query", e.getMessage());
+                throw new PrestoException(HIVE_PERMISSION_ERROR, message, e);
+            }
+
             throw new PrestoException(HIVE_CANNOT_OPEN_SPLIT, message, e);
         }
     }
@@ -601,5 +631,30 @@ public class ParquetPageSourceFactory
             return getNestedColumnType(messageType, column.getNestedColumn().get());
         }
         return getParquetType(prestoType, messageType, useParquetColumnNames, column, tableName, path);
+    }
+
+    private static Set<ColumnPath> extractHiddenColumns(ParquetMetadata metadata)
+    {
+        Set<ColumnPath> columnPaths = new HashSet<>();
+        for (BlockMetaData block : metadata.getBlocks()) {
+            for (ColumnChunkMetaData column : block.getColumns()) {
+                if (column.isHiddenColumn()) {
+                    columnPaths.add(column.getPath());
+                }
+            }
+        }
+        return columnPaths;
+    }
+
+    private static Integer findFirstNonHiddenColumnId(BlockMetaData block)
+    {
+        List<ColumnChunkMetaData> columns = block.getColumns();
+        for (int i = 0; i < columns.size(); i++) {
+            if (!columns.get(i).isHiddenColumn()) {
+                return i;
+            }
+        }
+        // all columns are hidden (encrypted but not accessible to current user)
+        return null;
     }
 }

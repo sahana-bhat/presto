@@ -98,6 +98,7 @@ public final class HiveSessionProperties
     public static final String ENABLE_PARTIAL_AGGREGATION_PUSHDOWN = "enable_partial_aggregation_pushdown";
     private static final String ENABLE_HOODIE_GLOBALLY_CONSISTENT_READS = "hoodie_enable_globally_consistent_reads";
     public static final String ENABLE_TABLE_OVERWRITE = "enable_table_overwrite";
+    public static final String READ_MASKED_VALUE_ENABLED = "read_masked_value_enabled";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -445,6 +446,11 @@ public final class HiveSessionProperties
                         ENABLE_TABLE_OVERWRITE,
                         "Is table overwrite enabled",
                         hiveClientConfig.isTableOverwriteEnabled(),
+                        false),
+                booleanProperty(
+                        READ_MASKED_VALUE_ENABLED,
+                        "Return null when access is denied for an encrypted column",
+                        hiveClientConfig.isReadNullMaskedValueEnabled(),
                         false));
     }
 
@@ -757,6 +763,11 @@ public final class HiveSessionProperties
     public static boolean isTableOverwriteEnabled(ConnectorSession session)
     {
         return session.getProperty(ENABLE_TABLE_OVERWRITE, Boolean.class);
+    }
+
+    public static boolean isReadMaskedValueEnabled(ConnectorSession session)
+    {
+        return session.getProperty(READ_MASKED_VALUE_ENABLED, Boolean.class);
     }
 
     public static PropertyMetadata<DataSize> dataSizeSessionProperty(String name, String description, DataSize defaultValue, boolean hidden)
