@@ -236,14 +236,14 @@ public class ThriftHiveMetastore
     public Optional<List<String>> getAllTables(String databaseName)
     {
         Callable<List<String>> getAllTables = stats.getGetAllTables().wrap(() -> {
-            try (HiveMetastoreClient client = clientProvider.createMetastoreClient(null)) {
+            try (HiveMetastoreClient client = clientProvider.createMetastoreClient(null, null)) {
                 ThriftHiveMetastoreStats stat = metastoreStats.get(client.getAddress());
                 return stat.getGetAllTables().wrap(() -> client.getAllTables(databaseName)).call();
             }
         });
 
         Callable<Void> getDatabase = stats.getGetDatabase().wrap(() -> {
-            try (HiveMetastoreClient client = clientProvider.createMetastoreClient(null)) {
+            try (HiveMetastoreClient client = clientProvider.createMetastoreClient(null, null)) {
                 ThriftHiveMetastoreStats stat = metastoreStats.get(client.getAddress());
                 stat.getGetDatabase().wrap(() -> client.getDatabase(databaseName)).call();
                 return null;
@@ -1036,12 +1036,13 @@ public class ThriftHiveMetastore
             throws Exception
     {
         if (!isHmsImpersonationEnabled) {
-            HiveMetastoreClient client = clientProvider.createMetastoreClient(null);
+            HiveMetastoreClient client = clientProvider.createMetastoreClient(null, null);
             return callable.call(client, metastoreStats.get(client.getAddress()));
         }
-        try (HiveMetastoreClient client = clientProvider.createMetastoreClient(null)) {
+        try (HiveMetastoreClient client = clientProvider.createMetastoreClient(null, null)) {
             String token = client.getMetastoreClient().get_delegation_token(UserGroupInformation.getCurrentUser().getShortUserName(), UserGroupInformation.getCurrentUser().getShortUserName());
-            HiveMetastoreClient realClient = clientProvider.createMetastoreClient(token);
+            HostAndPort hms = client.getAddress();
+            HiveMetastoreClient realClient = clientProvider.createMetastoreClient(token, hms);
             return callable.call(realClient, metastoreStats.get(realClient.getAddress()));
         }
     }

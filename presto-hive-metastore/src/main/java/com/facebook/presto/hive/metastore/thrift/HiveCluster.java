@@ -32,7 +32,7 @@ public interface HiveCluster
     /**
      * Create a connected {@link HiveMetastoreClient} to this HiveCluster
      */
-    HiveMetastoreClient createMetastoreClient(String token)
+    HiveMetastoreClient createMetastoreClient(String token, HostAndPort metastore)
             throws TException;
 
     List<HostAndPort> getAddresses();

@@ -62,21 +62,37 @@ public class StaticHiveCluster
     }
 
     @Override
-    public HiveMetastoreClient createMetastoreClient(String token)
+    public HiveMetastoreClient createMetastoreClient(String token, HostAndPort hms)
             throws TException
     {
-        List<HostAndPort> metastores = new ArrayList<>(addresses);
-        if (isMultipleMetastore) {
-            Collections.shuffle(metastores);
+        TException lastException = null;
+        if (hms == null) {
+            List<HostAndPort> metastores = new ArrayList<>(addresses);
+            if (isMultipleMetastore) {
+                Collections.shuffle(metastores);
+            }
+            else {
+                Collections.shuffle(metastores.subList(1, metastores.size()));
+            }
+
+            for (HostAndPort metastore : metastores) {
+                try {
+                    HiveMetastoreClient client = clientFactory.create(metastore, token);
+
+                    if (!isNullOrEmpty(metastoreUsername)) {
+                        client.setUGI(metastoreUsername);
+                    }
+                    return client;
+                }
+                catch (TException e) {
+                    lastException = e;
+                }
+            }
+            throw new TException("Failed connecting to Hive metastore: " + addresses, lastException);
         }
         else {
-            Collections.shuffle(metastores.subList(1, metastores.size()));
-        }
-
-        TException lastException = null;
-        for (HostAndPort metastore : metastores) {
             try {
-                HiveMetastoreClient client = clientFactory.create(metastore, token);
+                HiveMetastoreClient client = clientFactory.create(hms, token);
 
                 if (!isNullOrEmpty(metastoreUsername)) {
                     client.setUGI(metastoreUsername);
@@ -86,8 +102,8 @@ public class StaticHiveCluster
             catch (TException e) {
                 lastException = e;
             }
+            throw new TException("Failed connecting to Hive metastore: " + hms, lastException);
         }
-        throw new TException("Failed connecting to Hive metastore: " + addresses, lastException);
     }
 
     private static URI checkMetastoreUri(URI uri)

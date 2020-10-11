@@ -286,7 +286,7 @@ public class TestCachingHiveMetastore
         }
 
         @Override
-        public HiveMetastoreClient createMetastoreClient(String token)
+        public HiveMetastoreClient createMetastoreClient(String token, HostAndPort hms)
         {
             return client;
         }

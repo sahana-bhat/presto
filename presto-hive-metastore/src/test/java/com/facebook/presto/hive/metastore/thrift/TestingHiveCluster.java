@@ -43,7 +43,7 @@ public class TestingHiveCluster
     }
 
     @Override
-    public HiveMetastoreClient createMetastoreClient(String token)
+    public HiveMetastoreClient createMetastoreClient(String token, HostAndPort hms)
             throws TException
     {
         return new HiveMetastoreClientFactory(metastoreClientConfig, new NoHiveMetastoreAuthentication()).create(address, token);

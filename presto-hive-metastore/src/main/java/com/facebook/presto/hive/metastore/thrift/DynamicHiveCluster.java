@@ -72,13 +72,15 @@ public class DynamicHiveCluster
     }
 
     @Override
-    public HiveMetastoreClient createMetastoreClient(String token)
+    public HiveMetastoreClient createMetastoreClient(String token, HostAndPort metastore)
             throws TException
     {
-        URI uri = getMetastoreUri();
-        HostAndPort metastore = HostAndPort.fromParts(uri.getHost(), uri.getPort());
-        // TODO: check if retries are required here. ThriftHiveMetastore calls are retried
-        // so adding retries here could be redundant
+        if (metastore == null) {
+            // TODO: check if retries are required here. ThriftHiveMetastore calls are retried
+            // so adding retries here could be redundant
+            URI uri = getMetastoreUri();
+            metastore = HostAndPort.fromParts(uri.getHost(), uri.getPort());
+        }
         TException lastException = null;
         try {
             HiveMetastoreClient client = clientFactory.create(metastore, token);
@@ -98,6 +100,7 @@ public class DynamicHiveCluster
     {
         URI uri;
         // TODO: add caching to this call
+        // TODO: meter the muttley calls
         Request request = prepareGet()
                 .setUri(uriBuilderFrom(URI.create(metastoreDiscoveryUri)).build())
                 .setHeader(rpcServiceHeaderStr, metastoreDiscoveryRpcServiceName)
