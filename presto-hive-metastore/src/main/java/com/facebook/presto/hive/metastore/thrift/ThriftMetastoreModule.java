@@ -42,8 +42,15 @@ public class ThriftMetastoreModule
     protected void setup(Binder binder)
     {
         binder.bind(HiveMetastoreClientFactory.class).in(Scopes.SINGLETON);
-        binder.bind(HiveCluster.class).to(DynamicHiveCluster.class).in(Scopes.SINGLETON);
-        configBinder(binder).bindConfig(DynamicMetastoreConfig.class);
+        DynamicMetastoreConfig dc = this.buildConfigObject(DynamicMetastoreConfig.class);
+        if (dc.getMetastoreDiscoveryRpcServiceName() != null) {
+            binder.bind(HiveCluster.class).to(DynamicHiveCluster.class).in(Scopes.SINGLETON);
+            configBinder(binder).bindConfig(DynamicMetastoreConfig.class);
+        }
+        else {
+            binder.bind(HiveCluster.class).to(StaticHiveCluster.class).in(Scopes.SINGLETON);
+            configBinder(binder).bindConfig(StaticMetastoreConfig.class);
+        }
 
         binder.bind(HiveMetastore.class).to(ThriftHiveMetastore.class).in(Scopes.SINGLETON);
 
