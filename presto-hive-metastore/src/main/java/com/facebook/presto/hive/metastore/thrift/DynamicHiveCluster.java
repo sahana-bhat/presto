@@ -16,7 +16,6 @@ package com.facebook.presto.hive.metastore.thrift;
 import com.facebook.airlift.http.client.HttpClient;
 import com.facebook.airlift.http.client.Request;
 import com.facebook.airlift.http.client.StringResponseHandler;
-import com.facebook.airlift.http.client.jetty.JettyHttpClient;
 import com.google.common.net.HostAndPort;
 import org.apache.thrift.TException;
 
@@ -46,16 +45,17 @@ public class DynamicHiveCluster
     private final String rpcServiceHeaderStr = "RPC-Service";
     private final String rpcCallerHeaderStr = "RPC-Caller";
     private final String rpcCaller = "presto";
-    private final HttpClient httpClient = new JettyHttpClient();
+    private final HttpClient httpClient;
     private List<HostAndPort> addresses;
 
     @Inject
-    public DynamicHiveCluster(DynamicMetastoreConfig config, HiveMetastoreClientFactory clientFactory)
+    public DynamicHiveCluster(DynamicMetastoreConfig config, HiveMetastoreClientFactory clientFactory, @ForHiveMetastore HttpClient httpClient)
     {
-        this(config.getMetastoreUsername(), config.getMetastoreDiscoveryRpcServiceName(), config.getMetastoreDiscoveryUri(), clientFactory);
+        this(config.getMetastoreUsername(), config.getMetastoreDiscoveryRpcServiceName(), config.getMetastoreDiscoveryUri(), clientFactory, httpClient);
     }
-    public DynamicHiveCluster(String metastoreUsername, String metastoreDiscoveryRpcServiceName, String metastoreDiscoveryUri, HiveMetastoreClientFactory clientFactory)
+    public DynamicHiveCluster(String metastoreUsername, String metastoreDiscoveryRpcServiceName, String metastoreDiscoveryUri, HiveMetastoreClientFactory clientFactory, HttpClient httpClient)
     {
+        this.httpClient = httpClient;
         this.metastoreDiscoveryRpcServiceName = requireNonNull(metastoreDiscoveryRpcServiceName, "metastore discovery rpc name is null");
         this.metastoreDiscoveryUri = requireNonNull(metastoreDiscoveryUri, "metastore discovery uri is null");
         this.metastoreUsername = metastoreUsername;
