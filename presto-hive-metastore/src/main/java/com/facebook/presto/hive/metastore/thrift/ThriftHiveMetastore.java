@@ -148,7 +148,10 @@ public class ThriftHiveMetastore
                         String name = ObjectNames.builder(ThriftHiveMetastore.class)
                                 .withProperty("host", hms.getHost())
                                 .build();
-                        exporter.export(name, stats);
+                        Map<String, Object> exporters = exporter.getExportedObjects();
+                        if (!exporters.keySet().contains(name)) {
+                            exporter.export(name, stats);
+                        }
                         return stats;
                     }
                 });
