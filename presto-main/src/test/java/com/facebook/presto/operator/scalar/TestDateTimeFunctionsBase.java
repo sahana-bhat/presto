@@ -877,7 +877,7 @@ public abstract class TestDateTimeFunctionsBase
         assertInvalidFunction("date_parse('', '%X')", "%X not supported in date format string");
 
         assertInvalidFunction("date_parse('3.0123456789', '%s.%f')", "Invalid format: \"3.0123456789\" is malformed at \"9\"");
-        assertInvalidFunction("date_parse('%Y-%m-%d', '')", "Both printing and parsing not supported");
+        assertInvalidFunction("date_parse('%Y-%m-%d', '')", "Empty string is passed as format");
     }
 
     @Test

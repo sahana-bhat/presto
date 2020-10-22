@@ -1175,6 +1175,11 @@ public final class DateTimeFunctions
         DateTimeFormatterBuilder builder = new DateTimeFormatterBuilder();
 
         String formatString = format.toStringUtf8();
+
+        if (formatString.isEmpty()) {
+            throw new PrestoException(INVALID_FUNCTION_ARGUMENT, "Empty string is passed as format");
+        }
+
         boolean escaped = false;
         for (int i = 0; i < formatString.length(); i++) {
             char character = formatString.charAt(i);
