@@ -132,7 +132,7 @@ public class PinotSplitManager
     public enum QueryNotAdequatelyPushedDownErrorCode
             implements ErrorCodeSupplier
     {
-        PQL_NOT_PRESENT(1, USER_ERROR, "Query uses unsupported expressions that cannot be pushed into the storage engine. Please see https://XXX for more details");
+        PQL_NOT_PRESENT(1, USER_ERROR, "Query uses unsupported expressions that cannot be pushed into the storage engine. Please see http://t.uber.com/neutrino-supported-sql-expressions for more details");
 
         private final ErrorCode errorCode;
 
