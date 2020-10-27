@@ -473,8 +473,8 @@ public class ParquetPageSourceFactory
             }
 
             if (e instanceof HiddenColumnException) {
-                message = format("User does not have access to encryption key for encrypted column = %s. If returning 'null' for encrypted " +
-                        "columns is acceptable to your query, please add 'set session hive.read_masked_value_enabled=true' before your query", e.getMessage());
+                message = format("User does not have access to encryption key for encrypted column = %s in file path %s. If returning 'null' for encrypted " +
+                        "columns is acceptable to your query, please add 'set session hive.read_masked_value_enabled=true' before your query", e.getMessage(), path);
                 throw new PrestoException(HIVE_PERMISSION_ERROR, message, e);
             }
 
