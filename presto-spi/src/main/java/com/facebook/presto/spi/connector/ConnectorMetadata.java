@@ -33,6 +33,7 @@ import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.SystemTable;
+import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.api.Experimental;
 import com.facebook.presto.spi.predicate.TupleDomain;
 import com.facebook.presto.spi.relation.RowExpression;
@@ -219,6 +220,16 @@ public interface ConnectorMetadata
     default Optional<Object> getInfo(ConnectorTableLayoutHandle layoutHandle)
     {
         return Optional.empty();
+    }
+
+    /**
+     * Return any sample tables for the current table which can respect the layout of the parent table
+     *
+     * @throws RuntimeException if table handle is no longer valid
+     */
+    default List<TableSample> getSampleTables(ConnectorSession session, ConnectorTableHandle table, Optional<ConnectorTableLayoutHandle> layoutHandle)
+    {
+        return emptyList();
     }
 
     /**

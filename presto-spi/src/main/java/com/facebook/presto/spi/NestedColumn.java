@@ -17,6 +17,7 @@ import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -53,6 +54,11 @@ public class NestedColumn
     public String getName()
     {
         return names.stream().collect(Collectors.joining("$_$_$"));
+    }
+
+    public static NestedColumn fromName(String name)
+    {
+        return new NestedColumn(Arrays.asList(name.split("\\$_\\$_\\$")));
     }
 
     @JsonProperty

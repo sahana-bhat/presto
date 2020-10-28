@@ -32,6 +32,7 @@ import com.facebook.presto.spi.NestedColumn;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.SystemTable;
+import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.classloader.ThreadContextClassLoader;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.facebook.presto.spi.connector.ConnectorOutputMetadata;
@@ -240,6 +241,14 @@ public class ClassLoaderSafeConnectorMetadata
     {
         try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
             return delegate.getInfo(table);
+        }
+    }
+
+    @Override
+    public List<TableSample> getSampleTables(ConnectorSession session, ConnectorTableHandle table, Optional<ConnectorTableLayoutHandle> layout)
+    {
+        try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
+            return delegate.getSampleTables(session, table, layout);
         }
     }
 

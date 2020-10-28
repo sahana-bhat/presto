@@ -464,24 +464,9 @@ public class PlanBuilder
         return tableScan(tableHandle, variables, assignments, TupleDomain.all(), TupleDomain.all());
     }
 
-    public TableScanNode tableScan(String catalogName, SchemaTableName tableName, List<VariableReferenceExpression> variables, Map<VariableReferenceExpression, ColumnHandle> assignments)
-    {
-        TableHandle tableHandle = new TableHandle(
-                new ConnectorId(catalogName),
-                new TestingTableHandle(tableName),
-                TestingTransactionHandle.create(),
-                Optional.empty());
-        return tableScan(tableHandle, variables, assignments, TupleDomain.all(), TupleDomain.all());
-    }
-
     public TableScanNode tableScan(List<VariableReferenceExpression> variables, Map<VariableReferenceExpression, ColumnHandle> assignments)
     {
         return tableScan("testConnector", variables, assignments);
-    }
-
-    public TableScanNode tableScan(SchemaTableName tableName, List<VariableReferenceExpression> variables, Map<VariableReferenceExpression, ColumnHandle> assignments)
-    {
-        return tableScan("testConnector", tableName, variables, assignments);
     }
 
     public TableScanNode tableScan(TableHandle tableHandle, List<VariableReferenceExpression> variables, Map<VariableReferenceExpression, ColumnHandle> assignments)

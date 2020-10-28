@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Objects.requireNonNull;
 
@@ -30,7 +29,6 @@ public class ConnectorTableMetadata
     private final Optional<String> comment;
     private final List<ColumnMetadata> columns;
     private final Map<String, Object> properties;
-    private final List<TableSample> sampledTables;
 
     public ConnectorTableMetadata(SchemaTableName table, List<ColumnMetadata> columns)
     {
@@ -44,11 +42,6 @@ public class ConnectorTableMetadata
 
     public ConnectorTableMetadata(SchemaTableName table, List<ColumnMetadata> columns, Map<String, Object> properties, Optional<String> comment)
     {
-        this(table, columns, properties, comment, emptyList());
-    }
-
-    public ConnectorTableMetadata(SchemaTableName table, List<ColumnMetadata> columns, Map<String, Object> properties, Optional<String> comment, List<TableSample> sampledTables)
-    {
         requireNonNull(table, "table is null");
         requireNonNull(columns, "columns is null");
         requireNonNull(comment, "comment is null");
@@ -57,7 +50,6 @@ public class ConnectorTableMetadata
         this.columns = Collections.unmodifiableList(new ArrayList<>(columns));
         this.properties = Collections.unmodifiableMap(new LinkedHashMap<>(properties));
         this.comment = comment;
-        this.sampledTables = sampledTables;
     }
 
     public SchemaTableName getTable()
@@ -80,11 +72,6 @@ public class ConnectorTableMetadata
         return comment;
     }
 
-    public List<TableSample> getSampledTables()
-    {
-        return sampledTables;
-    }
-
     @Override
     public String toString()
     {
@@ -93,7 +80,6 @@ public class ConnectorTableMetadata
         sb.append(", columns=").append(columns);
         sb.append(", properties=").append(properties);
         comment.ifPresent(value -> sb.append(", comment='").append(value).append("'"));
-        sb.append(", samples=").append(sampledTables);
         sb.append('}');
         return sb.toString();
     }

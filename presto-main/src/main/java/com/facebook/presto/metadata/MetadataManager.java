@@ -40,6 +40,7 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.SystemTable;
 import com.facebook.presto.spi.TableHandle;
+import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.block.BlockEncodingSerde;
 import com.facebook.presto.spi.connector.ConnectorCapabilities;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
@@ -503,6 +504,14 @@ public class MetadataManager
         ConnectorId connectorId = handle.getConnectorId();
         ConnectorMetadata metadata = getMetadata(session, connectorId);
         return handle.getLayout().flatMap(tableLayout -> metadata.getInfo(tableLayout));
+    }
+
+    @Override
+    public List<TableSample> getSampleTables(Session session, TableHandle handle)
+    {
+        ConnectorId connectorId = handle.getConnectorId();
+        ConnectorMetadata metadata = getMetadata(session, connectorId);
+        return metadata.getSampleTables(session.toConnectorSession(connectorId), handle.getConnectorHandle(), handle.getLayout());
     }
 
     @Override

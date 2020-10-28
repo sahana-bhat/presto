@@ -19,6 +19,7 @@ import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.TableHandle;
 import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.ApproxResultsOption;
+import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.planner.assertions.BasePlanTest;
 import com.facebook.presto.sql.planner.assertions.PlanMatchPattern;
 import com.facebook.presto.sql.planner.plan.JoinNode;
@@ -824,7 +825,7 @@ public class TestAutoSampleTableReplace
     public void assertPlanWithSamples(String sql, PlanMatchPattern pattern, List<String> sampleTables, boolean failOpen)
     {
         List<PlanOptimizer> optimizers = ImmutableList.of(
-                new TestAutoSampleTableReplaceOptimizer(getMetadata(), sampleTables, failOpen));
+                new TestAutoSampleTableReplaceOptimizer(getMetadata(), sampleTables, getQueryRunner().getSqlParser(), failOpen));
         Session session;
         if (failOpen) {
             session = Session.builder(this.getQueryRunner().getDefaultSession())
@@ -844,9 +845,9 @@ public class TestAutoSampleTableReplace
     {
         private List<String> sampleTables;
 
-        public TestAutoSampleTableReplaceOptimizer(Metadata metadata, List<String> sampleTables, boolean failOpen)
+        public TestAutoSampleTableReplaceOptimizer(Metadata metadata, List<String> sampleTables, SqlParser parser, boolean failOpen)
         {
-            super(metadata, failOpen);
+            super(metadata, parser, failOpen);
             this.sampleTables = sampleTables;
         }
 

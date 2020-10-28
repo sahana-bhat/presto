@@ -23,6 +23,7 @@ import com.facebook.presto.spi.Constraint;
 import com.facebook.presto.spi.NestedColumn;
 import com.facebook.presto.spi.SystemTable;
 import com.facebook.presto.spi.TableHandle;
+import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.block.BlockEncodingSerde;
 import com.facebook.presto.spi.connector.ConnectorCapabilities;
 import com.facebook.presto.spi.connector.ConnectorOutputMetadata;
@@ -162,6 +163,12 @@ public abstract class AbstractMockMetadata
 
     @Override
     public Optional<Object> getInfo(Session session, TableHandle handle)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<TableSample> getSampleTables(Session session, TableHandle handle)
     {
         throw new UnsupportedOperationException();
     }

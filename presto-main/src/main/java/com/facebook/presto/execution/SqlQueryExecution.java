@@ -35,13 +35,13 @@ import com.facebook.presto.operator.ForScheduler;
 import com.facebook.presto.security.AccessControl;
 import com.facebook.presto.server.BasicQueryInfo;
 import com.facebook.presto.spi.ConnectorId;
-import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.ErrorCode;
 import com.facebook.presto.spi.ErrorType;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.QueryId;
 import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.TableHandle;
+import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.resourceGroups.QueryType;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupId;
@@ -575,8 +575,8 @@ public class SqlQueryExecution
             if (!tableHandle.isPresent()) {
                 continue;
             }
-            ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(stateMachine.getSession(), tableHandle.get()).getMetadata();
-            if (!tableMetadata.getSampledTables().isEmpty()) {
+            List<TableSample> tableSamples = metadata.getSampleTables(stateMachine.getSession(), tableHandle.get());
+            if (!tableSamples.isEmpty()) {
                 tablesWithSamples.add(input.getSchema() + "." + input.getTable());
             }
         }
