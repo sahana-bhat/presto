@@ -15,12 +15,16 @@ package com.facebook.presto.hive.metastore.thrift;
 
 import com.facebook.airlift.configuration.Config;
 import com.facebook.airlift.configuration.ConfigDescription;
+import com.facebook.airlift.json.ObjectMapperProvider;
+import org.apache.thrift.TException;
+
+import java.io.IOException;
 
 public class DynamicMetastoreConfig
 {
     private String metastoreUsername;
-    private String metastoreDiscoveryUri;
-    private String metastoreDiscoveryRpcServiceName;
+    private HttpRequestDetails metastoreDiscoveryUri;
+    private String metastoreDiscoveryType;
 
     public String getMetastoreUsername()
     {
@@ -35,27 +39,33 @@ public class DynamicMetastoreConfig
         return this;
     }
 
-    public String getMetastoreDiscoveryRpcServiceName()
+    public String getMetastoreDiscoveryType()
     {
-        return metastoreDiscoveryRpcServiceName;
+        return metastoreDiscoveryType;
     }
 
-    @Config("hive.metastore.discovery.rpcservicename")
-    public DynamicMetastoreConfig setMetastoreDiscoveryRpcServiceName(String metastoreDiscoveryRpcServiceName)
+    @Config("hive.metastore.discovery.type")
+    public DynamicMetastoreConfig setMetastoreDiscoveryType(String metastoreDiscoveryType)
     {
-        this.metastoreDiscoveryRpcServiceName = metastoreDiscoveryRpcServiceName;
+        this.metastoreDiscoveryType = metastoreDiscoveryType;
         return this;
     }
 
-    public String getMetastoreDiscoveryUri()
+    public HttpRequestDetails getMetastoreDiscoveryUri()
     {
         return metastoreDiscoveryUri;
     }
 
     @Config("hive.metastore.discovery.uri")
-    public DynamicMetastoreConfig setMetastoreDiscoveryUri(String metastoreDiscoveryUri)
+    public DynamicMetastoreConfig setMetastoreDiscoveryUri(String metastoreDiscoveryUri) throws TException
     {
-        this.metastoreDiscoveryUri = metastoreDiscoveryUri;
+        ObjectMapperProvider objectMapperProvider = new ObjectMapperProvider();
+        try {
+            this.metastoreDiscoveryUri = objectMapperProvider.get().readValue(metastoreDiscoveryUri, HttpRequestDetails.class);
+        }
+        catch (IOException e) {
+            throw new TException("Cannot deserialize discovery uri details", e);
+        }
         return this;
     }
 }

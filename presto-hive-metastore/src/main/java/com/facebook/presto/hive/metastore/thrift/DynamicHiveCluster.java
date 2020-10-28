@@ -24,6 +24,7 @@ import javax.inject.Inject;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static com.facebook.airlift.http.client.HttpStatus.OK;
 import static com.facebook.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
@@ -38,28 +39,24 @@ import static java.util.Objects.requireNonNull;
 public class DynamicHiveCluster
         implements HiveCluster
 {
-    private final String metastoreDiscoveryRpcServiceName;
     private final HiveMetastoreClientFactory clientFactory;
     private final String metastoreUsername;
-    private final String metastoreDiscoveryUri;
-    private final String rpcServiceHeaderStr = "RPC-Service";
-    private final String rpcCallerHeaderStr = "RPC-Caller";
-    private final String rpcCaller = "presto";
     private final HttpClient httpClient;
-    private List<HostAndPort> addresses;
+    private final HttpRequestDetails metaStoreDiscoveryUri;
+    private final Request request;
 
     @Inject
     public DynamicHiveCluster(DynamicMetastoreConfig config, HiveMetastoreClientFactory clientFactory, @ForHiveMetastore HttpClient httpClient)
     {
-        this(config.getMetastoreUsername(), config.getMetastoreDiscoveryRpcServiceName(), config.getMetastoreDiscoveryUri(), clientFactory, httpClient);
+        this(config.getMetastoreUsername(), config.getMetastoreDiscoveryUri(), clientFactory, httpClient);
     }
-    public DynamicHiveCluster(String metastoreUsername, String metastoreDiscoveryRpcServiceName, String metastoreDiscoveryUri, HiveMetastoreClientFactory clientFactory, HttpClient httpClient)
+    public DynamicHiveCluster(String metastoreUsername, HttpRequestDetails metaStoreDiscoveryUri, HiveMetastoreClientFactory clientFactory, HttpClient httpClient)
     {
         this.httpClient = httpClient;
-        this.metastoreDiscoveryRpcServiceName = requireNonNull(metastoreDiscoveryRpcServiceName, "metastore discovery rpc name is null");
-        this.metastoreDiscoveryUri = requireNonNull(metastoreDiscoveryUri, "metastore discovery uri is null");
         this.metastoreUsername = metastoreUsername;
+        this.metaStoreDiscoveryUri = metaStoreDiscoveryUri;
         this.clientFactory = requireNonNull(clientFactory, "clientFactory is null");
+        this.request = createMetastoreDiscoveryRequest();
     }
 
     /**
@@ -76,8 +73,6 @@ public class DynamicHiveCluster
             throws TException
     {
         if (metastore == null) {
-            // TODO: check if retries are required here. ThriftHiveMetastore calls are retried
-            // so adding retries here could be redundant
             URI uri = getMetastoreUri();
             metastore = HostAndPort.fromParts(uri.getHost(), uri.getPort());
         }
@@ -96,16 +91,20 @@ public class DynamicHiveCluster
         throw new TException("Failed connecting to Hive metastore: " + metastore.getHost(), lastException);
     }
 
+    private Request createMetastoreDiscoveryRequest()
+    {
+        Request.Builder requestBuilder = prepareGet()
+                .setUri(uriBuilderFrom(URI.create(metaStoreDiscoveryUri.getUrl())).build());
+
+        for (Map.Entry<String, String> header : metaStoreDiscoveryUri.getHeaders().entrySet()) {
+            requestBuilder.setHeader(header.getKey(), header.getValue());
+        }
+        return requestBuilder.build();
+    }
+
     private URI getMetastoreUri() throws TException
     {
         URI uri;
-        // TODO: add caching to this call
-        // TODO: meter the muttley calls
-        Request request = prepareGet()
-                .setUri(uriBuilderFrom(URI.create(metastoreDiscoveryUri)).build())
-                .setHeader(rpcServiceHeaderStr, metastoreDiscoveryRpcServiceName)
-                .setHeader(rpcCallerHeaderStr, rpcCaller)
-                .build();
         StringResponseHandler.StringResponse response = httpClient.execute(request, createStringResponseHandler());
         if (response.getStatusCode() == OK.code()) {
             uri = URI.create(response.getBody());
