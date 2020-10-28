@@ -23,8 +23,7 @@
                 "pinot.extra-http-headers": "",
                 "pinot.use-date-trunc": true,
                 "pinot.non-aggregate-limit-for-broker-queries": 50001,
-                "pinot.mark-data-fetch-exceptions-as-retriable": true,
-                "pinot.metadata-expiry": "5m"
+                "pinot.mark-data-fetch-exceptions-as-retriable": true
             }
         }
     }
