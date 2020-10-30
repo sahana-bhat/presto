@@ -309,6 +309,7 @@ public class HiveMetadata
     private final StagingFileCommitter stagingFileCommitter;
     private final ZeroRowFileCreator zeroRowFileCreator;
     private final PartitionObjectBuilder partitionObjectBuilder;
+    private final HiveTicketCache hiveTicketCache;
 
     public HiveMetadata(
             SemiTransactionalHiveMetastore metastore,
@@ -331,6 +332,7 @@ public class HiveMetadata
             HiveStatisticsProvider hiveStatisticsProvider,
             StagingFileCommitter stagingFileCommitter,
             ZeroRowFileCreator zeroRowFileCreator,
+            HiveTicketCache hiveTicketCache,
             PartitionObjectBuilder partitionObjectBuilder)
     {
         this.allowCorruptWritesForTesting = allowCorruptWritesForTesting;
@@ -354,6 +356,7 @@ public class HiveMetadata
         this.hiveStatisticsProvider = requireNonNull(hiveStatisticsProvider, "hiveStatisticsProvider is null");
         this.stagingFileCommitter = requireNonNull(stagingFileCommitter, "stagingFileCommitter is null");
         this.zeroRowFileCreator = requireNonNull(zeroRowFileCreator, "zeroRowFileCreator is null");
+        this.hiveTicketCache = requireNonNull(hiveTicketCache, "hiveTicketCache is null");
         this.partitionObjectBuilder = requireNonNull(partitionObjectBuilder, "partitionObjectBuilder is null");
     }
 

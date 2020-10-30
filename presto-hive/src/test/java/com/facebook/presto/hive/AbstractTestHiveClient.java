@@ -942,6 +942,7 @@ public abstract class AbstractTestHiveClient
                 new HiveTypeTranslator(),
                 new HiveStagingFileCommitter(hdfsEnvironment, listeningDecorator(executor)),
                 new HiveZeroRowFileCreator(hdfsEnvironment, listeningDecorator(executor)),
+                new HiveTicketCache(hdfsEnvironment),
                 TEST_SERVER_VERSION,
                 new HivePartitionObjectBuilder());
         transactionManager = new HiveTransactionManager();

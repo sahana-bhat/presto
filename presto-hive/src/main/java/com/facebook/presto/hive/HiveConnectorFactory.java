@@ -144,6 +144,7 @@ public class HiveConnectorFactory
             ConnectorAccessControl accessControl = new PartitionsAwareAccessControl(injector.getInstance(ConnectorAccessControl.class));
             Set<Procedure> procedures = injector.getInstance(Key.get(new TypeLiteral<Set<Procedure>>() {}));
             ConnectorPlanOptimizerProvider planOptimizerProvider = injector.getInstance(ConnectorPlanOptimizerProvider.class);
+            HiveTicketCache hiveTicketCache = injector.getInstance(HiveTicketCache.class);
 
             return new HiveConnector(
                     lifeCycleManager,

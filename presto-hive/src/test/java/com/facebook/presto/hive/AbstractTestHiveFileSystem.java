@@ -209,6 +209,7 @@ public abstract class AbstractTestHiveFileSystem
                 new HiveStagingFileCommitter(hdfsEnvironment, listeningDecorator(executor)),
                 new HiveZeroRowFileCreator(hdfsEnvironment, listeningDecorator(executor)),
                 new NodeVersion("test_version"),
+                new HiveTicketCache(hdfsEnvironment),
                 new HivePartitionObjectBuilder());
         transactionManager = new HiveTransactionManager();
         splitManager = new HiveSplitManager(
