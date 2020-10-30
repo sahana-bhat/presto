@@ -187,11 +187,7 @@ public class PinotAggregationProjectConverter
                     "interval unit in date_trunc is not supported: " + intervalParameter);
         }
 
-        return derived("prestoDateTrunc(" +
-                inputColumn + "," +
-                "'" + inputFormat + "'" + ", " +
-                "'" + inputTimeZone + "'" + ", " +
-                "'" + getStringFromConstant(intervalParameter) + "'" + ")");
+        return derived(format("dateTrunc('%s', %s, '%s', '%s', 'MILLISECONDS')", getStringFromConstant(intervalParameter), inputColumn, inputFormat, inputTimeZone));
     }
 
     private PinotExpression handleArithmeticExpression(

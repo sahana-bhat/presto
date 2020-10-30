@@ -25,6 +25,7 @@ import com.facebook.presto.spi.NestedColumn;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SystemTable;
 import com.facebook.presto.spi.TableHandle;
+import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.api.Experimental;
 import com.facebook.presto.spi.block.BlockEncodingSerde;
 import com.facebook.presto.spi.connector.ConnectorCapabilities;
@@ -137,6 +138,8 @@ public interface Metadata
     PartitioningHandle getPartitioningHandleForExchange(Session session, String catalogName, int partitionCount, List<Type> partitionTypes);
 
     Optional<Object> getInfo(Session session, TableHandle handle);
+
+    List<TableSample> getSampleTables(Session session, TableHandle handle);
 
     /**
      * Return the metadata for the specified table handle.

@@ -254,7 +254,7 @@ public class PinotConfig
         return this;
     }
 
-    @MinDuration("0s")
+    @MinDuration("1s")
     @NotNull
     public Duration getMetadataCacheExpiry()
     {

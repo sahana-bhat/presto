@@ -158,6 +158,7 @@ public class HiveClientConfig
     private boolean zstdJniDecompressionEnabled;
 
     private boolean isParquetColumnDecryptionEnabled = true;
+    private boolean isReadNullMaskedValueEnabled;
     private boolean isOptimizedParquetReaderEnabled;
     private boolean isParquetVerificationEnabled;
 
@@ -1301,6 +1302,19 @@ public class HiveClientConfig
     public boolean isParquetColumnDecryptionEnabled()
     {
         return this.isParquetColumnDecryptionEnabled;
+    }
+
+    @Config("hive.read-masked-value-enabled")
+    @ConfigDescription("Read null masked value when access is denied for an encrypted column")
+    public HiveClientConfig setReadNullMaskedValueEnabled(boolean isReadNullMaskedValueEnabled)
+    {
+        this.isReadNullMaskedValueEnabled = isReadNullMaskedValueEnabled;
+        return this;
+    }
+
+    public boolean isReadNullMaskedValueEnabled()
+    {
+        return this.isReadNullMaskedValueEnabled;
     }
 
     @Config("hive.enable-optimized-parquet-reader")

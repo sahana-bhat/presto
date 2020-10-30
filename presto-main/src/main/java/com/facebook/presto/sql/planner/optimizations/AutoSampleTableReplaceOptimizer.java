@@ -22,6 +22,7 @@ import com.facebook.presto.metadata.QualifiedObjectName;
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ColumnMetadata;
 import com.facebook.presto.spi.ConnectorTableMetadata;
+import com.facebook.presto.spi.NestedColumn;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.TableHandle;
@@ -42,8 +43,12 @@ import com.facebook.presto.spi.relation.RowExpression;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.sql.analyzer.FeaturesConfig.ApproxResultsOption;
+import com.facebook.presto.sql.parser.SqlParser;
+import com.facebook.presto.sql.planner.ExpressionDomainTranslator;
+import com.facebook.presto.sql.planner.LiteralEncoder;
 import com.facebook.presto.sql.planner.PlanVariableAllocator;
 import com.facebook.presto.sql.planner.TypeProvider;
+import com.facebook.presto.sql.planner.iterative.rule.PickTableLayout;
 import com.facebook.presto.sql.planner.plan.ApplyNode;
 import com.facebook.presto.sql.planner.plan.JoinNode;
 import com.facebook.presto.sql.planner.plan.LateralJoinNode;
@@ -57,6 +62,7 @@ import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.SymbolReference;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -70,6 +76,7 @@ import java.util.Optional;
 
 import static com.facebook.presto.spi.type.DoubleType.DOUBLE;
 import static com.facebook.presto.sql.relational.OriginalExpressionUtils.castToExpression;
+import static com.facebook.presto.sql.relational.OriginalExpressionUtils.castToRowExpression;
 import static com.facebook.presto.sql.relational.OriginalExpressionUtils.isExpression;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
@@ -79,16 +86,18 @@ public class AutoSampleTableReplaceOptimizer
         implements PlanOptimizer
 {
     protected final Metadata metadata;
+    protected final SqlParser parser;
 
-    public AutoSampleTableReplaceOptimizer(Metadata metadata)
+    public AutoSampleTableReplaceOptimizer(Metadata metadata, SqlParser parser)
     {
-        this(metadata, false);
+        this(metadata, parser, false);
     }
 
-    public AutoSampleTableReplaceOptimizer(Metadata metadata, boolean failOpen)
+    public AutoSampleTableReplaceOptimizer(Metadata metadata, SqlParser parser, boolean failOpen)
     {
         requireNonNull(metadata, "metadata is null");
         this.metadata = metadata;
+        this.parser = parser;
     }
 
     public Optional<TableSample> getSampleTable(Session session, TableHandle tableHandle)
@@ -96,7 +105,7 @@ public class AutoSampleTableReplaceOptimizer
         // Check if the current table has any samples and use them if available
         ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(session, tableHandle).getMetadata();
 
-        List<TableSample> sampledTables = tableMetadata.getSampledTables();
+        List<TableSample> sampledTables = metadata.getSampleTables(session, tableHandle);
         if (sampledTables.isEmpty()) {
             return Optional.empty();
         }
@@ -116,7 +125,7 @@ public class AutoSampleTableReplaceOptimizer
         if (!approxResultsOption.name().contains("SAMPLING")) {
             return plan;
         }
-        SampledTableReplacer replacer = new SampledTableReplacer(metadata, variableAllocator, idAllocator, session, types);
+        SampledTableReplacer replacer = new SampledTableReplacer(metadata, variableAllocator, idAllocator, session, parser, types);
         SampledTableReplacer.SampleContext ctx = replacer.getContext();
         PlanNode root = SimplePlanRewriter.rewriteWith(replacer, plan, ctx);
         if (ctx.getSamplingFailed()) {
@@ -134,6 +143,7 @@ public class AutoSampleTableReplaceOptimizer
         private final Logger log = Logger.get(SampledTableReplacer.class);
         private final Metadata metadata;
         private final Session session;
+        private final SqlParser parser;
         private final TypeProvider types;
         private final PlanVariableAllocator variableAllocator;
         private final PlanNodeIdAllocator idAllocator;
@@ -144,12 +154,14 @@ public class AutoSampleTableReplaceOptimizer
                 PlanVariableAllocator variableAllocator,
                 PlanNodeIdAllocator idAllocator,
                 Session session,
+                SqlParser parser,
                 TypeProvider types)
         {
             this.metadata = metadata;
             this.session = session;
             this.variableAllocator = variableAllocator;
             this.idAllocator = idAllocator;
+            this.parser = parser;
             this.types = types;
         }
 
@@ -189,13 +201,6 @@ public class AutoSampleTableReplaceOptimizer
                 return node;
             }
 
-            if (!(node.getCurrentConstraint().equals(TupleDomain.all()) && node.getEnforcedConstraint().equals(TupleDomain.all()))) {
-                // Not handling it here. Hopefully this optimizer will run before any other optimizer that adds these
-                // constraints, so that they (and any table layouts) will get added after this transformation.
-                context.get().setFailed("CurrentConstraint or EnforcedConstraint set on TableScanNode");
-                return node;
-            }
-
             // If a sampled table is already being used, then just can scan the variables
             if (context.get().getTableSample().isPresent()) {
                 return scanTableVariables(node, context);
@@ -212,8 +217,8 @@ public class AutoSampleTableReplaceOptimizer
                     sampleTable.get().getTableName().getTableName());
             Optional<TableHandle> tableHandle = metadata.getTableHandle(session, name);
             if (!tableHandle.isPresent()) {
-                log.warn("Could not create table handle for " + sampleTable);
-                return scanTableVariables(node, context);
+                context.get().setFailed("Could not create table handle for " + sampleTable);
+                return node;
             }
 
             Map<String, ColumnHandle> sampleColumnHandles = metadata.getColumnHandles(session, tableHandle.get());
@@ -221,10 +226,21 @@ public class AutoSampleTableReplaceOptimizer
             for (VariableReferenceExpression vre : node.getAssignments().keySet()) {
                 ColumnMetadata cm = metadata.getColumnMetadata(session, node.getTable(), node.getAssignments().get(vre));
                 if (!sampleColumnHandles.containsKey(cm.getName())) {
-                    log.warn("Sample Table " + sampleTable.get().getTableName() + " does not contain column " + cm.getName());
-                    return node;
+                    // Maybe it is a nested column
+                    NestedColumn nest = NestedColumn.fromName(cm.getName());
+                    Map<NestedColumn, ColumnHandle> nestedColumnHandles =
+                            metadata.getNestedColumnHandles(session, tableHandle.get(), Collections.singletonList(nest));
+                    if (nestedColumnHandles.containsKey(nest)) {
+                        columns.put(vre, nestedColumnHandles.get(nest));
+                    }
+                    else {
+                        context.get().setFailed("Sample Table " + sampleTable.get().getTableName() + " does not contain column " + cm.getName());
+                        return node;
+                    }
                 }
-                columns.put(vre, sampleColumnHandles.get(cm.getName()));
+                else {
+                    columns.put(vre, sampleColumnHandles.get(cm.getName()));
+                }
             }
 
             context.get().setTableSample(sampleTable.get());
@@ -235,10 +251,26 @@ public class AutoSampleTableReplaceOptimizer
                     tableHandle.get(),
                     node.getOutputVariables(),
                     columns.build(),
-                    node.getCurrentConstraint(),
-                    node.getEnforcedConstraint(),
+                    TupleDomain.all(),
+                    TupleDomain.all(),
                     true,
                     node.isPartialAggregationPushedDown());
+
+            if (!node.getEnforcedConstraint().isAll()) {
+                ExpressionDomainTranslator domainTranslator = new ExpressionDomainTranslator(new LiteralEncoder(metadata.getBlockEncodingSerde()));
+                Map<ColumnHandle, VariableReferenceExpression> assignments = ImmutableBiMap.copyOf(node.getAssignments()).inverse();
+                Expression predicate = domainTranslator.toPredicate(node.getEnforcedConstraint().transform(column -> assignments.get(column).getName()));
+                newNode = (TableScanNode) PickTableLayout.pushPredicateIntoTableScan(
+                        newNode,
+                        castToRowExpression(predicate),
+                        false,
+                        session,
+                        variableAllocator.getTypes(),
+                        idAllocator,
+                        metadata,
+                        parser,
+                        domainTranslator);
+            }
             return scanTableVariables(newNode, context);
         }
 

@@ -265,7 +265,6 @@ public class PlanOptimizers
         PlanOptimizer rowExpressionPredicatePushDown = new StatsRecordingPlanOptimizer(optimizerStats, new RowExpressionPredicatePushDown(metadata, sqlParser));
 
         builder.add(
-                new AutoSampleTableReplaceOptimizer(metadata),
                 new IterativeOptimizer(
                         ruleStats,
                         statsCalculator,
@@ -385,6 +384,7 @@ public class PlanOptimizers
                         statsCalculator,
                         estimatedExchangesCostCalculator,
                         new PickTableLayout(metadata, sqlParser).rules()),
+                new AutoSampleTableReplaceOptimizer(metadata, sqlParser),
                 new PruneUnreferencedOutputs(),
                 new IterativeOptimizer(
                         ruleStats,

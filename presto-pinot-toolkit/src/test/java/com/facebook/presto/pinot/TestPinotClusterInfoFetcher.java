@@ -72,7 +72,7 @@ public class TestPinotClusterInfoFetcher
                 "  ]\n" +
                 "}"));
         PinotConfig pinotConfig = new PinotConfig()
-                .setMetadataCacheExpiry(new Duration(0, TimeUnit.MILLISECONDS))
+                .setMetadataCacheExpiry(new Duration(1, TimeUnit.MILLISECONDS))
                 .setControllerUrls("localhost:7900");
         PinotClusterInfoFetcher pinotClusterInfoFetcher = new PinotClusterInfoFetcher(pinotConfig, new PinotMetrics(), httpClient, MetadataUtil.TABLES_JSON_CODEC, MetadataUtil.BROKERS_FOR_TABLE_JSON_CODEC, MetadataUtil.ROUTING_TABLES_JSON_CODEC, MetadataUtil.TIME_BOUNDARY_JSON_CODEC);
         ImmutableSet<String> brokers = ImmutableSet.copyOf(pinotClusterInfoFetcher.getAllBrokersForTable(new PinotClusterInfoFetcher.BrokerCacheKey("dummy", Optional.empty())));

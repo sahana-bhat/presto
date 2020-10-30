@@ -154,7 +154,7 @@ public abstract class AbstractSimpleColumnReaderV2
         ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, bytes.length);
 
         this.dlDecoder = createSimpleDLDecoder(page.getDefinitionLevelEncoding(), columnDescriptor.isRequired(), columnDescriptor.getMaxDefinitionLevel(), page.getValueCount(), byteBuffer);
-        this.valuesDecoder = createValuesDecoder(columnDescriptor, dictionary, page.getValueEncoding(),
+        this.valuesDecoder = createValuesDecoder(columnDescriptor, dictionary, page.getValueCount(), page.getValueEncoding(),
                 bytes, byteBuffer.position(), bytes.length - byteBuffer.position());
     }
 
@@ -173,7 +173,7 @@ public abstract class AbstractSimpleColumnReaderV2
         }
 
         final byte[] dataBuffer = pageV2.getSlice().getBytes();
-        this.valuesDecoder = createValuesDecoder(columnDescriptor, dictionary, pageV2.getDataEncoding(), dataBuffer, 0, dataBuffer.length);
+        this.valuesDecoder = createValuesDecoder(columnDescriptor, dictionary, pageV2.getValueCount(), pageV2.getDataEncoding(), dataBuffer, 0, dataBuffer.length);
     }
 
     protected abstract ColumnChunk readNoNull()

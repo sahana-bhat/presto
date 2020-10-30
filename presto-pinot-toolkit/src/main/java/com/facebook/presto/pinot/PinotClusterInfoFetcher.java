@@ -44,6 +44,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -107,8 +108,8 @@ public class PinotClusterInfoFetcher
         this.pinotMetrics = requireNonNull(pinotMetrics, "pinotMetrics is null");
         this.httpClient = requireNonNull(httpClient, "httpClient is null");
         this.brokersForTableCache = CacheBuilder.newBuilder()
-                .expireAfterWrite(cacheExpiryMs, TimeUnit.MILLISECONDS)
-                .build((CacheLoader.from(this::getAllBrokersForTable)));
+                .refreshAfterWrite(cacheExpiryMs, TimeUnit.MILLISECONDS)
+                .build(CacheLoader.asyncReloading(CacheLoader.from(this::getAllBrokersForTable), Executors.newSingleThreadExecutor()));
     }
 
     public static JsonCodecBinder addJsonBinders(JsonCodecBinder jsonCodecBinder)

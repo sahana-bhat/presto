@@ -567,8 +567,7 @@ public class HiveMetadata
                 tableName,
                 columns.build(),
                 properties.build(),
-                comment,
-                getSampledTables(identity, table.get()));
+                comment);
     }
 
     private boolean checkSampleTableSchemaMatch(Table parentTable, Table sampleTable)
@@ -660,6 +659,42 @@ public class HiveMetadata
             }
         }
         return sampledList;
+    }
+
+    private boolean canSupportLayout(ConnectorSession session, SchemaTableName tableName, HiveTableLayoutHandle layoutHandle)
+    {
+        Optional<Table> table = metastore.getTable(session.getIdentity(), tableName.getSchemaName(), tableName.getTableName());
+        if (!table.isPresent()) {
+            return false;
+        }
+        if (!layoutHandle.getPartitions().isPresent()) {
+            return true;
+        }
+        HiveTableHandle tableHandle = getTableHandle(session, tableName);
+        TupleDomain<ColumnHandle> partitionColumnPredicate = layoutHandle.getPartitionColumnPredicate();
+        Predicate<Map<ColumnHandle, NullableValue>> predicate = convertToPredicate(partitionColumnPredicate);
+        List<ConnectorTableLayoutResult> tableLayoutResults = getTableLayouts(session, tableHandle, new Constraint<>(partitionColumnPredicate, predicate), Optional.empty());
+        List<HivePartition> samPartitions = ((HiveTableLayoutHandle) Iterables.getOnlyElement(tableLayoutResults).getTableLayout().getHandle()).getPartitions().get();
+        return samPartitions.size() >= layoutHandle.getPartitions().get().size();
+    }
+
+    @Override
+    public List<TableSample> getSampleTables(ConnectorSession session, ConnectorTableHandle tableHandle, Optional<ConnectorTableLayoutHandle> layoutHandle)
+    {
+        requireNonNull(tableHandle, "tableHandle is null");
+        SchemaTableName tableName = schemaTableName(tableHandle);
+        Optional<Table> table = metastore.getTable(session.getIdentity(), tableName.getSchemaName(), tableName.getTableName());
+        if (!table.isPresent()) {
+            return ImmutableList.of();
+        }
+        List<TableSample> sampleTables = getSampledTables(session.getIdentity(), table.get());
+        if (sampleTables.isEmpty()) {
+            return ImmutableList.of();
+        }
+        if (!layoutHandle.isPresent()) {
+            return sampleTables;
+        }
+        return sampleTables.stream().filter(t -> canSupportLayout(session, t.getTableName(), (HiveTableLayoutHandle) layoutHandle.get())).collect(toList());
     }
 
     @Override

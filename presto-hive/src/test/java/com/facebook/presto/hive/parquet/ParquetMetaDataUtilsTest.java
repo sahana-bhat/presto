@@ -21,13 +21,25 @@ import org.apache.parquet.crypto.CryptoMetadataRetriever;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncDecryptorRetriever;
 import org.apache.parquet.crypto.InternalFileDecryptor;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
@@ -84,6 +96,34 @@ public class ParquetMetaDataUtilsTest
         ParquetMetadata parquetMetadata = ParquetMetaDataUtils.getParquetMetadata(fileDecryptionProperties, fileDecryptor,
                 configuration, path, fileSize, inputStream);
         validate(parquetMetadata);
+    }
+
+    @Test
+    public void testRemoveColumnsInSchema()
+    {
+        MessageType schema = new MessageType("schema",
+                new PrimitiveType(REQUIRED, INT64, "DocId"),
+                new PrimitiveType(REQUIRED, BINARY, "Name"),
+                new PrimitiveType(REQUIRED, BINARY, "Gender"),
+                new GroupType(OPTIONAL, "Links",
+                        new PrimitiveType(REPEATED, INT64, "Backward"),
+                        new PrimitiveType(REPEATED, INT64, "Forward")));
+        Set<ColumnPath> paths = new HashSet<>();
+        paths.add(ColumnPath.fromDotString("Name"));
+        paths.add(ColumnPath.fromDotString("Links.Backward"));
+
+        MessageType newSchema = ParquetMetaDataUtils.removeColumnsInSchema(schema, paths);
+
+        String[] docId = {"DocId"};
+        assertTrue(newSchema.containsPath(docId));
+        String[] gender = {"Gender"};
+        assertTrue(newSchema.containsPath(gender));
+        String[] linkForward = {"Links", "Forward"};
+        assertTrue(newSchema.containsPath(linkForward));
+        String[] name = {"Name"};
+        assertFalse(newSchema.containsPath(name));
+        String[] linkBackward = {"Links", "Backward"};
+        assertFalse(newSchema.containsPath(linkBackward));
     }
 
     private void validate(ParquetMetadata parquetMetadata)

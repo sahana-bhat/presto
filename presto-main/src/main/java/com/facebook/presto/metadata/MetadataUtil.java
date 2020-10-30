@@ -19,7 +19,6 @@ import com.facebook.presto.spi.ColumnMetadata;
 import com.facebook.presto.spi.ConnectorTableMetadata;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
-import com.facebook.presto.spi.TableSample;
 import com.facebook.presto.spi.security.PrestoPrincipal;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.sql.analyzer.SemanticException;
@@ -234,7 +233,6 @@ public final class MetadataUtil
         private final SchemaTableName tableName;
         private final ImmutableList.Builder<ColumnMetadata> columns = ImmutableList.builder();
         private final ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-        private final ImmutableList.Builder<TableSample> samples = ImmutableList.builder();
         private final Optional<String> comment;
 
         private TableMetadataBuilder(SchemaTableName tableName)
@@ -260,15 +258,9 @@ public final class MetadataUtil
             return this;
         }
 
-        public TableMetadataBuilder sample(TableSample tableSample)
-        {
-            samples.add(tableSample);
-            return this;
-        }
-
         public ConnectorTableMetadata build()
         {
-            return new ConnectorTableMetadata(tableName, columns.build(), properties.build(), comment, samples.build());
+            return new ConnectorTableMetadata(tableName, columns.build(), properties.build(), comment);
         }
     }
 }

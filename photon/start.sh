@@ -81,6 +81,8 @@ else
   HOST_NAME=`jq -r '.all[] | .hostName' <<< $ODIN_NAMED_NODE_PLACEMENT`
 fi
 
+echo $UBER_ZONE > /etc/uber/datacenter
+
 REPLACE_HOST_NAME="http://"$HOST_NAME".prod.uber.internal:8080"
 sed -i -e "/^discovery.uri/ s%REPLACE_DISCOVERY_URI%$REPLACE_HOST_NAME%" $CONFIG_PROPERTIES
 

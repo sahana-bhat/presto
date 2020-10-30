@@ -86,12 +86,12 @@ METRICS = [
 },
 {
     "prefix": "presto.httpserver",
-    "mbean": "io.airlift.http.server:name=HttpServer",
+    "mbean": "com.facebook.airlift.http.server:name=HttpServer",
     "metrics": ["httpconnectionstats"]
 },
 {
     "prefix": "presto.requeststats",
-    "mbean": "io.airlift.http.server:name=RequestStats"
+    "mbean": "com.facebook.airlift.http.server:name=RequestStats"
 },
 {
     "prefix": "presto.statementresource",
