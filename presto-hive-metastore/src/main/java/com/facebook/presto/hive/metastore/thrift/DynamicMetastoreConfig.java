@@ -59,11 +59,10 @@ public class DynamicMetastoreConfig
     @Config("hive.metastore.discovery.uri")
     public DynamicMetastoreConfig setMetastoreDiscoveryUri(String metastoreDiscoveryUri) throws TException
     {
-        ObjectMapperProvider objectMapperProvider = new ObjectMapperProvider();
         try {
-            this.metastoreDiscoveryUri = objectMapperProvider.get().readValue(metastoreDiscoveryUri, HttpRequestDetails.class);
+            this.metastoreDiscoveryUri = new ObjectMapperProvider().get().readValue(metastoreDiscoveryUri, HttpRequestDetails.class);
         }
-        catch (IOException e) {
+        catch (IOException | NullPointerException e) {
             throw new TException("Cannot deserialize discovery uri details", e);
         }
         return this;
