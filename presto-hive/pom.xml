@@ -415,6 +415,10 @@
                     <groupId>org.apache.parquet</groupId>
                     <artifactId>parquet-format</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>jakarta.annotation</groupId>
+                    <artifactId>jakarta.annotation-api</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 

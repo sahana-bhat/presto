@@ -64,6 +64,7 @@ public class HiveMetadataFactory
     private final StagingFileCommitter stagingFileCommitter;
     private final ZeroRowFileCreator zeroRowFileCreator;
     private final String prestoVersion;
+    private final HiveTicketCache hiveTicketCache;
     private final PartitionObjectBuilder partitionObjectBuilder;
 
     @Inject
@@ -88,6 +89,7 @@ public class HiveMetadataFactory
             StagingFileCommitter stagingFileCommitter,
             ZeroRowFileCreator zeroRowFileCreator,
             NodeVersion nodeVersion,
+            HiveTicketCache hiveTicketCache,
             PartitionObjectBuilder partitionObjectBuilder)
     {
         this(
@@ -115,6 +117,7 @@ public class HiveMetadataFactory
                 typeTranslator,
                 stagingFileCommitter,
                 zeroRowFileCreator,
+                hiveTicketCache,
                 nodeVersion.toString(),
                 partitionObjectBuilder);
     }
@@ -144,6 +147,7 @@ public class HiveMetadataFactory
             TypeTranslator typeTranslator,
             StagingFileCommitter stagingFileCommitter,
             ZeroRowFileCreator zeroRowFileCreator,
+            HiveTicketCache hiveTicketCache,
             String prestoVersion,
             PartitionObjectBuilder partitionObjectBuilder)
     {
@@ -171,6 +175,7 @@ public class HiveMetadataFactory
         this.typeTranslator = requireNonNull(typeTranslator, "typeTranslator is null");
         this.stagingFileCommitter = requireNonNull(stagingFileCommitter, "stagingFileCommitter is null");
         this.zeroRowFileCreator = requireNonNull(zeroRowFileCreator, "zeroRowFileCreator is null");
+        this.hiveTicketCache = requireNonNull(hiveTicketCache, "hiveTicketCache is null");
         this.prestoVersion = requireNonNull(prestoVersion, "prestoVersion is null");
         this.partitionObjectBuilder = requireNonNull(partitionObjectBuilder, "partitionObjectBuilder is null");
 
@@ -214,6 +219,7 @@ public class HiveMetadataFactory
                 new MetastoreHiveStatisticsProvider(metastore, hmsImpersonationDefaultUser),
                 stagingFileCommitter,
                 zeroRowFileCreator,
+                hiveTicketCache,
                 partitionObjectBuilder);
     }
 }
