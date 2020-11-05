@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.facebook.airlift.json.JsonCodec.listJsonCodec;
+import static com.facebook.airlift.json.JsonCodec.mapJsonCodec;
 import static com.facebook.presto.spi.type.BigintType.BIGINT;
 import static com.facebook.presto.spi.type.BooleanType.BOOLEAN;
 import static com.facebook.presto.spi.type.DoubleType.DOUBLE;
@@ -44,6 +45,7 @@ public final class MetadataUtil
     public static final JsonCodec<PinotClusterInfoFetcher.BrokersForTable> BROKERS_FOR_TABLE_JSON_CODEC;
     public static final JsonCodec<PinotClusterInfoFetcher.RoutingTables> ROUTING_TABLES_JSON_CODEC;
     public static final JsonCodec<PinotClusterInfoFetcher.TimeBoundary> TIME_BOUNDARY_JSON_CODEC;
+    public static final JsonCodec<Map<String, Map<String, List<String>>>> ROUTING_TABLES_JSON_CODEC_V4;
 
     private MetadataUtil()
     {
@@ -83,5 +85,6 @@ public final class MetadataUtil
         BROKERS_FOR_TABLE_JSON_CODEC = codecFactory.jsonCodec(PinotClusterInfoFetcher.BrokersForTable.class);
         ROUTING_TABLES_JSON_CODEC = codecFactory.jsonCodec(PinotClusterInfoFetcher.RoutingTables.class);
         TIME_BOUNDARY_JSON_CODEC = codecFactory.jsonCodec(PinotClusterInfoFetcher.TimeBoundary.class);
+        ROUTING_TABLES_JSON_CODEC_V4 = mapJsonCodec(String.class, mapJsonCodec(String.class, listJsonCodec(String.class)));
     }
 }
