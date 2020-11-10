@@ -139,7 +139,9 @@ public class Decoders
         }
 
         if (encoding == RLE && type == BOOLEAN) {
-            return new BooleanRLEValuesDecoder(ByteBuffer.wrap(buffer, offset, length));
+            ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, offset, length);
+            byteBuffer.getInt(); // skip past the length
+            return new BooleanRLEValuesDecoder(byteBuffer);
         }
 
         if (encoding == RLE_DICTIONARY || encoding == PLAIN_DICTIONARY) {
