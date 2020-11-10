@@ -97,7 +97,7 @@ METRICS = [
 },
 {
     "prefix": "presto.httpclient.scheduler",
-    "mbean": "io.airlift.http.client:name=ForScheduler,type=HttpClient"
+    "mbean": "com.facebook.irlift.http.client:name=ForScheduler,type=HttpClient"
 },
 {
     "prefix": "presto.metadata",
@@ -106,7 +106,7 @@ METRICS = [
 },
 {
     "prefix": "presto.schedulerclient",
-    "mbean": "io.airlift.http.client:type=HttpClient,name=ForScheduler",
+    "mbean": "com.facebook.airlift.http.client:type=HttpClient,name=ForScheduler",
     "metrics": ["activeconnectionsperdestination", "connectionstats", "threadpool"]
 },
 {
@@ -143,16 +143,16 @@ METRICS = [
 },
 {
     "prefix": "presto.httpserver",
-    "mbean": "io.airlift.http.server:name=HttpServer",
+    "mbean": "com.facebook.airlift.http.server:name=HttpServer",
     "metrics": ["httpconnectionstats"]
 },
 {
     "prefix": "presto.requeststats",
-    "mbean": "io.airlift.http.server:name=RequestStats"
+    "mbean": "com.facebook.airlift.http.server:name=RequestStats"
 },
 {
     "prefix": "presto.exchangeclient",
-    "mbean": "io.airlift.http.client:type=HttpClient,name=ForExchange",
+    "mbean": "com.facebook.airlift.http.client:type=HttpClient,name=ForExchange",
     "metrics": ["activeconnectionsperdestination", "connectionstats", "threadpool"]
 },
 {
