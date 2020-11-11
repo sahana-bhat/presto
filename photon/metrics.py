@@ -39,7 +39,7 @@ METRICS = [
 },
 {
     "prefix": "jvm.Memory.ConcurrentMarkSweep",
-    "mbean": "java.lang:name=ConcurrentMarkSweep,type=GarbageCollector",
+    "mbean": "java.lang:type=GarbageCollector,name=ConcurrentMarkSweep",
     "metrics": [('CollectionCount', None, 'COUNTER'), ('CollectionTime', None, 'COUNTER')]
 },
 {
@@ -96,10 +96,6 @@ METRICS = [
     "mbean": "com.facebook.presto.execution.scheduler:name=SplitSchedulerStats"
 },
 {
-    "prefix": "presto.httpclient.scheduler",
-    "mbean": "com.facebook.irlift.http.client:name=ForScheduler,type=HttpClient"
-},
-{
     "prefix": "presto.metadata",
     "mbean": "com.facebook.presto.metadata:name=DiscoveryNodeManager",
     "metrics": ['activenodecount', 'inactivenodecount', 'shuttingdownnodecount']
@@ -135,7 +131,7 @@ METRICS = [
 },
 {
     "prefix": "presto.hdfs",
-    "mbean": "com.facebook.presto.hive:name=hive,type=FileFormatDataSourceStats"
+    "mbean": "com.facebook.presto.hive:type=FileFormatDataSourceStats,name=hive"
 },
 {
     "prefix": "presto.taskresource",
