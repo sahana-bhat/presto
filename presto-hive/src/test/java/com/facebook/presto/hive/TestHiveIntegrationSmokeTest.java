@@ -194,6 +194,8 @@ public class TestHiveIntegrationSmokeTest
         Session noPartitionFilterSession = Session.builder(commonSession).setSystemProperty(SystemSessionProperties.PARTITION_FILTER, "false").build();
 
         Session wildcardSession = Session.builder(getSession()).setSystemProperty(SystemSessionProperties.PARTITION_FILTER_TABLES, HiveQueryRunner.TPCH_SCHEMA + ".*").setSystemProperty(SystemSessionProperties.PARTITION_FILTER, "true").build();
+        // Regex to exclude partition filter check for tables partitioned_table_multi* and some_table* but apply it on all other tables in schema tpch
+        Session regExNegationSession = Session.builder(getSession()).setSystemProperty(SystemSessionProperties.PARTITION_FILTER_TABLES, HiveQueryRunner.TPCH_SCHEMA + ".^(?!\\b(partitioned_table_multi*|some_table*)\\b*)*").setSystemProperty(SystemSessionProperties.PARTITION_FILTER, "true").build();
 
         @Language("SQL") String createPartitionTable = "" +
                 "CREATE TABLE partitioned_table " +
@@ -212,7 +214,6 @@ public class TestHiveIntegrationSmokeTest
                 "AS " +
                 "SELECT orderkey AS order_key, shippriority AS ship_priority, orderstatus AS order_status, CURRENT_DATE AS processed_date " +
                 "FROM tpch.tiny.orders";
-
         assertUpdate(commonSession, createPartitionTable, "SELECT count(*) from orders");
         assertUpdate(commonSession, createPartitionedTableMultiPartitionKey, "SELECT count(*) from orders");
 
@@ -255,6 +256,18 @@ public class TestHiveIntegrationSmokeTest
 
         // When order_date column in partitioned_table become order_date_1 in tableScan:originalConstraint, this query still works
         computeActual(partitionFilterSession, "select * from partitioned_table_multi_partition_key multiple join partitioned_table single on multiple.order_status = single.order_status where multiple.order_status = '2017=06-01' and single.order_status = '2017-06-01' and multiple.ship_priority = 2");
+
+        // Querying table included by partitionFilter regex will fail without partition filter
+        assertQueryFails(regExNegationSession, "select * from partitioned_table",
+                "Filters need to be specified on all partition columns of a table. "
+                        + "Your query is missing filters on columns \\('order_status'\\) "
+                        + "for table 'tpch.partitioned_table'. Please add filters in the WHERE clause of your query. "
+                        + "For example: WHERE DATE\\(datestr\\) > CURRENT_DATE - INTERVAL '7' DAY. .*");
+        // Querying table included by partitionFilter regex will succeed with partition filter
+        computeActual(regExNegationSession, "select * from partitioned_table where order_status=''");
+
+        // Querying table not included by partitionFilter regex will succeed even without partition
+        computeActual(regExNegationSession, "select * from partitioned_table_multi_partition_key");
 
         assertUpdate("DROP TABLE partitioned_table");
         assertUpdate("DROP TABLE partitioned_table_multi_partition_key");
