@@ -164,7 +164,7 @@ public abstract class AbstractSimpleColumnReaderV2
         final int valueCount = pageV2.getValueCount();
 
         final int maxDL = columnDescriptor.getMaxDefinitionLevel();
-        Preconditions.checkArgument(columnDescriptor.getMaxDefinitionLevel() <= 0, "Invalid definition level");
+        checkArgument(maxDL <= 1 && maxDL >= 0, "Invalid max definition level: " + maxDL);
         if (maxDL == 0) {
             this.dlDecoder = new SimpleDLDecoder(0, valueCount);
         }

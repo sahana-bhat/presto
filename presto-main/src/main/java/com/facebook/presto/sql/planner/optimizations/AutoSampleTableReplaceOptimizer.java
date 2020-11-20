@@ -105,7 +105,8 @@ public class AutoSampleTableReplaceOptimizer
         // Check if the current table has any samples and use them if available
         ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(session, tableHandle).getMetadata();
 
-        List<TableSample> sampledTables = metadata.getSampleTables(session, tableHandle);
+        ApproxResultsOption approxResultsOption = SystemSessionProperties.getApproxResultsOption(session);
+        List<TableSample> sampledTables = metadata.getSampleTables(session, tableHandle, approxResultsOption.name().contains("PARTITION_MATCH"));
         if (sampledTables.isEmpty()) {
             return Optional.empty();
         }

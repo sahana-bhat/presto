@@ -39,7 +39,7 @@ METRICS = [
 },
 {
     "prefix": "jvm.Memory.ConcurrentMarkSweep",
-    "mbean": "java.lang:name=ConcurrentMarkSweep,type=GarbageCollector",
+    "mbean": "java.lang:type=GarbageCollector,name=ConcurrentMarkSweep",
     "metrics": [('CollectionCount', None, 'COUNTER'), ('CollectionTime', None, 'COUNTER')]
 },
 {
@@ -96,17 +96,13 @@ METRICS = [
     "mbean": "com.facebook.presto.execution.scheduler:name=SplitSchedulerStats"
 },
 {
-    "prefix": "presto.httpclient.scheduler",
-    "mbean": "io.airlift.http.client:name=ForScheduler,type=HttpClient"
-},
-{
     "prefix": "presto.metadata",
     "mbean": "com.facebook.presto.metadata:name=DiscoveryNodeManager",
     "metrics": ['activenodecount', 'inactivenodecount', 'shuttingdownnodecount']
 },
 {
     "prefix": "presto.schedulerclient",
-    "mbean": "io.airlift.http.client:type=HttpClient,name=ForScheduler",
+    "mbean": "com.facebook.airlift.http.client:type=HttpClient,name=ForScheduler",
     "metrics": ["activeconnectionsperdestination", "connectionstats", "threadpool"]
 },
 {
@@ -135,7 +131,7 @@ METRICS = [
 },
 {
     "prefix": "presto.hdfs",
-    "mbean": "com.facebook.presto.hive:name=hive,type=FileFormatDataSourceStats"
+    "mbean": "com.facebook.presto.hive:type=FileFormatDataSourceStats,name=hive"
 },
 {
     "prefix": "presto.taskresource",
@@ -143,16 +139,16 @@ METRICS = [
 },
 {
     "prefix": "presto.httpserver",
-    "mbean": "io.airlift.http.server:name=HttpServer",
+    "mbean": "com.facebook.airlift.http.server:name=HttpServer",
     "metrics": ["httpconnectionstats"]
 },
 {
     "prefix": "presto.requeststats",
-    "mbean": "io.airlift.http.server:name=RequestStats"
+    "mbean": "com.facebook.airlift.http.server:name=RequestStats"
 },
 {
     "prefix": "presto.exchangeclient",
-    "mbean": "io.airlift.http.client:type=HttpClient,name=ForExchange",
+    "mbean": "com.facebook.airlift.http.client:type=HttpClient,name=ForExchange",
     "metrics": ["activeconnectionsperdestination", "connectionstats", "threadpool"]
 },
 {

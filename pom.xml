@@ -60,7 +60,7 @@
         <dep.logback.version>1.2.3</dep.logback.version>
         <dep.parquet.version>1.10.4</dep.parquet.version>
         <dep.parquet.format.version>2.4.0-encr</dep.parquet.format.version>
-        <dep.crypto.metadata.retriever.version>0.23.1-1671-9579a3b10964-java-monorepo</dep.crypto.metadata.retriever.version>
+        <dep.crypto.metadata.retriever.version>0.23.1-1689-99d6bab91e5c-java-monorepo</dep.crypto.metadata.retriever.version>
 
         <dep.nexus-staging-plugin.version>1.6.8</dep.nexus-staging-plugin.version>
         <dep.asm.version>6.2.1</dep.asm.version>

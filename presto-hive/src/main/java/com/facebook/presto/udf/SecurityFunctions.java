@@ -46,7 +46,7 @@ public final class SecurityFunctions
     }
 
     @Description("Decrypts the string using key")
-    @ScalarFunction("decryptUDF")
+    @ScalarFunction("udecrypt")
     @SqlType(StandardTypes.VARCHAR)
     public static Slice decryptString(ConnectorSession session, @SqlType(StandardTypes.VARCHAR) Slice v1)
     {
@@ -82,7 +82,7 @@ public final class SecurityFunctions
     }
 
     @Description("Encrypts the string using key")
-    @ScalarFunction("encryptUDF")
+    @ScalarFunction("uencrypt")
     @SqlType(StandardTypes.VARCHAR)
     public static Slice encryptString(ConnectorSession session, @SqlType(StandardTypes.VARCHAR) Slice v1, @SqlType(StandardTypes.VARCHAR) Slice v2)
     {
@@ -120,7 +120,7 @@ public final class SecurityFunctions
 
     @SqlNullable
     @Description("Check if the string is encrypted or not")
-    @ScalarFunction("isEncrypted")
+    @ScalarFunction("is_uencrypted")
     @SqlType(StandardTypes.BOOLEAN)
     public static Boolean isEncrypted(ConnectorSession session, @SqlType(StandardTypes.VARCHAR) Slice v1)
     {

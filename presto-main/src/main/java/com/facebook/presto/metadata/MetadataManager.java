@@ -507,11 +507,14 @@ public class MetadataManager
     }
 
     @Override
-    public List<TableSample> getSampleTables(Session session, TableHandle handle)
+    public List<TableSample> getSampleTables(Session session, TableHandle handle, boolean partitionMatch)
     {
         ConnectorId connectorId = handle.getConnectorId();
         ConnectorMetadata metadata = getMetadata(session, connectorId);
-        return metadata.getSampleTables(session.toConnectorSession(connectorId), handle.getConnectorHandle(), handle.getLayout());
+        return metadata.getSampleTables(
+                session.toConnectorSession(connectorId),
+                handle.getConnectorHandle(),
+                partitionMatch ? handle.getLayout() : Optional.empty());
     }
 
     @Override

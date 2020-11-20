@@ -43,6 +43,7 @@ import java.util.Optional;
 
 import static com.facebook.presto.parquet.ParquetTypeUtils.createDecimalType;
 import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
+import static org.apache.parquet.schema.OriginalType.DECIMAL;
 
 public class ColumnReaderFactory
 {
@@ -52,7 +53,8 @@ public class ColumnReaderFactory
 
     public static ColumnReader createReader(RichColumnDescriptor descriptor, boolean optimizedReaderEnabled)
     {
-        if (optimizedReaderEnabled) {
+        // decimal is not supported in optimized reader
+        if (optimizedReaderEnabled && descriptor.getPrimitiveType().getOriginalType() != DECIMAL) {
             final boolean isNested = descriptor.getPath().length > 1;
             switch (descriptor.getPrimitiveType().getPrimitiveTypeName()) {
                 case BOOLEAN:

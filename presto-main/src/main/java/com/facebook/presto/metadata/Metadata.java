@@ -139,7 +139,7 @@ public interface Metadata
 
     Optional<Object> getInfo(Session session, TableHandle handle);
 
-    List<TableSample> getSampleTables(Session session, TableHandle handle);
+    List<TableSample> getSampleTables(Session session, TableHandle handle, boolean partitionMatch);
 
     /**
      * Return the metadata for the specified table handle.

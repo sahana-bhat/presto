@@ -51,9 +51,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.facebook.airlift.http.client.HttpStatus.NOT_FOUND;
 import static com.facebook.airlift.http.client.StringResponseHandler.createStringResponseHandler;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_CONNECTION_ERROR;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_HTTP_ERROR;
+import static com.facebook.presto.pinot.PinotErrorCode.PINOT_HTTP_NOT_FOUND_ERROR;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_INVALID_CONFIGURATION;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_UNABLE_TO_FIND_BROKER;
 import static com.facebook.presto.pinot.PinotErrorCode.PINOT_UNEXPECTED_RESPONSE;
@@ -86,6 +88,7 @@ public class PinotClusterInfoFetcher
     private final JsonCodec<GetTables> tablesJsonCodec;
     private final JsonCodec<BrokersForTable> brokersForTableJsonCodec;
     private final JsonCodec<RoutingTables> routingTablesJsonCodec;
+    private final JsonCodec<Map<String, Map<String, List<String>>>> routingTablesJsonCodecV4;
     private final JsonCodec<TimeBoundary> timeBoundaryJsonCodec;
 
     @Inject
@@ -96,10 +99,12 @@ public class PinotClusterInfoFetcher
             JsonCodec<GetTables> tablesJsonCodec,
             JsonCodec<BrokersForTable> brokersForTableJsonCodec,
             JsonCodec<RoutingTables> routingTablesJsonCodec,
+            JsonCodec<Map<String, Map<String, List<String>>>> routingTablesJsonCodecV4,
             JsonCodec<TimeBoundary> timeBoundaryJsonCodec)
     {
         this.brokersForTableJsonCodec = requireNonNull(brokersForTableJsonCodec, "brokers for table json codec is null");
         this.routingTablesJsonCodec = requireNonNull(routingTablesJsonCodec, "routing tables json codec is null");
+        this.routingTablesJsonCodecV4 = requireNonNull(routingTablesJsonCodecV4, "routing tables v4 json codec is null");
         this.timeBoundaryJsonCodec = requireNonNull(timeBoundaryJsonCodec, "time boundary json codec is null");
         final long cacheExpiryMs = pinotConfig.getMetadataCacheExpiry().roundTo(TimeUnit.MILLISECONDS);
         this.tablesJsonCodec = requireNonNull(tablesJsonCodec, "json codec is null");
@@ -120,6 +125,7 @@ public class PinotClusterInfoFetcher
         jsonCodecBinder.bindJsonCodec(RoutingTables.class);
         jsonCodecBinder.bindJsonCodec(RoutingTables.RoutingTableSnapshot.class);
         jsonCodecBinder.bindJsonCodec(TimeBoundary.class);
+        jsonCodecBinder.bindMapJsonCodec(String.class, JsonCodec.mapJsonCodec(String.class, JsonCodec.listJsonCodec(String.class)));
         return jsonCodecBinder;
     }
 
@@ -167,6 +173,18 @@ public class PinotClusterInfoFetcher
             return responseBody;
         }
         else {
+            if (response.getStatusCode() == NOT_FOUND.code()) {
+                throw new PinotException(
+                        PINOT_HTTP_NOT_FOUND_ERROR,
+                        Optional.empty(),
+                        String.format(
+                                "Unexpected response status: %d for request %s to url %s, with headers %s, full response %s",
+                                response.getStatusCode(),
+                                requestBody.orElse(""),
+                                request.getUri(),
+                                request.getHeaders(),
+                                responseBody));
+            }
             throw new PinotException(
                     PINOT_HTTP_ERROR,
                     Optional.empty(),
@@ -399,34 +417,39 @@ public class PinotClusterInfoFetcher
         ImmutableMap.Builder<String, Map<String, List<String>>> routingTableMap = ImmutableMap.builder();
         log.debug("Trying to get routingTable for %s from broker", tableName);
         String responseBody = sendHttpGetToBroker(tableHandle, String.format(ROUTING_TABLE_API_TEMPLATE, tableName));
-        routingTablesJsonCodec.fromJson(responseBody).getRoutingTableSnapshot().forEach(snapshot -> {
-            String tableNameWithType = snapshot.getTableName();
-            // Response could contain info for tableName that matches the original table by prefix.
-            // e.g. when table name is "table1", response could contain routingTable for "table1_staging"
-            if (!tableName.equals(extractRawTableName(tableNameWithType))) {
-                log.debug("Ignoring routingTable for %s", tableNameWithType);
-            }
-            else {
-                List<Map<String, List<String>>> routingTableEntriesList = snapshot.getRoutingTableEntries();
-                if (routingTableEntriesList.isEmpty()) {
-                    throw new PinotException(
-                            PINOT_UNEXPECTED_RESPONSE,
-                            Optional.empty(),
-                            String.format("Empty routingTableEntries for %s. RoutingTable: %s", tableName, responseBody));
+        try {
+            routingTablesJsonCodec.fromJson(responseBody).getRoutingTableSnapshot().forEach(snapshot -> {
+                String tableNameWithType = snapshot.getTableName();
+                // Response could contain info for tableName that matches the original table by prefix.
+                // e.g. when table name is "table1", response could contain routingTable for "table1_staging"
+                if (!tableName.equals(extractRawTableName(tableNameWithType))) {
+                    log.debug("Ignoring routingTable for %s", tableNameWithType);
                 }
+                else {
+                    List<Map<String, List<String>>> routingTableEntriesList = snapshot.getRoutingTableEntries();
+                    if (routingTableEntriesList.isEmpty()) {
+                        throw new PinotException(
+                                PINOT_UNEXPECTED_RESPONSE,
+                                Optional.empty(),
+                                String.format("Empty routingTableEntries for %s. RoutingTable: %s", tableName, responseBody));
+                    }
 
-                // We are given multiple routing tables for a table, each with different segment to host assignments
-                // We pick one randomly, so that a retry may hit a different server
-                Map<String, List<String>> routingTableEntries = routingTableEntriesList.get(new Random().nextInt(routingTableEntriesList.size()));
-                ImmutableMap.Builder<String, List<String>> routingTableBuilder = ImmutableMap.builder();
-                routingTableEntries.forEach((host, segments) -> {
-                    List<String> segmentsCopied = new ArrayList<>(segments);
-                    shuffle(segmentsCopied);
-                    routingTableBuilder.put(host, ImmutableList.copyOf(segmentsCopied));
-                });
-                routingTableMap.put(tableNameWithType, routingTableBuilder.build());
-            }
-        });
+                    // We are given multiple routing tables for a table, each with different segment to host assignments
+                    // We pick one randomly, so that a retry may hit a different server
+                    Map<String, List<String>> routingTableEntries = routingTableEntriesList.get(new Random().nextInt(routingTableEntriesList.size()));
+                    ImmutableMap.Builder<String, List<String>> routingTableBuilder = ImmutableMap.builder();
+                    routingTableEntries.forEach((host, segments) -> {
+                        List<String> segmentsCopied = new ArrayList<>(segments);
+                        shuffle(segmentsCopied);
+                        routingTableBuilder.put(host, ImmutableList.copyOf(segmentsCopied));
+                    });
+                    routingTableMap.put(tableNameWithType, routingTableBuilder.build());
+                }
+            });
+        }
+        catch (Exception exception) {
+            return routingTablesJsonCodecV4.fromJson(responseBody);
+        }
         return routingTableMap.build();
     }
 
@@ -476,8 +499,17 @@ public class PinotClusterInfoFetcher
 
     public TimeBoundary getTimeBoundaryForTable(PinotTableHandle tableHandle)
     {
-        String responseBody = sendHttpGetToBroker(tableHandle, String.format(TIME_BOUNDARY_API_TEMPLATE, tableHandle.getTableName()));
-        return timeBoundaryJsonCodec.fromJson(responseBody);
+        try {
+            String responseBody = sendHttpGetToBroker(tableHandle, String.format(TIME_BOUNDARY_API_TEMPLATE, tableHandle.getTableName()));
+            return timeBoundaryJsonCodec.fromJson(responseBody);
+        }
+        catch (PinotException pinotException) {
+            if (pinotException.getPinotErrorCode().equals(PINOT_HTTP_NOT_FOUND_ERROR)) {
+                return new TimeBoundary();
+            }
+
+            throw pinotException;
+        }
     }
 
     @VisibleForTesting

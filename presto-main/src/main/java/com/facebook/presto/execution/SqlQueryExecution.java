@@ -575,7 +575,7 @@ public class SqlQueryExecution
             if (!tableHandle.isPresent()) {
                 continue;
             }
-            List<TableSample> tableSamples = metadata.getSampleTables(stateMachine.getSession(), tableHandle.get());
+            List<TableSample> tableSamples = metadata.getSampleTables(stateMachine.getSession(), tableHandle.get(), false);
             if (!tableSamples.isEmpty()) {
                 tablesWithSamples.add(input.getSchema() + "." + input.getTable());
             }

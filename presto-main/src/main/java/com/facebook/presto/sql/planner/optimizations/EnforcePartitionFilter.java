@@ -85,7 +85,7 @@ public class EnforcePartitionFilter
         checkArgument(!isNullOrEmpty(schemaTableName), "schemaTableName is null or is empty");
         List<String> parts = Splitter.on('.').splitToList(schemaTableName);
         checkArgument(parts.size() == 2, "Invalid schemaTableName: %s", schemaTableName);
-        return new SchemaTableName(parts.get(0), parts.get(1));
+        return new SchemaTableName(parts.get(0), parts.get(1).replace("*", ".*"));
     }
 
     public static TableLayout getTableLayout(Metadata metadata, Session session, TableScanNode tableScan)
@@ -106,17 +106,17 @@ public class EnforcePartitionFilter
             return plan;
         }
         Set<SchemaTableName> enforcedTables = getSchemaTableNames(partitionFilterTables);
-        Set<String> enforcedSchemas = enforcedTables.stream().filter(schemaTableName -> "*".equals(schemaTableName.getTableName())).map(SchemaTableName::getSchemaName).collect(Collectors.toSet());
+        Set<String> enforcedCompleteSchemas = enforcedTables.stream().filter(schemaTableName -> ".*".equals(schemaTableName.getTableName())).map(SchemaTableName::getSchemaName).collect(Collectors.toSet());
         PartitionFilteringContext context = new PartitionFilteringContext();
         plan.accept(new Visitor(), context);
         Map<PlanNodeId, TableScanInfo> tableScanInfos = context.getTableScanInfos();
         for (TableScanInfo tableScanInfo : tableScanInfos.values()) {
-            checkTableScan(tableScanInfo, types, session, enforcedTables, enforcedSchemas);
+            checkTableScan(tableScanInfo, types, session, enforcedTables, enforcedCompleteSchemas);
         }
         return plan;
     }
 
-    private void checkTableScan(TableScanInfo tableScanInfo, TypeProvider types, Session session, Set<SchemaTableName> enforcedTables, Set<String> enforcedSchemas)
+    private void checkTableScan(TableScanInfo tableScanInfo, TypeProvider types, Session session, Set<SchemaTableName> enforcedTables, Set<String> enforcedCompleteSchemas)
     {
         TableScanNode tableScan = tableScanInfo.getTableScanNode();
         TableLayout layout = getTableLayout(metadata, session, tableScan);
@@ -124,7 +124,7 @@ public class EnforcePartitionFilter
             return;
         }
         SchemaTableName schemaTableName = metadata.getTableMetadata(session, tableScan.getTable()).getTable();
-        if (!enforcedSchemas.contains(schemaTableName.getSchemaName()) && !enforcedTables.contains(schemaTableName)) {
+        if (!enforcedCompleteSchemas.contains(schemaTableName.getSchemaName()) && !isTableEnforced(schemaTableName, enforcedTables)) {
             return;
         }
         List<ColumnHandle> partitionColumns = layout.getDiscretePredicates().get().getColumns();
@@ -146,6 +146,18 @@ public class EnforcePartitionFilter
             throw new PrestoException(INVALID_FUNCTION_ARGUMENT, String.format(ERROR_MESSAGE_FORMAT,
                     String.join("', '", missingPartitionColumnNames), schemaTableName, dateColumnName));
         }
+    }
+
+    private boolean isTableEnforced(SchemaTableName schemaTableName, Set<SchemaTableName> enforcedTables)
+    {
+        for (SchemaTableName enforcedSchemaTableName : enforcedTables) {
+            if (schemaTableName.getSchemaName().equals(enforcedSchemaTableName.getSchemaName())) {
+                if (schemaTableName.getTableName().matches(enforcedSchemaTableName.getTableName())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private Set<ColumnHandle> getColumnHandleInFilterPredicate(TableScanInfo tableScanInfo, TypeProvider types)

@@ -168,7 +168,7 @@ public abstract class AbstractMockMetadata
     }
 
     @Override
-    public List<TableSample> getSampleTables(Session session, TableHandle handle)
+    public List<TableSample> getSampleTables(Session session, TableHandle handle, boolean partitionMatch)
     {
         throw new UnsupportedOperationException();
     }
