@@ -59,6 +59,7 @@ public class ThriftMetastoreModule
                         cfg.setMaxConnectionsPerServer(250);
                         cfg.setMaxContentLength(new DataSize(32, MEGABYTE));
                     });
+            binder.bind(MetastoreUriFetcher.class).to(MetastoreThriftUriFetcher.class).in(Scopes.SINGLETON);
         }
         else {
             binder.bind(HiveCluster.class).to(StaticHiveCluster.class).in(Scopes.SINGLETON);

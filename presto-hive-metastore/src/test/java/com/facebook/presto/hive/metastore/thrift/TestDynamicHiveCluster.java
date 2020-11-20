@@ -23,28 +23,27 @@ import java.util.Optional;
 
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
-// import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertEquals;
 
-public class TestDynamicCluster
+public class TestDynamicHiveCluster
 {
     private final HiveMetastoreClient metastoreClient = createFakeMetastoreClient();
     private final DynamicMetastoreConfig validConfig = new DynamicMetastoreConfig()
                         .setMetastoreDiscoveryUri("{\"url\":\"http://localhost:5436/discover\",\"headers\":{\"Rpc-Service\":\"hms-random\",\"Rpc-Caller\":\"presto\"}}");
 
-    public TestDynamicCluster() throws TException {}
+    public TestDynamicHiveCluster() throws TException {}
 
     @Test
     public void testFallbackHiveMetastore()
             throws TException
     {
         HiveCluster cluster = createHiveCluster(validConfig, asList(metastoreClient));
-        // TODO: mock muttley call to get this working
-        // assertEquals(cluster.createMetastoreClient(null, null), metastoreClient);
+        assertEquals(cluster.createMetastoreClient(null, null), metastoreClient);
     }
 
     private static HiveCluster createHiveCluster(DynamicMetastoreConfig config, List<HiveMetastoreClient> clients)
     {
-        return new DynamicHiveCluster(config, new MockHiveMetastoreClientFactory(Optional.empty(), new Duration(1, SECONDS), clients), new JettyHttpClient());
+        return new DynamicHiveCluster(config, new MockHiveMetastoreClientFactory(Optional.empty(), new Duration(1, SECONDS), clients), new JettyHttpClient(), MockMetastoreUriFetcher.getInstance());
     }
 
     private static HiveMetastoreClient createFakeMetastoreClient()

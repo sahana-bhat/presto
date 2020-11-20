@@ -15,7 +15,6 @@ package com.facebook.presto.hive.metastore.thrift;
 
 import com.facebook.airlift.http.client.HttpClient;
 import com.facebook.airlift.http.client.Request;
-import com.facebook.airlift.http.client.StringResponseHandler;
 import com.google.common.net.HostAndPort;
 import org.apache.thrift.TException;
 
@@ -26,10 +25,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static com.facebook.airlift.http.client.HttpStatus.OK;
 import static com.facebook.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
 import static com.facebook.airlift.http.client.Request.Builder.prepareGet;
-import static com.facebook.airlift.http.client.StringResponseHandler.createStringResponseHandler;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Objects.requireNonNull;
 
@@ -44,19 +41,21 @@ public class DynamicHiveCluster
     private final HttpClient httpClient;
     private final HttpRequestDetails metaStoreDiscoveryUri;
     private final Request request;
+    private final MetastoreUriFetcher metastoreUriFetcher;
 
     @Inject
-    public DynamicHiveCluster(DynamicMetastoreConfig config, HiveMetastoreClientFactory clientFactory, @ForHiveMetastore HttpClient httpClient)
+    public DynamicHiveCluster(DynamicMetastoreConfig config, HiveMetastoreClientFactory clientFactory, @ForHiveMetastore HttpClient httpClient, MetastoreUriFetcher metastoreUriFetcher)
     {
-        this(config.getMetastoreUsername(), config.getMetastoreDiscoveryUri(), clientFactory, httpClient);
+        this(config.getMetastoreUsername(), config.getMetastoreDiscoveryUri(), clientFactory, httpClient, metastoreUriFetcher);
     }
-    public DynamicHiveCluster(String metastoreUsername, HttpRequestDetails metaStoreDiscoveryUri, HiveMetastoreClientFactory clientFactory, HttpClient httpClient)
+    public DynamicHiveCluster(String metastoreUsername, HttpRequestDetails metaStoreDiscoveryUri, HiveMetastoreClientFactory clientFactory, HttpClient httpClient, MetastoreUriFetcher metastoreUriFetcher)
     {
         this.httpClient = httpClient;
         this.metastoreUsername = metastoreUsername;
         this.metaStoreDiscoveryUri = metaStoreDiscoveryUri;
         this.clientFactory = requireNonNull(clientFactory, "clientFactory is null");
         this.request = createMetastoreDiscoveryRequest();
+        this.metastoreUriFetcher = metastoreUriFetcher;
     }
 
     /**
@@ -73,7 +72,7 @@ public class DynamicHiveCluster
             throws TException
     {
         if (metastore == null) {
-            URI uri = getMetastoreUri();
+            URI uri = metastoreUriFetcher.getMetastoreUri(httpClient, request);
             metastore = HostAndPort.fromParts(uri.getHost(), uri.getPort());
         }
         TException lastException = null;
@@ -100,18 +99,5 @@ public class DynamicHiveCluster
             requestBuilder.setHeader(header.getKey(), header.getValue());
         }
         return requestBuilder.build();
-    }
-
-    private URI getMetastoreUri() throws TException
-    {
-        URI uri;
-        StringResponseHandler.StringResponse response = httpClient.execute(request, createStringResponseHandler());
-        if (response.getStatusCode() == OK.code()) {
-            uri = URI.create(response.getBody());
-        }
-        else {
-            throw new TException("Error in fetching metastore URI");
-        }
-        return uri;
     }
 }
