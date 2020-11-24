@@ -50,12 +50,12 @@ public class DynamicHiveCluster
     }
     public DynamicHiveCluster(String metastoreUsername, HttpRequestDetails metaStoreDiscoveryUri, HiveMetastoreClientFactory clientFactory, HttpClient httpClient, MetastoreUriFetcher metastoreUriFetcher)
     {
-        this.httpClient = httpClient;
-        this.metastoreUsername = metastoreUsername;
-        this.metaStoreDiscoveryUri = metaStoreDiscoveryUri;
+        this.httpClient = requireNonNull(httpClient, "httpClient object is null");
+        this.metaStoreDiscoveryUri = requireNonNull(metaStoreDiscoveryUri, "metaStoreDiscoveryUri object to capture http request details is null");
         this.clientFactory = requireNonNull(clientFactory, "clientFactory is null");
-        this.request = createMetastoreDiscoveryRequest();
-        this.metastoreUriFetcher = metastoreUriFetcher;
+        this.metastoreUriFetcher = requireNonNull(metastoreUriFetcher, "metastoreUriFetcher is null");
+        this.request = createMetastoreDiscoveryRequest(metaStoreDiscoveryUri);
+        this.metastoreUsername = metastoreUsername;
     }
 
     /**
@@ -75,7 +75,6 @@ public class DynamicHiveCluster
             URI uri = metastoreUriFetcher.getMetastoreUri(httpClient, request);
             metastore = HostAndPort.fromParts(uri.getHost(), uri.getPort());
         }
-        TException lastException = null;
         try {
             HiveMetastoreClient client = clientFactory.create(metastore, token);
 
@@ -85,19 +84,17 @@ public class DynamicHiveCluster
             return client;
         }
         catch (TException e) {
-            lastException = e;
+            throw new TException("Failed connecting to Hive metastore  "
+                    + metastore.getHost() + " on port " + metastore.getPort(), e);
         }
-        throw new TException("Failed connecting to Hive metastore: " + metastore.getHost(), lastException);
     }
 
-    private Request createMetastoreDiscoveryRequest()
+    private static Request createMetastoreDiscoveryRequest(HttpRequestDetails metaStoreDiscoveryUri)
     {
         Request.Builder requestBuilder = prepareGet()
                 .setUri(uriBuilderFrom(URI.create(metaStoreDiscoveryUri.getUrl())).build());
 
-        for (Map.Entry<String, String> header : metaStoreDiscoveryUri.getHeaders().entrySet()) {
-            requestBuilder.setHeader(header.getKey(), header.getValue());
-        }
+        metaStoreDiscoveryUri.getHeaders().forEach((header, value) -> requestBuilder.setHeader(header, value));
         return requestBuilder.build();
     }
 }

@@ -37,7 +37,7 @@ public class ThriftMetastoreModule
         extends AbstractConfigurationAwareModule
 {
     private final String connectorId;
-    private final String getMetastoreDiscoveryType = "DYNAMIC";
+    private static final String DYNAMIC_METASTORE_DISCOVERY_TYPE = "DYNAMIC";
 
     public ThriftMetastoreModule(String connectorId)
     {
@@ -49,7 +49,7 @@ public class ThriftMetastoreModule
     {
         binder.bind(HiveMetastoreClientFactory.class).in(Scopes.SINGLETON);
         DynamicMetastoreConfig dc = this.buildConfigObject(DynamicMetastoreConfig.class);
-        if (dc.getMetastoreDiscoveryType() != null && dc.getMetastoreDiscoveryType().equalsIgnoreCase(getMetastoreDiscoveryType)) {
+        if (DYNAMIC_METASTORE_DISCOVERY_TYPE.equalsIgnoreCase(dc.getMetastoreDiscoveryType())) {
             binder.bind(HiveCluster.class).to(DynamicHiveCluster.class).in(Scopes.SINGLETON);
             configBinder(binder).bindConfig(DynamicMetastoreConfig.class);
             httpClientBinder(binder).bindHttpClient("hivemetastore", ForHiveMetastore.class)

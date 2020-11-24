@@ -39,7 +39,8 @@ public class MetastoreThriftUriFetcher
             uri = URI.create(response.getBody());
         }
         else {
-            throw new TException("Error in fetching metastore URI");
+            throw new TException("Error in fetching metastore URI. Error code : " +
+                    response.getStatusCode() + " Error: " + response.getStatusMessage());
         }
         return uri;
     }

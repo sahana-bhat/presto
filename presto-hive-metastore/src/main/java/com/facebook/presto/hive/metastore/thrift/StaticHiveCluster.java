@@ -65,7 +65,6 @@ public class StaticHiveCluster
     public HiveMetastoreClient createMetastoreClient(String token, HostAndPort hms)
             throws TException
     {
-        TException lastException = null;
         if (hms == null) {
             List<HostAndPort> metastores = new ArrayList<>(addresses);
             if (isMultipleMetastore) {
@@ -85,10 +84,9 @@ public class StaticHiveCluster
                     return client;
                 }
                 catch (TException e) {
-                    lastException = e;
+                    throw new TException("Failed connecting to Hive metastore: " + addresses, e);
                 }
             }
-            throw new TException("Failed connecting to Hive metastore: " + addresses, lastException);
         }
         else {
             try {
@@ -100,9 +98,8 @@ public class StaticHiveCluster
                 return client;
             }
             catch (TException e) {
-                lastException = e;
+                throw new TException("Failed connecting to Hive metastore: " + addresses, e);
             }
-            throw new TException("Failed connecting to Hive metastore: " + hms, lastException);
         }
     }
 

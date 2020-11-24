@@ -147,6 +147,7 @@ public class ThriftHiveMetastore
                         ThriftHiveMetastoreStats stats = new ThriftHiveMetastoreStats();
                         String name = ObjectNames.builder(ThriftHiveMetastore.class)
                                 .withProperty("host", hms.getHost())
+                                .withProperty("port", Integer.toString(hms.getPort()))
                                 .build();
                         Map<String, Object> exporters = exporter.getExportedObjects();
                         if (!exporters.keySet().contains(name)) {
