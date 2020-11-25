@@ -22,9 +22,14 @@ import com.facebook.presto.hive.metastore.ExtendedHiveMetastore;
 import com.facebook.presto.hive.metastore.RecordingHiveMetastore;
 import com.google.inject.Binder;
 import com.google.inject.Scopes;
+import io.airlift.units.DataSize;
+import io.airlift.units.Duration;
 
 import static com.facebook.airlift.configuration.ConfigBinder.configBinder;
+import static com.facebook.airlift.http.client.HttpClientBinder.httpClientBinder;
+import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.weakref.jmx.ObjectNames.generatedNameOf;
 import static org.weakref.jmx.guice.ExportBinder.newExporter;
 
@@ -32,6 +37,7 @@ public class ThriftMetastoreModule
         extends AbstractConfigurationAwareModule
 {
     private final String connectorId;
+    private static final String DYNAMIC_METASTORE_DISCOVERY_TYPE = "DYNAMIC";
 
     public ThriftMetastoreModule(String connectorId)
     {
@@ -42,9 +48,23 @@ public class ThriftMetastoreModule
     protected void setup(Binder binder)
     {
         binder.bind(HiveMetastoreClientFactory.class).in(Scopes.SINGLETON);
-        binder.bind(HiveCluster.class).to(StaticHiveCluster.class).in(Scopes.SINGLETON);
-        configBinder(binder).bindConfig(StaticMetastoreConfig.class);
-
+        DynamicMetastoreConfig dc = this.buildConfigObject(DynamicMetastoreConfig.class);
+        if (DYNAMIC_METASTORE_DISCOVERY_TYPE.equalsIgnoreCase(dc.getMetastoreDiscoveryType())) {
+            binder.bind(HiveCluster.class).to(DynamicHiveCluster.class).in(Scopes.SINGLETON);
+            configBinder(binder).bindConfig(DynamicMetastoreConfig.class);
+            httpClientBinder(binder).bindHttpClient("hivemetastore", ForHiveMetastore.class)
+                    .withConfigDefaults(cfg -> {
+                        cfg.setIdleTimeout(new Duration(300, SECONDS));
+                        cfg.setRequestTimeout(new Duration(300, SECONDS));
+                        cfg.setMaxConnectionsPerServer(250);
+                        cfg.setMaxContentLength(new DataSize(32, MEGABYTE));
+                    });
+            binder.bind(MetastoreUriFetcher.class).to(ThriftMetastoreUriFetcher.class).in(Scopes.SINGLETON);
+        }
+        else {
+            binder.bind(HiveCluster.class).to(StaticHiveCluster.class).in(Scopes.SINGLETON);
+            configBinder(binder).bindConfig(StaticMetastoreConfig.class);
+        }
         binder.bind(HiveMetastore.class).to(ThriftHiveMetastore.class).in(Scopes.SINGLETON);
 
         if (buildConfigObject(MetastoreClientConfig.class).getRecordingPath() != null) {
