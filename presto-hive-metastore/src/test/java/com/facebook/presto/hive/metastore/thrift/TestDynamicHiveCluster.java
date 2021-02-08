@@ -47,7 +47,7 @@ public class TestDynamicHiveCluster
             throws TException
     {
         HiveCluster cluster = createHiveCluster(validConfig, asList(metastoreClient));
-        assertEquals(cluster.createMetastoreClient(null, null), metastoreClient);
+        assertEquals(cluster.createMetastoreClient(), metastoreClient);
     }
 
     private static HiveCluster createHiveCluster(DynamicMetastoreConfig config, List<HiveMetastoreClient> clients)

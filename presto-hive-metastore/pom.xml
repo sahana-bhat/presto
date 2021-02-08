@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.facebook.presto</groupId>
         <artifactId>presto-root</artifactId>
-        <version>0.244-SNAPSHOT</version>
+        <version>0.248-SNAPSHOT</version>
     </parent>
 
     <artifactId>presto-hive-metastore</artifactId>
@@ -219,6 +219,12 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.facebook.airlift</groupId>
+            <artifactId>http-client</artifactId>
+        </dependency>
+
     </dependencies>
 
     <profiles>

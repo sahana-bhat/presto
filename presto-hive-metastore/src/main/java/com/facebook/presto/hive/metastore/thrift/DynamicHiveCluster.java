@@ -21,8 +21,6 @@ import org.apache.thrift.TException;
 import javax.inject.Inject;
 
 import java.net.URI;
-import java.util.Collections;
-import java.util.List;
 
 import static com.facebook.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
 import static com.facebook.airlift.http.client.Request.Builder.prepareGet;
@@ -57,25 +55,14 @@ public class DynamicHiveCluster
         this.metastoreUsername = metastoreUsername;
     }
 
-    /**
-     * Placeholder implementation to return addresses to ThriftHiveMetastore
-     */
     @Override
-    public List<HostAndPort> getAddresses()
-    {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public HiveMetastoreClient createMetastoreClient(String token, HostAndPort metastore)
+    public HiveMetastoreClient createMetastoreClient()
             throws TException
     {
-        if (metastore == null) {
-            URI uri = metastoreUriFetcher.getMetastoreUri(httpClient, request);
-            metastore = HostAndPort.fromParts(uri.getHost(), uri.getPort());
-        }
+        URI uri = metastoreUriFetcher.getMetastoreUri(httpClient, request);
+        HostAndPort metastore = HostAndPort.fromParts(uri.getHost(), uri.getPort());
         try {
-            HiveMetastoreClient client = clientFactory.create(metastore, token);
+            HiveMetastoreClient client = clientFactory.create(metastore);
 
             if (!isNullOrEmpty(metastoreUsername)) {
                 client.setUGI(metastoreUsername);
