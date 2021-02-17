@@ -36,15 +36,14 @@ public class DynamicHiveCluster
     private final HiveMetastoreClientFactory clientFactory;
     private final String metastoreUsername;
     private final HttpClient httpClient;
-    private final ThriftMetastoreHttpRequestDetails metaStoreDiscoveryUri;
     private final Request request;
     private final MetastoreUriFetcher metastoreUriFetcher;
 
     @Inject
     public DynamicHiveCluster(DynamicMetastoreConfig config, HiveMetastoreClientFactory clientFactory, @ForDynamicHiveCluster HttpClient httpClient, MetastoreUriFetcher metastoreUriFetcher)
     {
+        ThriftMetastoreHttpRequestDetails metaStoreDiscoveryUri = requireNonNull(config.getMetastoreDiscoveryUri(), "metaStoreDiscoveryUri object to capture http request details is null");
         this.httpClient = requireNonNull(httpClient, "httpClient object is null");
-        this.metaStoreDiscoveryUri = requireNonNull(config.getMetastoreDiscoveryUri(), "metaStoreDiscoveryUri object to capture http request details is null");
         this.clientFactory = requireNonNull(clientFactory, "clientFactory is null");
         this.metastoreUriFetcher = requireNonNull(metastoreUriFetcher, "metastoreUriFetcher is null");
         this.request = createMetastoreDiscoveryRequest(metaStoreDiscoveryUri);

@@ -1845,7 +1845,6 @@
                 <artifactId>stream</artifactId>
                 <version>2.9.5</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
 
