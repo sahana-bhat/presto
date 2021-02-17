@@ -1846,11 +1846,6 @@
                 <version>2.9.5</version>
             </dependency>
 
-            <dependency>
-                <groupId>com.facebook.airlift</groupId>
-                <artifactId>http-client</artifactId>
-                <version>0.198</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 

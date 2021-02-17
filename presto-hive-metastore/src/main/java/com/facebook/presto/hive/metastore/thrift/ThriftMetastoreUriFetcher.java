@@ -33,15 +33,10 @@ public class ThriftMetastoreUriFetcher
 
     public URI getMetastoreUri(HttpClient httpClient, Request request) throws TException
     {
-        URI uri;
         StringResponseHandler.StringResponse response = httpClient.execute(request, createStringResponseHandler());
         if (response.getStatusCode() == OK.code()) {
-            uri = URI.create(response.getBody());
+            return URI.create(response.getBody());
         }
-        else {
-            throw new TException("Error in fetching metastore URI. Error code : " +
-                    response.getStatusCode() + " Error: " + response.getStatusMessage());
-        }
-        return uri;
+        throw new TException(String.format("Error in fetching metastore URI. Error code: %s, Error: %s ", response.getStatusCode(), response.getStatusMessage()));
     }
 }

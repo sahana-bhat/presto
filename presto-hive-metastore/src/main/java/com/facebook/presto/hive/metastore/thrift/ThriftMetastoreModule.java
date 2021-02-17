@@ -37,7 +37,9 @@ public class ThriftMetastoreModule
         extends AbstractConfigurationAwareModule
 {
     private final String connectorId;
-    private static final String DYNAMIC_METASTORE_DISCOVERY_TYPE = "DYNAMIC";
+    private enum DynamicMetastoreDiscoveryType {
+        DYNAMIC
+    };
 
     public ThriftMetastoreModule(String connectorId)
     {
@@ -48,11 +50,10 @@ public class ThriftMetastoreModule
     protected void setup(Binder binder)
     {
         binder.bind(HiveMetastoreClientFactory.class).in(Scopes.SINGLETON);
-        DynamicMetastoreConfig dc = this.buildConfigObject(DynamicMetastoreConfig.class);
-        if (DYNAMIC_METASTORE_DISCOVERY_TYPE.equalsIgnoreCase(dc.getMetastoreDiscoveryType())) {
+        if (DynamicMetastoreDiscoveryType.DYNAMIC.toString().equalsIgnoreCase(buildConfigObject(DynamicMetastoreConfig.class).getMetastoreDiscoveryType())) {
             binder.bind(HiveCluster.class).to(DynamicHiveCluster.class).in(Scopes.SINGLETON);
             configBinder(binder).bindConfig(DynamicMetastoreConfig.class);
-            httpClientBinder(binder).bindHttpClient("hivemetastore", ForHiveMetastore.class)
+            httpClientBinder(binder).bindHttpClient("hivemetastore", ForDynamicHiveCluster.class)
                     .withConfigDefaults(cfg -> {
                         cfg.setIdleTimeout(new Duration(300, SECONDS));
                         cfg.setRequestTimeout(new Duration(300, SECONDS));

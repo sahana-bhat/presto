@@ -40,7 +40,7 @@ public class DynamicMetastoreConfig
         return metastoreDiscoveryType;
     }
 
-    @Config("hive.metastore.discovery.type")
+    @Config("hive.metastore.discovery-type")
     public DynamicMetastoreConfig setMetastoreDiscoveryType(String metastoreDiscoveryType)
     {
         this.metastoreDiscoveryType = metastoreDiscoveryType;
@@ -52,7 +52,7 @@ public class DynamicMetastoreConfig
         return metastoreDiscoveryUri;
     }
 
-    @Config("hive.metastore.discovery.uri")
+    @Config("hive.metastore.discovery-uri")
     public DynamicMetastoreConfig setMetastoreDiscoveryUri(ThriftMetastoreHttpRequestDetails metastoreDiscoveryUri)
     {
         this.metastoreDiscoveryUri = metastoreDiscoveryUri;

@@ -41,18 +41,14 @@ public class DynamicHiveCluster
     private final MetastoreUriFetcher metastoreUriFetcher;
 
     @Inject
-    public DynamicHiveCluster(DynamicMetastoreConfig config, HiveMetastoreClientFactory clientFactory, @ForHiveMetastore HttpClient httpClient, MetastoreUriFetcher metastoreUriFetcher)
-    {
-        this(config.getMetastoreUsername(), config.getMetastoreDiscoveryUri(), clientFactory, httpClient, metastoreUriFetcher);
-    }
-    public DynamicHiveCluster(String metastoreUsername, ThriftMetastoreHttpRequestDetails metaStoreDiscoveryUri, HiveMetastoreClientFactory clientFactory, HttpClient httpClient, MetastoreUriFetcher metastoreUriFetcher)
+    public DynamicHiveCluster(DynamicMetastoreConfig config, HiveMetastoreClientFactory clientFactory, @ForDynamicHiveCluster HttpClient httpClient, MetastoreUriFetcher metastoreUriFetcher)
     {
         this.httpClient = requireNonNull(httpClient, "httpClient object is null");
-        this.metaStoreDiscoveryUri = requireNonNull(metaStoreDiscoveryUri, "metaStoreDiscoveryUri object to capture http request details is null");
+        this.metaStoreDiscoveryUri = requireNonNull(config.getMetastoreDiscoveryUri(), "metaStoreDiscoveryUri object to capture http request details is null");
         this.clientFactory = requireNonNull(clientFactory, "clientFactory is null");
         this.metastoreUriFetcher = requireNonNull(metastoreUriFetcher, "metastoreUriFetcher is null");
         this.request = createMetastoreDiscoveryRequest(metaStoreDiscoveryUri);
-        this.metastoreUsername = metastoreUsername;
+        this.metastoreUsername = config.getMetastoreUsername();
     }
 
     @Override
@@ -60,9 +56,9 @@ public class DynamicHiveCluster
             throws TException
     {
         URI uri = metastoreUriFetcher.getMetastoreUri(httpClient, request);
-        HostAndPort metastore = HostAndPort.fromParts(uri.getHost(), uri.getPort());
+        HostAndPort address = HostAndPort.fromParts(uri.getHost(), uri.getPort());
         try {
-            HiveMetastoreClient client = clientFactory.create(metastore);
+            HiveMetastoreClient client = clientFactory.create(address);
 
             if (!isNullOrEmpty(metastoreUsername)) {
                 client.setUGI(metastoreUsername);
@@ -70,8 +66,7 @@ public class DynamicHiveCluster
             return client;
         }
         catch (TException e) {
-            throw new TException("Failed connecting to Hive metastore  "
-                    + metastore.getHost() + " on port " + metastore.getPort(), e);
+            throw new TException(String.format("Failed connecting to Hive metastore %s on port %s", address.getHost(), address.getPort()), e);
         }
     }
 
@@ -80,7 +75,7 @@ public class DynamicHiveCluster
         Request.Builder requestBuilder = prepareGet()
                 .setUri(uriBuilderFrom(URI.create(metaStoreDiscoveryUri.getUrl())).build());
 
-        metaStoreDiscoveryUri.getHeaders().forEach((header, value) -> requestBuilder.setHeader(header, value));
+        metaStoreDiscoveryUri.getHeaders().forEach(requestBuilder::setHeader);
         return requestBuilder.build();
     }
 }
